@@ -124,6 +124,7 @@ ShellBootstrap::~ShellBootstrap() {
   }
   // 1: base. The accessibility delegate was created right after it.
   ax_platform_delegate_.reset();
+  memory_consumer_registry_.reset();
   if (thread_pool_started_) {
     base::ThreadPoolInstance::Get()->Shutdown();
   }
@@ -131,13 +132,18 @@ ShellBootstrap::~ShellBootstrap() {
 }
 
 bool ShellBootstrap::Init() {
-  // 1. base. The accessibility platform comes right after it: Views and Aura
+  // 1. base, and the memory consumer registry. The accessibility platform comes right after it: Views and Aura
   // ask for it from their first objects on.
   base::FeatureList::InitInstance(std::string(), std::string());
   main_task_executor_ =
       std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::UI);
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("views_shell");
   thread_pool_started_ = true;
+  // Memory consumers (the discardable manager below, cc's caches) register
+  // with the process's registry; outside //content nothing coordinates them,
+  // so the registry is base's placeholder for standalone programs.
+  memory_consumer_registry_ = std::make_unique<
+      base::ScopedMemoryConsumerRegistry<base::DummyMemoryConsumerRegistry>>();
   ax_platform_delegate_ = std::make_unique<ShellAXPlatformDelegate>();
 
   // 2. Ozone, single process: the UI side (Wayland connection, with threaded

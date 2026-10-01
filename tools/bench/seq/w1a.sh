@@ -59,8 +59,7 @@ run() {  # run <name> <flags...>
   bash "$WT/tools/bench/worker/headless.sh" "$RES/w1a-$name" "$FHS" -c "~/chromium/src/out/views/views_shell $GL $*"
   local rc=$?
   step "run-$name" $rc
-  cat "$RES/w1a-$name/summary.txt"
-  grep -E 'in-process viz up|ack_configure|FATAL|ERROR' "$RES/w1a-$name/client.log" | grep -v '^\[.*wl_' | head -n 20
+  grep -E 'in-process viz up|FATAL|ERROR|Check failed|^#[0-9]+ ' "$RES/w1a-$name/client.log" | head -n 30
   echo "ack_configure: $(grep -cE 'ack_configure' "$RES/w1a-$name/client.log")"
 }
 

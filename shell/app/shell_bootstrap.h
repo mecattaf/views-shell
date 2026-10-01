@@ -9,7 +9,10 @@
 //
 // Order of Init(), each step owned here and torn down in reverse:
 //   1. base: the feature list, the UI SingleThreadTaskExecutor, the thread
-//      pool, then the accessibility platform delegate (native APIs only);
+//      pool, the memory consumer registry (a DummyMemoryConsumerRegistry:
+//      the shell takes no part in //content's memory coordination, but
+//      DiscardableSharedMemoryManager must register with some registry), then
+//      the accessibility platform delegate (native APIs only);
 //   2. Ozone in single-process mode: InitializeForUI (the Wayland connection),
 //      then InitializeForGPU (the GPU-side surface factory);
 //   3. mojo: mojo::core::Init() and ScopedIPCSupport on a mojo IO thread;
@@ -30,6 +33,8 @@
 
 #include <memory>
 
+#include "base/memory_coordinator/dummy_memory_consumer_registry.h"
+#include "base/memory_coordinator/memory_consumer_registry.h"
 #include "views_shell/app/views_shell_context_factory.h"
 
 namespace aura {
@@ -91,6 +96,9 @@ class ShellBootstrap {
   // Declaration order is Init() order; members are destroyed in reverse.
   std::unique_ptr<base::SingleThreadTaskExecutor> main_task_executor_;
   bool thread_pool_started_ = false;
+  std::unique_ptr<
+      base::ScopedMemoryConsumerRegistry<base::DummyMemoryConsumerRegistry>>
+      memory_consumer_registry_;
   std::unique_ptr<base::Thread> mojo_io_thread_;
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   std::unique_ptr<discardable_memory::DiscardableSharedMemoryManager>
