@@ -11,7 +11,8 @@ A light theme (`mode = "light"`) must work.
 Example themes live in [`../../examples/themes/`](../../examples/themes/): `noir`
 (the default), `claude-dark` and `claude-light`, converted from Tom's
 `home/themes/*.nix` with no loss (the private scoping note `themes/nix-palette-to-omarchy.py`; its
-asserts pass for all three). Each also carries `gtk.theme`, an extra file that
+asserts pass for all three), and `all-black`, the Chrome Web Store theme Tom wears
+expressed as a theme directory (see below). Each also carries `gtk.theme`, an extra file that
 names the GTK theme (MacTahoe on Tom's seats), and a few extra keys for Tom's
 other consumers. Extra keys are valid Omarchy input that no Omarchy consumer
 reads; views-shell keeps them and never pins them.
@@ -51,6 +52,41 @@ mixers, calls `ColorProviderManager::ResetColorProviderCache()` and notifies the
 rebuilt. That mirrors Omarchy's `shell applyTheme` IPC.
 
 **No blur.** No views-shell panel asks for blur. Panels take the theme's background.
+
+## All Black
+
+Tom's Chrome wears the Web Store theme **All Black**,
+id `mkplpffahhkjfocfbfapcemhhkgmljpn`. The shell has to be consistent with it, so
+[`all-black/`](../../examples/themes/all-black/) is that theme as an Omarchy theme
+directory: its frame, toolbar, omnibox and new-tab backgrounds are
+`background = "#000000"`, its tab, bookmark and omnibox text is
+`foreground = "#ffffff"`, and its button tint toward white is `accent = "#ffffff"`,
+whose derived `on_accent` is black. What All Black does not define — the neutral
+greys and the ANSI hues — is marked `derived` in that file, and
+`tools/validate.py` fails the theme if it carries a key
+[`../theme-map.json`](../theme-map.json) does not account for.
+
+How the theme and the stock `ui/color` mixers combine is **order, not merging**:
+
+1. `ui::ColorProvider` runs the stock mixers first: `ui::NativeTheme`'s dark
+   mixer, then the tonal mixers that render every `kColorSys*` role from the
+   `ColorProviderKey` seed (layer 1 above). Nothing stock is removed or edited.
+2. views-shell appends exactly one mixer **last**, with
+   `ColorProviderManager::AppendColorProviderInitializer`. The last mixer to set
+   an id wins, so All Black's pins (layer 2) overwrite the stock renditions of
+   the ids `theme-map.json` names, and every id it does not name keeps the stock
+   value the black seed produced.
+3. `shell.toml` sections, when the theme ships one, are applied in that same
+   appended mixer and win over the pins for their own surface.
+
+So "consistent with All Black" is precise: the pinned ids are literally All
+Black's values, and the rest of the kit is Chrome's own tonal dark neutral from
+the same `#000000` seed — the same relationship Chrome's frame has to the theme
+it wears. The id is what keeps the two halves in step: it is `theme.chromeThemeId`
+in the user configuration ([`../../schemas/config.schema.json`](../../schemas/config.schema.json)),
+so one config names both — views-shell wears the `all-black` directory, Chrome
+wears the Web Store theme of that id (installed by Tom; no extension can apply a
+theme for him).
 
 ## How Chrome follows
 

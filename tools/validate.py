@@ -8,8 +8,9 @@ against ui-tree.schema.json, every examples/config/*.json against
 config.schema.json (and against the 8,192-byte chrome.storage.sync per-item quota), every file a manifest names exists, every
 quick-settings entry that opens a page names a declared page, every qualified
 command a manifest handler or ui tree calls belongs to the plugin or is covered
-by a call: permission, and every fixture under tools/fixtures/invalid/ is
-rejected.
+by a call: permission, every examples/themes/*/ Omarchy theme directory holds a
+parseable colors.toml whose keys are all accounted for by style/theme-map.json,
+and every fixture under tools/fixtures/invalid/ is rejected.
 
 Needs the python `jsonschema` package (>= 4.18). On NixOS:
   nix shell nixpkgs#python3Packages.jsonschema -c python3 tools/validate.py
@@ -22,12 +23,15 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 from jsonschema import Draft202012Validator
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SKIP = {".git", "node_modules"}
 QUALIFIED = re.compile(r"^([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+)/([a-z][a-z0-9-]*)$")
+HEX6 = re.compile(r"^#[0-9a-f]{6}$")
+WORD = re.compile(r"^[a-z0-9_-]+$")
 
 
 def commands_in(node, out):
@@ -158,6 +162,44 @@ def main():
         for e in errs:
             failures.append(f"{rel}: {'/'.join(map(str, e.path))}: {e.message[:300]}")
         print(f"{'FAIL' if errs else 'ok  '} ui tree  {rel}")
+
+    # Example themes: each is an Omarchy theme directory whose colors.toml parses
+    # and whose every key is accounted for by style/theme-map.json (pinned, seeded,
+    # derived by the cascade, or deliberately left unpinned).
+    theme_map = load(ROOT / "style/theme-map.json")
+    coverage = theme_map["key_coverage"]
+    colour_keys = {k.split(" ")[0] for k in theme_map["layer2_pins"] if k != "note"}
+    for group in ("layer1_seed", "derived_by_the_cascade", "unmapped_keys",
+                  "extra_colour_keys"):
+        colour_keys |= set(coverage[group])
+    colour_keys.discard("mode")
+    word_keys = set(coverage["extra_word_keys"])
+    for colors in sorted(ROOT.glob("examples/themes/*/colors.toml")):
+        rel = colors.parent.relative_to(ROOT)
+        errs = []
+        with colors.open("rb") as fh:
+            data = tomllib.load(fh)
+        if data.get("mode") not in ("dark", "light"):
+            errs.append(f"{rel}/colors.toml: mode is neither dark nor light")
+        for k, v in data.items():
+            if k == "mode":
+                continue
+            if k in colour_keys:
+                if not (isinstance(v, str) and HEX6.match(v)):
+                    errs.append(f"{rel}/colors.toml: {k} is not a #rrggbb colour")
+            elif k in word_keys:
+                if not (isinstance(v, str) and WORD.match(v)):
+                    errs.append(f"{rel}/colors.toml: {k} is not a lowercase name")
+            else:
+                errs.append(f"{rel}/colors.toml: key {k} is not accounted for "
+                            "by style/theme-map.json key_coverage")
+        for f in ("gtk.theme", "icons.theme"):
+            p = colors.parent / f
+            if not p.is_file() or not p.read_text().strip():
+                errs.append(f"{rel}: missing or empty {f}")
+        failures += errs
+        print(f"{'FAIL' if errs else 'ok  '} themes   {rel} "
+              f"({len(data)} colors.toml keys covered by style/theme-map.json)")
 
     # Negative fixtures: each must be rejected.
     for bad in sorted(ROOT.glob("tools/fixtures/invalid/*.json")):

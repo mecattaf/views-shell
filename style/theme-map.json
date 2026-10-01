@@ -88,10 +88,52 @@
     "[spacing] scale": "LayoutProvider distance multiplier",
     "[lock]": "ignored: the lock screen is not a views-shell surface (rule R4)"
   },
+  "key_coverage": {
+    "note": "Every key an example theme's colors.toml may carry, and where this map accounts for it. tools/validate.py reads these lists plus the layer2_pins keys and fails on a theme key nobody accounts for. Colour keys hold #rrggbb; word keys hold a name. layer2_pins keys are the pinned ones; the groups here are the keys this map deliberately does not pin.",
+    "layer1_seed": [
+      "mode",
+      "background"
+    ],
+    "derived_by_the_cascade": [
+      "bright_foreground",
+      "selection_foreground"
+    ],
+    "unmapped_keys": [
+      "darker_background",
+      "yellow",
+      "orange",
+      "green",
+      "cyan",
+      "blue",
+      "magenta",
+      "brown",
+      "bright_red",
+      "bright_yellow",
+      "bright_orange",
+      "bright_green",
+      "bright_cyan",
+      "bright_blue",
+      "bright_magenta",
+      "bright_brown"
+    ],
+    "extra_colour_keys": [
+      "brand",
+      "desktop_background",
+      "hyprland_active_border",
+      "inactive_border",
+      "tab_indicator_inactive",
+      "terminal_color0",
+      "terminal_color7"
+    ],
+    "extra_word_keys": [
+      "nvim_catppuccin_flavour",
+      "claude_code_theme"
+    ]
+  },
   "unmapped_by_design": [
-    "blue, cyan, magenta, orange, brown and the bright_* hues: no shell chrome role; plugins may read them by name for data colours",
+    "darker_background, blue, cyan, magenta, orange, brown and the bright_* hues: no shell chrome role; darker_background stays a terminal key because lighter_background already carries the elevated surfaces, and plugins may read the hues by name for data colours",
     "green and yellow: ui/color has no kColorSys success or warning role at df5b64d9; status pills and plugins read them by name",
     "gradient borders: first stop only; no fx work",
-    "extra keys a theme carries for other consumers (brand, desktop_background, inactive_border, terminal_color7, nvim_catppuccin_flavour, claude_code_theme, ...): kept, readable by plugins, never pinned"
+    "extra keys a theme carries for other consumers (brand, desktop_background, hyprland_active_border, inactive_border, tab_indicator_inactive, terminal_color0, terminal_color7, nvim_catppuccin_flavour, claude_code_theme): kept, readable by plugins, never pinned"
   ]
 }
