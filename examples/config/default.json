@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/config.schema.json",
+  "schemaVersion": 1,
+  "theme": { "name": "noir" },
+  "plugins": {
+    "views-shell.workspace-rail": {},
+    "views-shell.network": {},
+    "views-shell.qs-audio": {},
+    "views-shell.qs-network": {},
+    "views-shell.qs-power-footer": {},
+    "example.music-scratchpad": {}
+  },
+  "bar": {
+    "height": 32,
+    "position": "top",
+    "sections": {
+      "left": [],
+      "center": [],
+      "right": ["example.music-scratchpad/button"]
+    }
+  },
+  "keybindings": []
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "../../schemas/config.schema.json",
+  "schemaVersion": 1,
+  "theme": {
+    "name": "noir",
+    "chromeThemeId": "mkplpffahhkjfocfbfapcemhhkgmljpn"
+  },
+  "plugins": {
+    "views-shell.workspace-rail": {
+      "collapsedWidth": 56,
+      "expandOnHover": true,
+      "showWindowCount": true
+    },
+    "views-shell.network": {},
+    "views-shell.qs-audio": {},
+    "views-shell.qs-bluetooth": {},
+    "views-shell.qs-dnd": {},
+    "views-shell.qs-media": {},
+    "views-shell.qs-network": {},
+    "views-shell.qs-power-footer": {},
+    "example.music-scratchpad": {},
+    "example.power-menu": {}
+  },
+  "bar": {
+    "height": 32,
+    "position": "top",
+    "sections": {
+      "left": [],
+      "center": [],
+      "right": ["example.music-scratchpad/button"]
+    }
+  },
+  "keybindings": [
+    { "command": "views-shell.workspace-rail/toggle", "key": "Mod+b" },
+    { "command": "example.power-menu/toggle", "key": "Mod+Shift+Escape" }
+  ]
+}
