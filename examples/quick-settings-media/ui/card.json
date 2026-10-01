@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "repeat",
+    "items": { "$bind": "/sessions" },
+    "key": "./id",
+    "template": {
+      "type": "mediaSession",
+      "session": { "$bind": "." },
+      "action": { "command": "views-shell.media/control", "args": { "session": { "$bind": "./id" } } }
+    }
+  }
+}

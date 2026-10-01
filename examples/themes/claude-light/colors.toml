@@ -1,0 +1,45 @@
+# claude-light: converted from home/themes/claude-light.nix by nix-palette-to-omarchy.py
+# Omarchy theme format (basecamp/omarchy docs/theming.md). Canonical keys first.
+
+mode = "light"
+
+accent = "#0051c2"
+selection = "#cde2fb"
+muted = "#6e7687"
+
+background = "#f9f9f7"
+dark_background = "#f3f3f0"
+darker_background = "#f0efec"
+lighter_background = "#ffffff"
+
+foreground = "#131313"
+dark_foreground = "#a5a49a"
+light_foreground = "#52514e"
+bright_foreground = "#131313"
+
+red = "#b80a18"
+yellow = "#a66a00"
+orange = "#b24a00"
+green = "#008000"
+cyan = "#007f80"
+blue = "#0051c2"
+magenta = "#8100c2"
+
+bright_red = "#b80a18"
+bright_yellow = "#a66a00"
+bright_green = "#008000"
+bright_cyan = "#007f80"
+bright_blue = "#0051c2"
+bright_magenta = "#8100c2"
+
+# Extra keys: valid Omarchy input, no Omarchy consumer.
+# Read by the shell's renderer and Tom's templates (theme-input.md section 6.2).
+brand = "#d97757"
+desktop_background = "#f0efec"
+hyprland_active_border = "#a5a49a"
+inactive_border = "#d2d1c7"
+tab_indicator_inactive = "#97958d"
+nvim_catppuccin_flavour = "latte"
+claude_code_theme = "light"
+terminal_color0 = "#2b303b"
+terminal_color7 = "#52514e"

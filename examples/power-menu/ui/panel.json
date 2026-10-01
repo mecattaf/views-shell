@@ -1,0 +1,34 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "column",
+    "container": "rounded",
+    "spacing": "normal",
+    "children": [
+      {
+        "type": "row",
+        "align": "center",
+        "children": [
+          { "type": "icon", "icon": "power", "role": "primary" },
+          { "type": "label", "text": "Power", "typography": "title", "flex": 1 },
+          { "type": "label", "text": { "$bind": "/uptime", "format": "duration" }, "typography": "annotation", "role": "subtle", "visible": { "$bind": "/showUptime" } }
+        ]
+      },
+      { "type": "separator" },
+      {
+        "type": "repeat",
+        "items": { "$bind": "/actions" },
+        "key": "./id",
+        "template": {
+          "type": "listItem",
+          "icon": { "$bind": "./icon" },
+          "label": { "$bind": "./label" },
+          "trailing": { "type": "keyChips", "keys": { "$bind": "./shortcut" } },
+          "enabled": { "$bind": "./enabled" },
+          "action": { "command": { "$bind": "./id" }, "close": true }
+        }
+      }
+    ]
+  }
+}

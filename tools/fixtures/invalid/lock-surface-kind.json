@@ -1,0 +1,3 @@
+{ "schemaVersion": 1, "id": "example.x", "name": "x", "version": "0.1.0",
+  "engines": { "views-shell": ">=0.1.0" }, "runtime": { "mode": "declarative" },
+  "contributes": { "surfaces": [ { "id": "lock", "kind": "lock" } ] } }

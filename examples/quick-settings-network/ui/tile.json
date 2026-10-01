@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "tile",
+    "variant": "primary",
+    "icon": { "$bind": "/primary/icon" },
+    "label": { "$bind": "/primary/label" },
+    "sublabel": { "$bind": "/primary/sublabel" },
+    "toggled": { "$bind": "/wifi/enabled" },
+    "enabled": { "$bind": "/wifi/available" },
+    "accessibleName": "Network",
+    "action": { "command": "views-shell.network/toggle-wifi" },
+    "detail": "page"
+  }
+}

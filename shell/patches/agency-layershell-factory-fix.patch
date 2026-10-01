@@ -1,0 +1,25 @@
+diff --git a/ui/ozone/platform/wayland/host/wayland_window_factory.cc b/ui/ozone/platform/wayland/host/wayland_window_factory.cc
+--- a/ui/ozone/platform/wayland/host/wayland_window_factory.cc
++++ b/ui/ozone/platform/wayland/host/wayland_window_factory.cc
+@@ -27,13 +27,17 @@
+     PlatformWindowInitProperties properties) {
+   std::unique_ptr<WaylandWindow> window;
+   switch (properties.type) {
+-    case PlatformWindowType::kPopup:
+-    #if BUILDFLAG(ENABLE_COWL_LAYER_SHELL)
++#if BUILDFLAG(ENABLE_COWL_LAYER_SHELL)
++    // Agency layer-shell factory fix (T0.1): kLayerShell must stand alone with
++    // its own break so kPopup falls through to kBubble as upstream intends.
++    // agency-source.patch interleaves kLayerShell between kPopup and kBubble,
++    // which makes empty kPopup fall through into the layer-shell case (every
++    // popup/bubble becomes a WaylandLayerShellWindow) once the flag is on.
+     case PlatformWindowType::kLayerShell:
+-      window =
+-          std::make_unique<WaylandLayerShellWindow>(delegate, connection);
++      window = std::make_unique<WaylandLayerShellWindow>(delegate, connection);
+       break;
+ #endif
++    case PlatformWindowType::kPopup:
+     case PlatformWindowType::kBubble:
+       // kPopup can be created by MessagePopupView without a parent window set.
+       // It looks like it ought to be a global notification window. Thus, use a

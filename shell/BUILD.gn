@@ -1,0 +1,92 @@
+# Copyright 2026 The views-shell Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# SKETCH. Never built. This is the intended shape of //views_shell inside a Chromium
+# checkout at the pinned tag. The lifted sources under app/, host/, rail/ and
+# wm/adapters/niri/ still carry their original names and include paths.
+#
+# views-shell is a Views program, not a content embedder (rule R24). The lifted app/
+# files are a //content embedder and stay as provenance only; the shell_main
+# sources below are new and shaped like ui/views/examples:views_examples_proc.
+
+import("//build/config/features.gni")
+import("//views_shell/build/views-shell.gni")  # declares enable_views_shell (sketch)
+
+assert(is_linux, "views-shell is an is_linux program. It never builds for ChromeOS.")
+assert(!is_chromeos, "Port Ash, never link it.")
+assert(ozone_platform_wayland, "views-shell draws only on Wayland layer-shell surfaces.")
+
+group("views_shell_all") {
+  deps = [ ":views-shell" ]
+  testonly = false
+}
+
+executable("views-shell") {
+  sources = [ "app/views_shell_main.cc" ]
+  deps = [
+    ":shell_main",
+    "//views_shell/shell/rail",
+    "//views_shell/wm",
+  ]
+
+  # Rules R1, R5 and R24, enforced by the build: no //chrome, no //ash, no
+  # //chromeos, and no browser: no //content, no Blink renderer, no V8.
+  # The Blink guard names the renderer only: components/viz/service pulls the
+  # small //third_party/blink/public/common types library legitimately.
+  # Proof once a tree exists: `gn path out/views-shell //views_shell:views-shell //v8` prints nothing.
+  assert_no_deps = [
+    "//chrome/*",
+    "//ash/*",
+    "//chromeos/*",
+    "//content/*",
+    "//third_party/blink/renderer/*",
+    "//v8/*",
+  ]
+}
+
+source_set("shell_main") {
+  sources = [
+    "app/views_shell_context_factory.cc",  # production in-process viz host (ui::ContextFactory)
+    "app/views_shell_context_factory.h",
+    "app/views_shell_views_delegate.cc",  # the rule guard: CHECK a SurfaceSpec per top-level Widget
+    "app/views_shell_views_delegate.h",
+    "app/shell_main_parts.cc",  # aura::Env, wm::WMState, focus/activation/capture clients, AXPlatform
+    "app/shell_main_parts.h",
+    "host/shell_host.cc",
+    "host/shell_host.h",
+    "surface/layer_surface_host.cc",  # DesktopWindowTreeHostLinux subclass
+    "surface/layer_surface_host.h",
+    "surface/surface_registry.cc",  # SurfaceSpec rows
+    "surface/surface_registry.h",
+  ]
+  deps = [
+    "//base",
+    "//components/viz/host",
+    "//components/viz/service",
+    "//views_shell/style",
+    "//mojo/core/embedder",
+    "//third_party/icu",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/color",
+    "//ui/compositor",
+    "//ui/ozone",
+    "//ui/views",
+    "//ui/wm",
+  ]
+}
+
+test("views_shell_unittests") {
+  sources = [
+    "ozone/layer_shell/wayland_layer_shell_window_unittest.cc",  # on the test Wayland server
+    "wm/adapters/niri/niri_ipc_client_unittest.cc",  # recorded transcripts
+    "wm/adapters/scroll/scroll_ipc_client_unittest.cc",
+    "wm/wm_model_unittest.cc",  # the rail's 2026-07-17 snapshot as a fixture
+  ]
+  deps = [
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//ui/ozone/platform/wayland:test_support",
+  ]
+}

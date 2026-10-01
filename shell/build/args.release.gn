@@ -1,0 +1,13 @@
+# Footprint-measurement configuration (sketch; never used yet).
+# Release, non-component, so PSS and binary size mean what a user would see.
+# Build //views_shell:views-shell and //ui/views/examples:views_examples (the control) from it.
+is_component_build = false
+is_debug = false
+is_official_build = false
+dcheck_always_on = false
+symbol_level = 0
+target_os = "linux"
+use_ozone = true
+ozone_auto_platforms = false
+ozone_platform_wayland = true
+ozone_platform = "wayland"

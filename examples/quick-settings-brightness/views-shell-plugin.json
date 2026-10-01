@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "example.quick-settings-brightness",
+  "name": "Brightness (quick settings)",
+  "version": "0.1.0",
+  "description": "The third-party path: a T2 process plugin in the same slider slot as the first-party entries. Same program as the in-repo example; only the manifest's placement changes.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0", "protocol": 1 },
+  "runtime": { "mode": "process", "exec": "bin/quick-settings-brightness" },
+  "permissions": ["exec:brightnessctl", "path:read:/sys/class/backlight/*"],
+  "requires": { "helpers": [ { "bin": "brightnessctl", "nixpkgs": "brightnessctl" } ] },
+  "contributes": {
+    "commands": [
+      { "id": "set", "title": "Set display brightness", "icon": "brightness", "args": [ { "name": "value", "type": "number", "required": true } ] },
+      { "id": "state", "title": "Brightness as JSON", "result": "json" }
+    ],
+    "quickSettings": [
+      { "id": "slider", "slot": "slider", "order": -80, "when": "!config.views-shell.qs-brightness.enabled" }
+    ]
+  }
+}

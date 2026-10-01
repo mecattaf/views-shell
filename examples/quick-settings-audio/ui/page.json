@@ -1,0 +1,33 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "column",
+    "spacing": "normal",
+    "children": [
+      { "type": "label", "text": "Output", "typography": "label", "role": "subtle" },
+      {
+        "type": "radioGroup",
+        "options": { "$bind": "/outputs" },
+        "value": { "$bind": "/output/id" },
+        "action": { "command": "views-shell.audio/set-default-output" }
+      },
+      { "type": "separator" },
+      { "type": "label", "text": "Input", "typography": "label", "role": "subtle" },
+      {
+        "type": "radioGroup",
+        "options": { "$bind": "/inputs" },
+        "value": { "$bind": "/input/id" },
+        "action": { "command": "views-shell.audio/set-default-input" }
+      },
+      { "type": "separator" },
+      {
+        "type": "listItem",
+        "icon": "settings",
+        "label": "Per-application volume",
+        "sublabel": "Opens pavucontrol",
+        "action": { "command": "views-shell.audio/open-mixer", "close": true }
+      }
+    ]
+  }
+}

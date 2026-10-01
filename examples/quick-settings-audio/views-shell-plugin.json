@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.qs-audio",
+  "name": "Audio (quick settings)",
+  "version": "0.1.0",
+  "description": "The first-party output and microphone sliders and the device-routing page. A T1 plugin with no code.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "declarative" },
+  "permissions": ["call:views-shell.audio/*"],
+  "requires": { "plugins": ["views-shell.audio"] },
+  "contributes": {
+    "quickSettings": [
+      { "id": "output", "slot": "slider", "ui": "ui/output.json", "state": "views-shell.audio/state", "page": "devices", "order": -100 },
+      { "id": "input", "slot": "slider", "ui": "ui/input.json", "state": "views-shell.audio/state", "page": "devices", "order": -90 },
+      { "id": "devices", "slot": "page", "title": "Audio", "ui": "ui/page.json", "state": "views-shell.audio/state" }
+    ]
+  }
+}

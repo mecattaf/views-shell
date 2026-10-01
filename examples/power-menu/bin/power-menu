@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+# Copyright 2026 The views-shell Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""example.power-menu: a T2 views-shell plugin speaking JSON-RPC 2.0 over stdio.
+
+It sends a full snapshot and ui trees; it never draws. System actions go through
+the views-shell permissions broker ("exec", "compositor/command"), never directly, so
+what the manifest declares is what can happen. Lock is a verb; unlock is not.
+"""
+import json
+import pathlib
+import sys
+
+HERE = pathlib.Path(__file__).resolve().parent.parent
+ACTIONS = [
+    {"id": "lock", "label": "Lock", "icon": "lock", "shortcut": "Mod+Ctrl+L"},
+    {"id": "logout", "label": "Log out", "icon": "logout", "shortcut": ""},
+    {"id": "suspend", "label": "Suspend", "icon": "suspend", "shortcut": ""},
+    {"id": "hibernate", "label": "Hibernate", "icon": "hibernate", "shortcut": ""},
+    {"id": "reboot", "label": "Reboot", "icon": "restart", "shortcut": ""},
+    {"id": "shutdown", "label": "Shut down", "icon": "power", "shortcut": ""},
+]
+# Each command maps to one broker request. Nothing else is reachable.
+BROKER = {
+    "lock": ("exec", {"program": "loginctl", "args": ["lock-session"]}),
+    "logout": ("compositor/command", {"capability": "session.exit", "args": {}}),
+    "suspend": ("exec", {"program": "systemctl", "args": ["suspend"]}),
+    "hibernate": ("exec", {"program": "systemctl", "args": ["hibernate"]}),
+    "reboot": ("exec", {"program": "systemctl", "args": ["reboot"]}),
+    "shutdown": ("exec", {"program": "systemctl", "args": ["poweroff"]}),
+}
+
+state = {"panelOpen": False, "showUptime": True, "config": {}}
+_next_id = 0
+
+
+def send(obj):
+    sys.stdout.write(json.dumps(obj, separators=(",", ":")) + "\n")
+    sys.stdout.flush()
+
+
+def notify(method, params):
+    send({"jsonrpc": "2.0", "method": method, "params": params})
+
+
+def request(method, params):
+    global _next_id
+    _next_id += 1
+    send({"jsonrpc": "2.0", "id": f"p{_next_id}", "method": method, "params": params})
+
+
+def uptime_seconds():
+    try:
+        return int(float(pathlib.Path("/proc/uptime").read_text().split()[0]))
+    except (OSError, ValueError, IndexError):
+        return None
+
+
+def snapshot():
+    notify("snapshot", {"data": {
+        "panelOpen": state["panelOpen"],
+        "showUptime": state["showUptime"],
+        "uptime": uptime_seconds(),
+        "actions": [dict(a, enabled=True) for a in ACTIONS],
+    }})
+
+
+def set_trees():
+    for surface in ("button", "panel"):
+        tree = json.loads((HERE / "ui" / f"{surface}.json").read_text())
+        tree.pop("$schema", None)
+        notify("surface/setTree", {"surface": surface, "tree": tree})
+
+
+def handle(msg):
+    method, params, mid = msg.get("method"), msg.get("params") or {}, msg.get("id")
+    if method is None:
+        return  # a broker reply to one of our requests; nothing to do
+    result = {}
+    if method == "initialize":
+        state["config"] = params.get("config", {})
+        state["showUptime"] = state["config"].get("showUptime", True)
+        result = {"protocol": 1}
+    elif method == "shutdown":
+        if mid is not None:
+            send({"jsonrpc": "2.0", "id": mid, "result": {}})
+        sys.exit(0)
+    elif method == "config/changed":
+        state["config"] = params.get("config", {})
+        state["showUptime"] = state["config"].get("showUptime", True)
+    elif method in ("surface/opened", "surface/closed") and params.get("surface") == "panel":
+        state["panelOpen"] = method == "surface/opened"
+    elif method == "command/invoke":
+        command = params.get("command")
+        if command == "status":
+            result = {"result": {"uptime": uptime_seconds(), "panelOpen": state["panelOpen"]}}
+        elif command in BROKER:
+            request(*BROKER[command])
+        # "toggle" is a surface verb handled by views-shell itself.
+    if mid is not None:
+        send({"jsonrpc": "2.0", "id": mid, "result": result})
+        if method == "initialize":
+            set_trees()
+    snapshot()
+
+
+def main():
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            handle(json.loads(line))
+        except json.JSONDecodeError:
+            print("power-menu: dropped a malformed line", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

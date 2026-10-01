@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "slider",
+    "icon": { "$bind": "/output/icon" },
+    "toggled": { "$bind": "/output/muted" },
+    "value": { "$bind": "/output/volume" },
+    "accessibleName": "Output volume",
+    "tooltip": { "$bind": "/output/name" },
+    "action": { "command": "views-shell.audio/set-output-volume" },
+    "iconAction": { "command": "views-shell.audio/toggle-output-mute" }
+  }
+}

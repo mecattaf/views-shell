@@ -1,0 +1,34 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "example.music-scratchpad",
+  "name": "Music scratchpad",
+  "version": "0.1.0",
+  "description": "A T1 example with no code: one key and one bar button summon the music player from the scratchpad. On scroll it also sends the player to the scratchpad when it first maps, with a small Lua callback, declared as a reviewed permission.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "declarative" },
+  "permissions": ["compositor:scratchpad.toggle", "scroll.lua"],
+  "requires": {
+    "compositor": { "required": ["scratchpad.toggle"], "optional": ["scroll.lua"] }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "toggle",
+        "title": "Toggle music scratchpad",
+        "icon": "music-note",
+        "handler": { "compositor": "scratchpad.toggle", "args": { "match": { "app_id": "music" } } }
+      }
+    ],
+    "surfaces": [
+      { "id": "button", "kind": "bar-widget", "defaultSection": "right", "ui": "ui/button.json" }
+    ],
+    "keybindings": [
+      { "command": "toggle", "key": "F9" }
+    ],
+    "compositor": {
+      "scroll": { "lua": ["scroll/scratch_on_map.lua"] }
+    }
+  }
+}

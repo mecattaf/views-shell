@@ -1,0 +1,10 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "iconButton",
+    "icon": "music-note",
+    "accessibleName": "Music",
+    "action": { "command": "toggle" }
+  }
+}

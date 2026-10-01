@@ -1,0 +1,10 @@
+{
+  "name": "views-shell",
+  "extension_id": "ipgciofhfkihkakcfcllpfifaohhdmeh",
+  "extension_key_sha256_prefix": "see tools/check-identity.py",
+  "native_messaging_host": "dev.mecattaf.views_shell",
+  "cpp_namespace": "views_shell",
+  "gn_root": "//views_shell",
+  "layer_shell_namespace_prefix": "views-shell-",
+  "settled": "2026-10-01"
+}

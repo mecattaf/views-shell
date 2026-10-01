@@ -1,0 +1,3 @@
+{ "schemaVersion": 1, "id": "example.web-surface", "name": "Bad web page", "version": "0.1.0",
+  "engines": { "views-shell": ">=0.1.0", "protocol": 1 }, "runtime": { "mode": "declarative" },
+  "chrome": { "pages": [ { "id": "dash", "url": "http://localhost:8080/" } ] } }

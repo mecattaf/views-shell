@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "iconButton",
+    "icon": "power",
+    "accessibleName": "Power menu",
+    "tooltip": "Power",
+    "toggled": { "$bind": "/panelOpen" },
+    "action": { "command": "toggle" }
+  }
+}

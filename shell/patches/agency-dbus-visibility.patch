@@ -1,0 +1,12 @@
+diff --git a/components/dbus/thread_linux/BUILD.gn b/components/dbus/thread_linux/BUILD.gn
+index be453d31ac..5350a3738c 100644
+--- a/components/dbus/thread_linux/BUILD.gn
++++ b/components/dbus/thread_linux/BUILD.gn
+@@ -5,6 +5,7 @@
+ source_set("thread_linux") {
+   visibility = [
+     "//components/dbus/*",
++    "//agency/*",
+     "//services/device/wake_lock/power_save_blocker",
+   ]
+   sources = [

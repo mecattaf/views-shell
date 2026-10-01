@@ -1,0 +1,1190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://views-shell.invalid/schemas/ui-tree.schema.json",
+  "title": "views-shell ui tree",
+  "description": "The declarative surface contents a T1 or T2 plugin sends. views-shell renders each node with a views-shell/style widget, using its own tokens. There are no colour literals, no pixel sizes and no custom painting: roles are semantic. Values may be literals or bindings into the plugin's latest snapshot. Interactions are command invocations. PROPOSED: the node set is a first cut, to be reconciled with the component atoms in the theming notes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "root"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "root": {
+      "$ref": "#/$defs/node"
+    }
+  },
+  "$defs": {
+    "binding": {
+      "description": "A JSON Pointer into the plugin's latest snapshot (RFC 6901). Inside a repeat, pointers starting with ./ are relative to the current item.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$bind"
+      ],
+      "properties": {
+        "$bind": {
+          "type": "string",
+          "pattern": "^(\\.)?(/([^/~]|~[01])*)*$"
+        },
+        "format": {
+          "enum": [
+            "text",
+            "percent",
+            "duration",
+            "bytes",
+            "time",
+            "relative-time"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/[a-z][a-z0-9-]*$",
+          "description": "Read from this source instead of the entry's state. Needs requires.plugins (T1) or state:read (T2)."
+        }
+      }
+    },
+    "text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/binding"
+        }
+      ]
+    },
+    "bool": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "#/$defs/binding"
+        }
+      ]
+    },
+    "number": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "$ref": "#/$defs/binding"
+        }
+      ]
+    },
+    "icon": {
+      "description": "A views-shell vector-icon name (stock views and components icons, plus the ported Ash subset in views-shell.pak) or a freedesktop icon name prefixed with xdg:.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(xdg:)?[A-Za-z0-9_.-]+$"
+        },
+        {
+          "$ref": "#/$defs/binding"
+        }
+      ]
+    },
+    "role": {
+      "description": "Semantic colour role. Resolved through the colour provider; never a literal.",
+      "enum": [
+        "default",
+        "subtle",
+        "primary",
+        "positive",
+        "warning",
+        "alert",
+        "disabled"
+      ]
+    },
+    "spacing": {
+      "enum": [
+        "none",
+        "tight",
+        "normal",
+        "loose"
+      ]
+    },
+    "typography": {
+      "description": "Typography token, mapped onto views::style text styles through the views-shell TypographyProvider.",
+      "enum": [
+        "display",
+        "title",
+        "headline",
+        "body",
+        "body-strong",
+        "button",
+        "annotation",
+        "label"
+      ]
+    },
+    "action": {
+      "description": "What an interaction does: invoke a command of this plugin (or another plugin's qualified command).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "command"
+      ],
+      "properties": {
+        "command": {
+          "description": "A command of this plugin, a qualified plugin-id/command, or a binding that resolves to one inside a repeat.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^([a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/)?[a-z][a-z0-9-]*$"
+            },
+            {
+              "$ref": "#/$defs/binding"
+            }
+          ]
+        },
+        "args": {
+          "type": "object",
+          "description": "Arguments; values may be bindings, resolved when the action fires."
+        },
+        "confirm": {
+          "description": "Ask before invoking: views-shell shows a ui::DialogModel confirmation with this text.",
+          "$ref": "#/$defs/text"
+        },
+        "close": {
+          "type": "boolean",
+          "default": false,
+          "description": "Close the surface after invoking."
+        }
+      }
+    },
+    "common": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "visible": {
+          "$ref": "#/$defs/bool"
+        },
+        "enabled": {
+          "$ref": "#/$defs/bool"
+        },
+        "tooltip": {
+          "$ref": "#/$defs/text"
+        },
+        "accessibleName": {
+          "$ref": "#/$defs/text"
+        },
+        "flex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/node"
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/column"
+        },
+        {
+          "$ref": "#/$defs/row"
+        },
+        {
+          "$ref": "#/$defs/stack"
+        },
+        {
+          "$ref": "#/$defs/grid"
+        },
+        {
+          "$ref": "#/$defs/scroll"
+        },
+        {
+          "$ref": "#/$defs/repeat"
+        },
+        {
+          "$ref": "#/$defs/label"
+        },
+        {
+          "$ref": "#/$defs/markdown"
+        },
+        {
+          "$ref": "#/$defs/iconNode"
+        },
+        {
+          "$ref": "#/$defs/image"
+        },
+        {
+          "$ref": "#/$defs/badge"
+        },
+        {
+          "$ref": "#/$defs/dot"
+        },
+        {
+          "$ref": "#/$defs/separator"
+        },
+        {
+          "$ref": "#/$defs/spacer"
+        },
+        {
+          "$ref": "#/$defs/progress"
+        },
+        {
+          "$ref": "#/$defs/button"
+        },
+        {
+          "$ref": "#/$defs/iconButton"
+        },
+        {
+          "$ref": "#/$defs/switch"
+        },
+        {
+          "$ref": "#/$defs/checkbox"
+        },
+        {
+          "$ref": "#/$defs/radioGroup"
+        },
+        {
+          "$ref": "#/$defs/select"
+        },
+        {
+          "$ref": "#/$defs/slider"
+        },
+        {
+          "$ref": "#/$defs/textfield"
+        },
+        {
+          "$ref": "#/$defs/listItem"
+        },
+        {
+          "$ref": "#/$defs/tile"
+        },
+        {
+          "$ref": "#/$defs/tabSlider"
+        },
+        {
+          "$ref": "#/$defs/keyChips"
+        },
+        {
+          "$ref": "#/$defs/mediaSession"
+        }
+      ]
+    },
+    "column": {
+      "description": "BoxLayout, vertical.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "column"
+        },
+        "spacing": {
+          "$ref": "#/$defs/spacing"
+        },
+        "align": {
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "container": {
+          "enum": [
+            "none",
+            "rounded",
+            "rounded-top",
+            "rounded-bottom"
+          ],
+          "description": "Rounded background from the LayoutProvider's shape tokens."
+        },
+        "children": {
+          "$ref": "#/$defs/children"
+        }
+      }
+    },
+    "row": {
+      "description": "BoxLayout, horizontal.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "row"
+        },
+        "spacing": {
+          "$ref": "#/$defs/spacing"
+        },
+        "align": {
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "stretch"
+          ]
+        },
+        "container": {
+          "enum": [
+            "none",
+            "rounded",
+            "rounded-top",
+            "rounded-bottom"
+          ],
+          "description": "Rounded background from the LayoutProvider's shape tokens."
+        },
+        "children": {
+          "$ref": "#/$defs/children"
+        }
+      }
+    },
+    "stack": {
+      "description": "Children drawn on top of each other (FillLayout).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "stack"
+        },
+        "children": {
+          "$ref": "#/$defs/children"
+        }
+      }
+    },
+    "grid": {
+      "description": "TableLayout with equal columns, for tile grids.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "columns"
+      ],
+      "properties": {
+        "type": {
+          "const": "grid"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6
+        },
+        "spacing": {
+          "$ref": "#/$defs/spacing"
+        },
+        "children": {
+          "$ref": "#/$defs/children"
+        }
+      }
+    },
+    "scroll": {
+      "description": "views::ScrollView with views::OverlayScrollBar.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "child"
+      ],
+      "properties": {
+        "type": {
+          "const": "scroll"
+        },
+        "maxHeight": {
+          "enum": [
+            "small",
+            "medium",
+            "large",
+            "surface"
+          ]
+        },
+        "child": {
+          "$ref": "#/$defs/node"
+        }
+      }
+    },
+    "repeat": {
+      "description": "One copy of template per item of the bound array. Inside, ./ pointers are relative to the item.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "items",
+        "template"
+      ],
+      "properties": {
+        "type": {
+          "const": "repeat"
+        },
+        "items": {
+          "$ref": "#/$defs/binding"
+        },
+        "key": {
+          "type": "string",
+          "description": "Relative pointer to a stable key, so the renderer animates adds, removes and moves."
+        },
+        "direction": {
+          "enum": [
+            "column",
+            "row"
+          ],
+          "default": "column"
+        },
+        "template": {
+          "$ref": "#/$defs/node"
+        }
+      }
+    },
+    "label": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "label"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "typography": {
+          "$ref": "#/$defs/typography"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        },
+        "elide": {
+          "enum": [
+            "tail",
+            "middle",
+            "head",
+            "none"
+          ],
+          "default": "tail"
+        },
+        "maxLines": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "markdown": {
+      "description": "A StyledLabel from a small Markdown subset: emphasis, strong, code, links (which invoke commands or open URLs in Chrome).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "markdown"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "iconNode": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "icon"
+      ],
+      "properties": {
+        "type": {
+          "const": "icon"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "size": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "default": "medium"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        }
+      }
+    },
+    "image": {
+      "description": "A raster or SVG image file from the plugin directory, or a bound path. Shown as is; never used to paint chrome.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "src"
+      ],
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "src": {
+          "$ref": "#/$defs/text"
+        },
+        "size": {
+          "enum": [
+            "thumbnail",
+            "small",
+            "medium",
+            "large"
+          ]
+        },
+        "rounded": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "badge": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "badge"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        }
+      }
+    },
+    "dot": {
+      "description": "DotIndicator, for urgency and counters.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "dot"
+        },
+        "role": {
+          "$ref": "#/$defs/role"
+        }
+      }
+    },
+    "separator": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "separator"
+        }
+      }
+    },
+    "spacer": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "spacer"
+        },
+        "size": {
+          "$ref": "#/$defs/spacing"
+        }
+      }
+    },
+    "progress": {
+      "description": "ProgressBar, or a progress ring when shape is ring. Indeterminate when value is absent.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "progress"
+        },
+        "value": {
+          "$ref": "#/$defs/number"
+        },
+        "shape": {
+          "enum": [
+            "bar",
+            "ring"
+          ],
+          "default": "bar"
+        }
+      }
+    },
+    "button": {
+      "description": "views::MdTextButton (styles default, tonal, prominent, text).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "label",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "button"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "variant": {
+          "enum": [
+            "default",
+            "primary",
+            "secondary",
+            "floating",
+            "alert",
+            "accent"
+          ],
+          "default": "default"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "iconButton": {
+      "description": "views::ImageButton from views::CreateVectorImageButtonWithNativeTheme.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "icon",
+        "action",
+        "accessibleName"
+      ],
+      "properties": {
+        "type": {
+          "const": "iconButton"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "size": {
+          "enum": [
+            "xsmall",
+            "small",
+            "medium",
+            "large",
+            "xlarge"
+          ],
+          "default": "medium"
+        },
+        "variant": {
+          "enum": [
+            "default",
+            "prominent",
+            "floating"
+          ],
+          "default": "default"
+        },
+        "toggled": {
+          "$ref": "#/$defs/bool"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "switch": {
+      "description": "views::ToggleButton. The action receives {value: boolean}.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "switch"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "value": {
+          "$ref": "#/$defs/bool"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "checkbox": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "label",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "checkbox"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "value": {
+          "$ref": "#/$defs/bool"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "radioGroup": {
+      "description": "views::RadioButton group. The action receives {value: <option value>}.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "options",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "radioGroup"
+        },
+        "options": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/binding"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/option"
+              }
+            }
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/text"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "select": {
+      "description": "views::Combobox.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "options",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "select"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "options": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/binding"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/option"
+              }
+            }
+          ]
+        },
+        "value": {
+          "$ref": "#/$defs/text"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "label"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        }
+      }
+    },
+    "slider": {
+      "description": "Slider, 0 to 1, drawn with the ported QuickSettingsSlider. The action receives {value: number}; views-shell coalesces drags. iconAction fires on the icon (mute).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "slider"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "value": {
+          "$ref": "#/$defs/number"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "toggled": {
+          "$ref": "#/$defs/bool"
+        },
+        "iconAction": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "textfield": {
+      "description": "views::Textfield. The action fires on Enter with {value: string}.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "textfield"
+        },
+        "placeholder": {
+          "$ref": "#/$defs/text"
+        },
+        "value": {
+          "$ref": "#/$defs/text"
+        },
+        "size": {
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
+          "default": "medium"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "listItem": {
+      "description": "A row composed from stock Views (Button, BoxLayout, ImageView, Label): icon, label, sublabel, trailing node.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "label"
+      ],
+      "properties": {
+        "type": {
+          "const": "listItem"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "sublabel": {
+          "$ref": "#/$defs/text"
+        },
+        "selected": {
+          "$ref": "#/$defs/bool"
+        },
+        "trailing": {
+          "$ref": "#/$defs/node"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "tile": {
+      "description": "The quick-settings tile face (the ported FeatureTile), bound to a ui::ActionItem.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "icon",
+        "label"
+      ],
+      "properties": {
+        "type": {
+          "const": "tile"
+        },
+        "variant": {
+          "enum": [
+            "primary",
+            "compact"
+          ],
+          "default": "primary"
+        },
+        "icon": {
+          "$ref": "#/$defs/icon"
+        },
+        "label": {
+          "$ref": "#/$defs/text"
+        },
+        "sublabel": {
+          "$ref": "#/$defs/text"
+        },
+        "toggled": {
+          "$ref": "#/$defs/bool"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "detail": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "Id of a quickSettings page entry of this plugin."
+        }
+      }
+    },
+    "tabSlider": {
+      "description": "A segmented control composed from views::MdTextButton (tonal when selected).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "options",
+        "value",
+        "action"
+      ],
+      "properties": {
+        "type": {
+          "const": "tabSlider"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/option"
+          }
+        },
+        "value": {
+          "$ref": "#/$defs/text"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        }
+      }
+    },
+    "keyChips": {
+      "description": "Key chips (the ported KeyboardShortcutView).",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "keys"
+      ],
+      "properties": {
+        "type": {
+          "const": "keyChips"
+        },
+        "keys": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "mediaSession": {
+      "description": "A media session card drawn by components/global_media_controls MediaItemUIView (linked, stock). The bound object is one session from an MPRIS source.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/common"
+        }
+      ],
+      "unevaluatedProperties": false,
+      "required": [
+        "type",
+        "session"
+      ],
+      "properties": {
+        "type": {
+          "const": "mediaSession"
+        },
+        "session": {
+          "$ref": "#/$defs/binding"
+        },
+        "action": {
+          "$ref": "#/$defs/action",
+          "description": "Receives {verb: play|pause|next|previous|seek, position?}."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{ "schemaVersion": 1, "id": "example.bad", "name": "Bad", "version": "0.1.0", "engines": { "views-shell": ">=0.1.0" }, "runtime": { "mode": "declarative" }, "permissions": ["call:network/*"] }

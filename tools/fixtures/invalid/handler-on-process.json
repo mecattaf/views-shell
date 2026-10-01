@@ -1,0 +1,3 @@
+{ "schemaVersion": 1, "id": "example.x", "name": "x", "version": "0.1.0",
+  "engines": { "views-shell": ">=0.1.0", "protocol": 1 }, "runtime": { "mode": "process", "exec": "bin/x" },
+  "contributes": { "commands": [ { "id": "go", "title": "Go", "handler": { "exec": "sh" } } ] } }

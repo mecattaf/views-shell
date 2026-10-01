@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.qs-network",
+  "name": "Network (quick settings)",
+  "version": "0.1.0",
+  "description": "The first-party network tile and page. A T1 plugin with no code, written exactly as a third party would write it.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "declarative" },
+  "permissions": ["call:views-shell.network/*"],
+  "requires": { "plugins": ["views-shell.network"] },
+  "contributes": {
+    "quickSettings": [
+      { "id": "tile", "slot": "tile", "size": "primary", "ui": "ui/tile.json", "state": "views-shell.network/state", "page": "page", "order": -100 },
+      { "id": "page", "slot": "page", "title": "Network", "ui": "ui/page.json", "state": "views-shell.network/state" }
+    ]
+  }
+}

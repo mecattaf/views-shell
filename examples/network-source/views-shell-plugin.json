@@ -1,0 +1,35 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.network",
+  "name": "Network source",
+  "version": "0.1.0",
+  "description": "First-party T0 producer over NetworkManager. It publishes one full snapshot and a handful of commands, and draws nothing. The quick-settings tile, the bar pill and the CLI all consume it. The secret agent is not here: it belongs to the core credential modal.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "builtin", "target": "//views_shell/producers/network:network" },
+  "permissions": ["dbus:system:org.freedesktop.NetworkManager", "exec:nm-connection-editor"],
+  "requires": { "helpers": [ { "bin": "nm-connection-editor", "nixpkgs": "networkmanagerapplet", "optional": true } ] },
+  "contributes": {
+    "sources": [ { "id": "state", "description": "Wi-Fi radio, the primary connection, and the visible and saved networks." } ],
+    "commands": [
+      { "id": "toggle-wifi", "title": "Turn Wi-Fi on or off", "icon": "network-wifi" },
+      { "id": "set-wifi-enabled", "title": "Set Wi-Fi", "args": [ { "name": "value", "type": "boolean", "required": true } ] },
+      { "id": "activate", "title": "Connect to a network", "args": [ { "name": "network", "type": "string", "required": true } ] },
+      { "id": "deactivate", "title": "Disconnect", "args": [ { "name": "network", "type": "string", "required": true } ] },
+      { "id": "forget", "title": "Forget a network", "confirm": true, "args": [ { "name": "network", "type": "string", "required": true } ] },
+      { "id": "open-editor", "title": "Open the connection editor" },
+      { "id": "state", "title": "Network state as JSON", "result": "json" }
+    ],
+    "cli": {
+      "name": "network",
+      "verbs": [
+        { "verb": "wifi", "command": "set-wifi-enabled", "summary": "Turn Wi-Fi on or off" },
+        { "verb": "connect", "command": "activate" },
+        { "verb": "disconnect", "command": "deactivate" },
+        { "verb": "forget", "command": "forget", "confirm": true },
+        { "verb": "state", "command": "state" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "example.power-menu",
+  "name": "Power menu",
+  "version": "0.1.0",
+  "description": "A bar button whose panel offers lock, log out, suspend, hibernate, reboot and shut down. A T2 example: it sends ui trees and handles commands; views-shell draws everything.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0", "protocol": 1 },
+  "runtime": { "mode": "process", "exec": "bin/power-menu" },
+  "permissions": [
+    "exec:loginctl",
+    "exec:systemctl",
+    "compositor:session.exit"
+  ],
+  "requires": {
+    "compositor": { "required": ["session.exit"] },
+    "helpers": [ { "bin": "loginctl", "nixpkgs": "systemd" }, { "bin": "systemctl", "nixpkgs": "systemd" } ]
+  },
+  "contributes": {
+    "surfaces": [
+      { "id": "button", "kind": "bar-widget", "defaultSection": "right" },
+      { "id": "panel", "kind": "panel", "anchor": "surface:button", "keyboard": "on-demand" }
+    ],
+    "commands": [
+      { "id": "toggle", "title": "Toggle power menu", "icon": "power", "surface": "panel", "verb": "toggle" },
+      { "id": "lock", "title": "Lock", "icon": "lock" },
+      { "id": "logout", "title": "Log out", "icon": "logout", "confirm": true },
+      { "id": "suspend", "title": "Suspend", "icon": "suspend" },
+      { "id": "hibernate", "title": "Hibernate", "icon": "hibernate", "enablement": "session.canHibernate" },
+      { "id": "reboot", "title": "Reboot", "icon": "restart", "confirm": true },
+      { "id": "shutdown", "title": "Shut down", "icon": "power", "confirm": true },
+      { "id": "status", "title": "Power menu status", "result": "json" }
+    ],
+    "configuration": {
+      "title": "Power menu",
+      "properties": {
+        "confirm": { "type": "boolean", "default": true, "description": "Ask before log out, reboot and shut down." },
+        "showUptime": { "type": "boolean", "default": true, "description": "Show uptime in the panel header." },
+        "hotkey": { "type": "string", "format": "keybinding", "default": "Mod+Shift+Escape" }
+      }
+    },
+    "keybindings": [
+      { "command": "toggle", "keyFrom": "config.hotkey" },
+      { "command": "lock", "key": "Mod+Ctrl+L" }
+    ],
+    "menus": [
+      { "location": "views-shell.menu/system", "command": "toggle", "group": "session" }
+    ],
+    "launcher": [
+      { "command": "suspend", "title": "Suspend", "keywords": ["sleep"] },
+      { "command": "reboot", "title": "Reboot", "keywords": ["restart"] },
+      { "command": "shutdown", "title": "Shut down", "keywords": ["power off", "halt"] }
+    ],
+    "cli": {
+      "name": "power-menu",
+      "verbs": [
+        { "verb": "toggle", "command": "toggle", "summary": "Open or close the panel" },
+        { "verb": "lock", "command": "lock" },
+        { "verb": "suspend", "command": "suspend" },
+        { "verb": "reboot", "command": "reboot", "confirm": true },
+        { "verb": "shutdown", "command": "shutdown", "confirm": true },
+        { "verb": "status", "command": "status" }
+      ]
+    }
+  }
+}

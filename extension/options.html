@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>views-shell</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="layout">
+    <nav aria-label="views-shell pages">
+      <h1>views-shell</h1>
+      <a href="#shortcuts">Keyboard shortcuts</a>
+      <a href="#plugins">Plugins</a>
+      <a href="#compositor">Compositor</a>
+      <a href="#appearance">Appearance</a>
+      <a href="#notifications">Notifications</a>
+      <a href="#connection">Connection</a>
+    </nav>
+    <main>
+      <div id="status" class="banner" role="status">Connecting to views-shell on this machine…</div>
+
+      <section id="page-shortcuts">
+        <h2>Keyboard shortcuts</h2>
+        <p>Every binding the compositor resolved, and who owns it. Bindings in your
+        own config are locked and show their file and line. Bindings in a views-shell slot
+        can be edited here.</p>
+        <table>
+          <thead><tr><th>Keys</th><th>Command</th><th>Owner</th></tr></thead>
+          <tbody id="bindings"><tr><td colspan="3" class="locked">Not connected.</td></tr></tbody>
+        </table>
+      </section>
+
+      <section id="page-plugins" hidden>
+        <h2>Plugins</h2>
+        <p>Enabled plugins, their permissions and their settings. Settings forms are
+        generated from each plugin's <code>configuration</code> schema.</p>
+        <div id="plugins" class="locked">Not connected.</div>
+      </section>
+
+      <section id="page-compositor" hidden>
+        <h2>Compositor</h2>
+        <p>The active adapter and the capabilities it declares.</p>
+        <div id="compositor" class="locked">Not connected.</div>
+      </section>
+
+      <section id="page-appearance" hidden>
+        <h2>Appearance</h2>
+        <p>Active theme: <strong id="theme-name">unknown</strong>. views-shell reads
+        Omarchy theme directories, exactly as Omarchy does, and follows a switch
+        live (<code>views-shell theme apply &lt;name&gt;</code>). Chrome follows the same
+        theme through the <code>BrowserThemeColor</code> policy.</p>
+      </section>
+
+      <section id="page-notifications" hidden>
+        <h2>Notifications</h2>
+        <p>Per-app rules and do not disturb. Placeholder.</p>
+      </section>
+
+      <section id="page-connection" hidden>
+        <h2>Connection</h2>
+        <p>This extension reaches views-shell through Chrome native messaging. Chrome
+        starts the host <code id="host-name"></code> when a page connects, and
+        only because the host's manifest names this extension
+        (<code id="extension-id"></code>) in <code>allowed_origins</code>.
+        Nothing listens on a port, and there is nothing to pair.</p>
+        <p>The manifest lives in
+        <code>~/.config/google-chrome/NativeMessagingHosts/</code> (Chromium:
+        <code>~/.config/chromium/NativeMessagingHosts/</code>). Print it with
+        <code>views-shell native-host --manifest</code>; on NixOS, Home Manager writes it.</p>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

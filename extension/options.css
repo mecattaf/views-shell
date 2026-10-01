@@ -1,0 +1,30 @@
+/* Copyright 2026 The views-shell Authors. BSD-3-Clause. */
+:root {
+  /* Defaults follow the system scheme; lib/host.js applyTheme() replaces them
+     with the resolved Omarchy keys of the theme views-shell is using. */
+  color-scheme: light dark;
+  --ground: Canvas;
+  --on-ground: CanvasText;
+  --subtle: GrayText;
+  --outline: GrayText;
+  --primary: AccentColor;
+  --alert: #d93025;
+  font: 14px/1.45 system-ui, sans-serif;
+}
+html, body { margin: 0; background: var(--ground); color: var(--on-ground); }
+.layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+nav { border-right: 1px solid var(--outline); padding: 24px 12px; }
+nav h1 { font-size: 18px; margin: 0 12px 20px; letter-spacing: .04em; }
+nav a { display: block; padding: 8px 12px; border-radius: 18px; color: var(--on-ground); text-decoration: none; }
+nav a[aria-current="page"] { outline: 1px solid var(--outline); color: var(--primary); }
+main { padding: 32px 48px; max-width: 960px; }
+.banner { border: 1px solid var(--outline); border-radius: 12px; padding: 12px 16px; margin-bottom: 24px; color: var(--subtle); }
+.banner.error { border-color: var(--alert); color: var(--alert); }
+section[hidden] { display: none; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--outline); }
+th { color: var(--subtle); font-weight: 500; }
+kbd { border: 1px solid var(--outline); border-radius: 6px; padding: 1px 6px; font: 12px ui-monospace, monospace; }
+button { background: var(--primary); color: var(--ground); border: 0; border-radius: 18px; padding: 8px 18px; font: inherit; cursor: pointer; }
+input { background: var(--ground); color: var(--on-ground); border: 1px solid var(--outline); border-radius: 8px; padding: 8px; font: inherit; }
+.locked { color: var(--subtle); }

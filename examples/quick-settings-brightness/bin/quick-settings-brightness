@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+# Copyright 2026 The views-shell Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""example.quick-settings-brightness: a T2 views-shell plugin speaking JSON-RPC 2.0 on stdio.
+
+It owns no brightness policy. It reads the DRM backlights from sysfs (declared as
+path:read) and asks the views-shell permissions broker to run brightnessctl (declared as
+exec:brightnessctl) with --min-value 1, the floor the dotfiles brightness script
+keeps so that a slider dragged to the left never powers an i915 panel off. Only
+the script's explicit `off` verb may reach zero. It never polls: it re-reads on
+surface/opened and after each set.
+"""
+import json
+import pathlib
+import sys
+
+BACKLIGHTS = pathlib.Path("/sys/class/backlight")
+HERE = pathlib.Path(__file__).resolve().parent.parent
+_next_id = 0
+
+
+def send(obj):
+    sys.stdout.write(json.dumps(obj, separators=(",", ":")) + "\n")
+    sys.stdout.flush()
+
+
+def notify(method, params):
+    send({"jsonrpc": "2.0", "method": method, "params": params})
+
+
+def request(method, params):
+    global _next_id
+    _next_id += 1
+    send({"jsonrpc": "2.0", "id": f"b{_next_id}", "method": method, "params": params})
+
+
+def drm_backlights():
+    """Backlights whose sysfs device is a DRM connector, as the script selects them."""
+    found = []
+    if not BACKLIGHTS.is_dir():
+        return found
+    for b in sorted(BACKLIGHTS.iterdir()):
+        try:
+            if "/drm/" in str(b.resolve()):
+                found.append(b)
+        except OSError:
+            continue
+    return found
+
+
+def read_level():
+    """The first DRM backlight's level as 0..1, or None without a backlight."""
+    for b in drm_backlights():
+        try:
+            cur = int((b / "brightness").read_text())
+            top = int((b / "max_brightness").read_text())
+        except (OSError, ValueError):
+            continue
+        if top > 0:
+            return cur / top
+    return None
+
+
+def snapshot():
+    level = read_level()
+    notify("snapshot", {"data": {"available": level is not None, "value": level or 0.0}})
+
+
+def set_level(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return
+    pct = max(1, min(100, round(value * 100)))
+    for b in drm_backlights():
+        request("exec", {"program": "brightnessctl",
+                         "args": ["-n", "1", "-d", b.name, "set", f"{pct}%"]})
+
+
+def handle(msg):
+    method, params, mid = msg.get("method"), msg.get("params") or {}, msg.get("id")
+    if method is None:
+        snapshot()  # a broker reply to an exec request: re-read what landed
+        return
+    result = {}
+    if method == "initialize":
+        result = {"protocol": 1}
+    elif method == "shutdown":
+        if mid is not None:
+            send({"jsonrpc": "2.0", "id": mid, "result": {}})
+        sys.exit(0)
+    elif method == "command/invoke":
+        command, args = params.get("command"), params.get("args") or {}
+        if command == "set":
+            set_level(args.get("value"))
+        elif command == "state":
+            level = read_level()
+            result = {"result": {"available": level is not None, "value": level}}
+    if mid is not None:
+        send({"jsonrpc": "2.0", "id": mid, "result": result})
+        if method == "initialize":
+            tree = json.loads((HERE / "ui" / "slider.json").read_text())
+            tree.pop("$schema", None)
+            notify("surface/setTree", {"surface": "slider", "tree": tree})
+    snapshot()
+
+
+def main():
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            handle(json.loads(line))
+        except json.JSONDecodeError:
+            print("quick-settings-brightness: dropped a malformed line", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

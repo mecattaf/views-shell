@@ -1,0 +1,61 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.workspace-rail",
+  "name": "Workspace rail",
+  "version": "0.1.0",
+  "description": "The hero surface: workspaces as groups, windows as rows, click to focus, rename in place, collapse to free the screen. Built in (T0), after Chrome's vertical tabs. Its manifest still declares everything, so the CLI, the extension and the slots see it like any other plugin.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "builtin", "target": "//views_shell/shell/rail:rail" },
+  "requires": {
+    "compositor": {
+      "required": ["outputs.list", "workspaces.list", "workspaces.focus", "windows.list", "windows.focus"],
+      "optional": ["workspaces.rename", "windows.move-to-workspace", "windows.urgency", "scroll.scroller"]
+    }
+  },
+  "contributes": {
+    "surfaces": [
+      { "id": "rail", "kind": "bar", "keyboard": "none" },
+      { "id": "flyout", "kind": "overlay", "anchor": "surface:rail", "keyboard": "on-demand" }
+    ],
+    "commands": [
+      { "id": "focus-workspace", "title": "Focus workspace", "args": [ { "name": "workspace", "type": "string", "required": true } ] },
+      { "id": "focus-window", "title": "Focus window", "args": [ { "name": "window", "type": "string", "required": true } ] },
+      { "id": "rename-workspace", "title": "Rename workspace", "enablement": "compositor.workspaces.rename", "args": [ { "name": "workspace", "type": "string", "required": true }, { "name": "name", "type": "string", "required": true } ] },
+      { "id": "move-window", "title": "Move window to workspace", "enablement": "compositor.windows.move-to-workspace", "args": [ { "name": "window", "type": "string", "required": true }, { "name": "workspace", "type": "string", "required": true } ] },
+      { "id": "toggle-collapsed", "title": "Collapse or expand the rail", "surface": "rail" },
+      { "id": "toggle", "title": "Show or hide the rail", "surface": "rail", "verb": "toggle" },
+      { "id": "state", "title": "Rail model as JSON", "result": "json" }
+    ],
+    "configuration": {
+      "title": "Workspace rail",
+      "properties": {
+        "collapsedWidth": { "type": "integer", "default": 56, "minimum": 40, "maximum": 96, "description": "Width and exclusive zone of the collapsed rail, in DIP." },
+        "expandedWidth": { "type": "integer", "default": 240, "minimum": 160, "maximum": 480, "description": "Width of the hover flyout, in DIP. The flyout has no exclusive zone." },
+        "expandOnHover": { "type": "boolean", "default": true },
+        "showWindowCount": { "type": "boolean", "default": true },
+        "showScrollColumns": { "type": "boolean", "default": false, "description": "Decorate rows with scroll's columns (needs scroll.scroller)." },
+        "outputs": { "type": "string", "default": "all", "enum": ["all", "primary"], "scope": "instance" }
+      }
+    },
+    "keybindings": [
+      { "command": "toggle-collapsed", "key": "Mod+Grave" }
+    ],
+    "menus": [
+      { "location": "rail/workspace", "command": "rename-workspace", "group": "edit", "when": "compositor.workspaces.rename" },
+      { "location": "rail/window", "command": "move-window", "group": "move", "when": "compositor.windows.move-to-workspace" }
+    ],
+    "cli": {
+      "name": "rail",
+      "verbs": [
+        { "verb": "toggle", "command": "toggle" },
+        { "verb": "collapse", "command": "toggle-collapsed" },
+        { "verb": "focus", "command": "focus-workspace" },
+        { "verb": "rename", "command": "rename-workspace" },
+        { "verb": "state", "command": "state" }
+      ]
+    },
+    "events": ["workspace", "window", "output"]
+  }
+}

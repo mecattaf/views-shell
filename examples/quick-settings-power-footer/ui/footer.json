@@ -1,0 +1,18 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "row",
+    "align": "center",
+    "spacing": "tight",
+    "children": [
+      { "type": "icon", "icon": { "$bind": "/battery/icon" }, "size": "small", "visible": { "$bind": "/battery/present" } },
+      { "type": "label", "text": { "$bind": "/battery/fraction", "format": "percent" }, "typography": "annotation", "visible": { "$bind": "/battery/present" }, "tooltip": { "$bind": "/battery/timeRemaining" } },
+      { "type": "label", "text": { "$bind": "/profile", "source": "views-shell.power/profiles" }, "typography": "annotation", "role": "subtle" },
+      { "type": "spacer", "flex": 1 },
+      { "type": "iconButton", "icon": "settings", "accessibleName": "Settings", "action": { "command": "open-settings", "close": true } },
+      { "type": "iconButton", "icon": "lock", "accessibleName": "Lock", "action": { "command": "views-shell.session/lock", "close": true } },
+      { "type": "iconButton", "icon": "power", "accessibleName": "Power menu", "action": { "command": "views-shell.session/power-menu" } }
+    ]
+  }
+}

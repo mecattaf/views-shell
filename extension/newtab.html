@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>New Tab</title>
+  <style>
+    :root { color-scheme: light dark; --ground: Canvas; --on-ground: CanvasText; --subtle: GrayText; --outline: GrayText; --primary: AccentColor; }
+    html, body { margin: 0; height: 100%; background: var(--ground); color: var(--on-ground); font: 14px/1.45 system-ui, sans-serif; }
+    main { display: grid; place-content: center; height: 100%; gap: 16px; text-align: center; }
+    #workspaces { display: flex; gap: 8px; justify-content: center; color: var(--subtle); }
+    .ws { border: 1px solid var(--outline); border-radius: 16px; padding: 4px 12px; }
+    .ws.focused { border-color: var(--primary); color: var(--primary); }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="workspaces" aria-label="Workspaces"></div>
+  </main>
+  <script type="module" src="newtab.js"></script>
+</body>
+</html>

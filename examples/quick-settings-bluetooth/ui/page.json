@@ -1,0 +1,52 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "column",
+    "spacing": "normal",
+    "children": [
+      {
+        "type": "switch",
+        "label": "Bluetooth",
+        "value": { "$bind": "/powered" },
+        "action": { "command": "views-shell.bluetooth/set-powered" }
+      },
+      { "type": "separator" },
+      { "type": "label", "text": "Your devices", "typography": "label", "role": "subtle" },
+      {
+        "type": "repeat",
+        "items": { "$bind": "/paired" },
+        "key": "./address",
+        "template": {
+          "type": "listItem",
+          "icon": { "$bind": "./icon" },
+          "label": { "$bind": "./name" },
+          "sublabel": { "$bind": "./status" },
+          "selected": { "$bind": "./connected" },
+          "trailing": { "type": "label", "text": { "$bind": "./battery", "format": "percent" }, "typography": "annotation", "role": "subtle", "visible": { "$bind": "./hasBattery" } },
+          "action": { "command": "views-shell.bluetooth/toggle-connection", "args": { "device": { "$bind": "./address" } } }
+        }
+      },
+      { "type": "separator" },
+      {
+        "type": "row",
+        "align": "center",
+        "children": [
+          { "type": "label", "text": "Pair a new device", "typography": "label", "role": "subtle", "flex": 1 },
+          { "type": "progress", "visible": { "$bind": "/discovering" } }
+        ]
+      },
+      {
+        "type": "repeat",
+        "items": { "$bind": "/discovered" },
+        "key": "./address",
+        "template": {
+          "type": "listItem",
+          "icon": { "$bind": "./icon" },
+          "label": { "$bind": "./name" },
+          "action": { "command": "views-shell.bluetooth/pair", "args": { "device": { "$bind": "./address" } } }
+        }
+      }
+    ]
+  }
+}

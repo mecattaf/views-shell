@@ -1,0 +1,1 @@
+{ "schemaVersion": 1, "id": "views-shell.qs-bad", "name": "Bad", "version": "0.1.0", "engines": { "views-shell": ">=0.1.0", "protocol": 1 }, "runtime": { "mode": "process", "exec": "bin/x" } }

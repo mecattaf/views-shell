@@ -1,0 +1,1352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://views-shell.invalid/schemas/views-shell-plugin.schema.json",
+  "title": "views-shell-plugin.json",
+  "description": "Manifest of a views-shell plugin (a views-shell shell module). views-shell reads it without running plugin code. Backbone: VS Code's contribution manifest. Views side: Omarchy's surface kinds. Activation is inferred from contributions. Plugins supply data and handlers, never pixels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "version",
+    "engines",
+    "runtime"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "description": "Manifest format version. The JSON number 1; the string \"1\" is rejected.",
+      "const": 1
+    },
+    "id": {
+      "description": "Permanent publisher.name id. views-shell.* is reserved for built-in plugins. Retired ids are never reused.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "version": {
+      "description": "SemVer, for display. Installs pin the reviewed commit, not this string.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 512
+    },
+    "author": {
+      "type": "string"
+    },
+    "license": {
+      "description": "SPDX expression.",
+      "type": "string"
+    },
+    "repository": {
+      "type": "string",
+      "format": "uri"
+    },
+    "icon": {
+      "$ref": "#/$defs/relativePath"
+    },
+    "engines": {
+      "description": "Required. The views-shell versions and plugin-protocol version this plugin works with. Never a wildcard.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "views-shell"
+      ],
+      "properties": {
+        "views-shell": {
+          "type": "string",
+          "minLength": 1,
+          "not": {
+            "pattern": "^\\s*\\*\\s*$"
+          },
+          "pattern": "^[0-9<>=^~ .|-]+$"
+        },
+        "protocol": {
+          "description": "Plugin protocol version (T2). Required when runtime.mode is process.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "runtime": {
+      "description": "Tier. builtin = T0 (first-party C++ in the views-shell tree). declarative = T1 (no code). process = T2 (any language, JSON-RPC 2.0 on stdio). T3 (a JavaScript host) is reserved for later and not accepted yet.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "builtin",
+            "declarative",
+            "process"
+          ]
+        },
+        "exec": {
+          "description": "process only: the program, relative to the plugin directory. Plugins never put binaries on PATH.",
+          "$ref": "#/$defs/relativePath"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "target": {
+          "description": "builtin only: the GN target that implements it.",
+          "type": "string",
+          "pattern": "^//views_shell/"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "process"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "exec"
+            ],
+            "not": {
+              "required": [
+                "target"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "builtin"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "target"
+            ],
+            "not": {
+              "required": [
+                "exec"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "declarative"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "exec"
+                  ]
+                },
+                {
+                  "required": [
+                    "target"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "permissions": {
+      "description": "Shown at enable and enforced by the permissions broker for process plugins.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/permission"
+      }
+    },
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compositor": {
+          "description": "Capabilities, never compositor names. An entry whose required capability is missing is not registered.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "required": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/capability"
+              }
+            },
+            "optional": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/capability"
+              }
+            }
+          }
+        },
+        "helpers": {
+          "description": "Native programs the plugin needs. Replaces Omarchy's 'manual setup'.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "bin"
+            ],
+            "properties": {
+              "bin": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._+-]+$"
+              },
+              "nixpkgs": {
+                "type": "string"
+              },
+              "optional": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          }
+        },
+        "plugins": {
+          "description": "Other plugin ids this one depends on.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pluginId"
+          }
+        }
+      }
+    },
+    "contributes": {
+      "$ref": "#/$defs/contributes"
+    },
+    "chrome": {
+      "description": "Contributions rendered by the installed Google Chrome, never by views-shell: the shell links no //content (rule R24). Settings forms come from contributes.configuration automatically; settingsPages is the escape hatch, hosted by the views-shell extension in a sandboxed frame without extension privileges. pages are web surfaces a plugin wants: views-shell asks Chrome to open them as a tab or an --app window and asks the compositor adapter to place it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "settingsPages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title",
+              "path"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "title": {
+                "type": "string"
+              },
+              "path": {
+                "$ref": "#/$defs/relativePath"
+              }
+            }
+          }
+        },
+        "pages": {
+          "description": "A web page this plugin wants on screen. Opened by Chrome, placed by the compositor; never rendered inside the shell.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "url"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 48
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://",
+                "description": "An https URL. Local content belongs in settingsPages."
+              },
+              "open": {
+                "enum": [
+                  "tab",
+                  "app-window"
+                ],
+                "default": "app-window",
+                "description": "tab: a tab in the focused Chrome window. app-window: google-chrome --app=<url>."
+              },
+              "placement": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "A hint for the compositor adapter's window rule. Honoured where the capability exists.",
+                "properties": {
+                  "workspace": {
+                    "enum": [
+                      "current",
+                      "scratchpad"
+                    ],
+                    "default": "current"
+                  },
+                  "floating": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "width": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1,
+                    "description": "Fraction of the output width."
+                  },
+                  "height": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 1,
+                    "description": "Fraction of the output height."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "views-shell.* ids are reserved for first-party plugins, built-in (T0) or declarative (T1).",
+      "if": {
+        "properties": {
+          "id": {
+            "pattern": "^views-shell\\."
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "builtin",
+                  "declarative"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Built-in mode is only for views-shell.* ids.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "const": "builtin"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "pattern": "^views-shell\\."
+          }
+        }
+      }
+    },
+    {
+      "description": "Process plugins declare the protocol version.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "const": "process"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "engines": {
+            "required": [
+              "views-shell",
+              "protocol"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "description": "A plugin that ships scroll Lua must declare the scroll.lua capability and the scroll.lua permission.",
+      "if": {
+        "properties": {
+          "contributes": {
+            "properties": {
+              "compositor": {
+                "properties": {
+                  "scroll": {
+                    "required": [
+                      "lua"
+                    ]
+                  }
+                },
+                "required": [
+                  "scroll"
+                ]
+              }
+            },
+            "required": [
+              "compositor"
+            ]
+          }
+        },
+        "required": [
+          "contributes"
+        ]
+      },
+      "then": {
+        "required": [
+          "permissions",
+          "requires"
+        ],
+        "properties": {
+          "permissions": {
+            "contains": {
+              "const": "scroll.lua"
+            }
+          },
+          "requires": {
+            "required": [
+              "compositor"
+            ],
+            "properties": {
+              "compositor": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "required"
+                    ],
+                    "properties": {
+                      "required": {
+                        "contains": {
+                          "const": "scroll.lua"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "required": [
+                      "optional"
+                    ],
+                    "properties": {
+                      "optional": {
+                        "contains": {
+                          "const": "scroll.lua"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Only declarative plugins carry command handlers.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "builtin",
+                  "process"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contributes": {
+            "properties": {
+              "commands": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "handler"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Declarative plugins publish no sources: they run no code.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "const": "declarative"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contributes": {
+            "not": {
+              "required": [
+                "sources"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Process plugins send quick-settings trees at runtime and name no ui file.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "const": "process"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contributes": {
+            "properties": {
+              "quickSettings": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "ui"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "Builtin and declarative quick-settings entries name their ui tree file.",
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "builtin",
+                  "declarative"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "contributes": {
+            "properties": {
+              "quickSettings": {
+                "items": {
+                  "required": [
+                    "ui"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[A-Za-z0-9._/-]+$"
+    },
+    "pluginId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$"
+    },
+    "localId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "maxLength": 64
+    },
+    "commandRef": {
+      "description": "A command id from this manifest (local) or plugin-id/command (qualified).",
+      "type": "string",
+      "pattern": "^([a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/)?[a-z][a-z0-9-]*$"
+    },
+    "capability": {
+      "description": "Dotted capability name, family first. See docs/compositor-adapters.md.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+    "permission": {
+      "description": "exec:<program>, path:read:<path>, path:write:<path>, network, network:<host>, notifications, media, clipboard:read, clipboard:write, dbus:session:<name>, dbus:system:<name>, compositor:<capability>, scroll.lua, scroll.lua.eval. call:<plugin-id>/<command> or call:<plugin-id>/*, state:read:<plugin-id>/<source-id>.",
+      "type": "string",
+      "anyOf": [
+        {
+          "pattern": "^exec:[A-Za-z0-9._+-]+$"
+        },
+        {
+          "pattern": "^path:(read|write):[~$A-Za-z0-9._/*{}-]+$"
+        },
+        {
+          "pattern": "^network(:[A-Za-z0-9.-]+(:[0-9]+)?)?$"
+        },
+        {
+          "enum": [
+            "notifications",
+            "media",
+            "clipboard:read",
+            "clipboard:write",
+            "scroll.lua",
+            "scroll.lua.eval"
+          ]
+        },
+        {
+          "pattern": "^dbus:(session|system):[A-Za-z0-9._-]+$"
+        },
+        {
+          "pattern": "^compositor:[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+        },
+        {
+          "pattern": "^call:[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/([a-z][a-z0-9-]*|\\*)$"
+        },
+        {
+          "pattern": "^state:read:[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/[a-z][a-z0-9-]*$"
+        }
+      ]
+    },
+    "when": {
+      "description": "A views-shell context expression over config.*, compositor.*, session.* and surface.* keys: identifiers, !, &&, ||, ==, !=, parentheses, string and number literals. Evaluated by views-shell, never by a shell.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.!&|=<>()'\" -]+$"
+    },
+    "key": {
+      "description": "Compositor-neutral key chord: modifiers then one key, joined by +. Mod is the user's $mod. Example: Mod+Shift+Escape.",
+      "type": "string",
+      "pattern": "^((Mod|Super|Ctrl|Alt|Shift)\\+)*([A-Za-z0-9]|F[0-9]{1,2}|Escape|Return|Space|Tab|BackSpace|Delete|Insert|Home|End|Prior|Next|Left|Right|Up|Down|Comma|Period|Slash|Semicolon|Minus|Equal|Grave|Print|XF86[A-Za-z0-9]+)$"
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "description": "The spine. One id reachable from every face; everything routes to views-shell call <plugin-id> <command>.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "title"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "title": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "icon": {
+                "type": "string",
+                "description": "A views-shell vector-icon name or a relative path to an SVG."
+              },
+              "enablement": {
+                "$ref": "#/$defs/when"
+              },
+              "surface": {
+                "$ref": "#/$defs/localId",
+                "description": "The surface this command acts on."
+              },
+              "verb": {
+                "enum": [
+                  "toggle",
+                  "show",
+                  "hide",
+                  "summon"
+                ]
+              },
+              "confirm": {
+                "type": "boolean",
+                "default": false
+              },
+              "result": {
+                "enum": [
+                  "none",
+                  "text",
+                  "json"
+                ],
+                "default": "none"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "name",
+                    "type"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    },
+                    "type": {
+                      "enum": [
+                        "string",
+                        "integer",
+                        "number",
+                        "boolean"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "handler": {
+                "description": "declarative (T1) only: what the command does, without code. Process plugins handle commands over JSON-RPC; built-ins in C++.",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "compositor"
+                    ],
+                    "properties": {
+                      "compositor": {
+                        "$ref": "#/$defs/capability"
+                      },
+                      "args": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "exec"
+                    ],
+                    "properties": {
+                      "exec": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9._+-]+$"
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "call"
+                    ],
+                    "properties": {
+                      "call": {
+                        "$ref": "#/$defs/commandRef"
+                      },
+                      "args": {
+                        "type": "object"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "open"
+                    ],
+                    "properties": {
+                      "open": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9/-]*$",
+                        "description": "A views-shell control page, opened in Chrome as views-shell open does."
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "surfaces": {
+          "description": "Views surfaces views-shell hosts for this plugin. Kinds follow Omarchy, plus picker-provider. Quick-settings entries are not surfaces: see quickSettings. lock and polkit are first-party only and cannot be declared here. A plugin sends each surface's contents as a ui tree.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "kind": {
+                "enum": [
+                  "bar-widget",
+                  "bar",
+                  "panel",
+                  "overlay",
+                  "menu",
+                  "service",
+                  "picker-provider"
+                ]
+              },
+              "defaultSection": {
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ],
+                "default": "center"
+              },
+              "allowMultiple": {
+                "type": "boolean",
+                "default": false
+              },
+              "anchor": {
+                "description": "panel and menu: open anchored to another surface of this plugin (surface:<id>) or to the pointer.",
+                "type": "string",
+                "pattern": "^(surface:[a-z][a-z0-9-]*|pointer|output-center)$"
+              },
+              "keyboard": {
+                "enum": [
+                  "none",
+                  "on-demand",
+                  "exclusive"
+                ],
+                "default": "on-demand"
+              },
+              "ui": {
+                "$ref": "#/$defs/relativePath",
+                "description": "declarative only: a ui tree file (schemas/ui-tree.schema.json)."
+              },
+              "prefix": {
+                "type": "string",
+                "maxLength": 4,
+                "description": "picker-provider only: the query prefix."
+              },
+              "when": {
+                "$ref": "#/$defs/when"
+              }
+            }
+          }
+        },
+        "configuration": {
+          "description": "A JSON-Schema subset. The views-shell Chrome extension renders it as a form. Values live in views-shell.json.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "properties"
+          ],
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "properties": {
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^[a-z][A-Za-z0-9]*$"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "string",
+                      "integer",
+                      "number",
+                      "boolean",
+                      "array"
+                    ]
+                  },
+                  "default": {},
+                  "description": {
+                    "type": "string"
+                  },
+                  "enum": {
+                    "type": "array"
+                  },
+                  "enumDescriptions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "minimum": {
+                    "type": "number"
+                  },
+                  "maximum": {
+                    "type": "number"
+                  },
+                  "items": {
+                    "type": "object"
+                  },
+                  "format": {
+                    "enum": [
+                      "keybinding",
+                      "path",
+                      "color-role",
+                      "command"
+                    ]
+                  },
+                  "scope": {
+                    "enum": [
+                      "global",
+                      "instance"
+                    ],
+                    "default": "global"
+                  },
+                  "order": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "keybindings": {
+          "description": "Compositor-neutral. views-shell renders them per compositor into views-shell.d slot files (schemas/keybinding-rendering.md).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "command"
+            ],
+            "anyOf": [
+              {
+                "required": [
+                  "key"
+                ]
+              },
+              {
+                "required": [
+                  "keyFrom"
+                ]
+              }
+            ],
+            "properties": {
+              "command": {
+                "$ref": "#/$defs/commandRef"
+              },
+              "key": {
+                "$ref": "#/$defs/key"
+              },
+              "keyFrom": {
+                "type": "string",
+                "pattern": "^config\\.[a-z][A-Za-z0-9]*$",
+                "description": "Take the key from a configuration property with format keybinding."
+              },
+              "args": {
+                "type": "object"
+              },
+              "when": {
+                "$ref": "#/$defs/when"
+              },
+              "release": {
+                "type": "boolean",
+                "default": false
+              },
+              "locked": {
+                "type": "boolean",
+                "default": false,
+                "description": "Also active while the session is locked."
+              },
+              "mode": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              }
+            }
+          }
+        },
+        "menus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "location",
+              "command"
+            ],
+            "properties": {
+              "location": {
+                "type": "string",
+                "pattern": "^(views-shell\\.menu(/[a-z][a-z0-9-]*)*|rail/workspace|rail/window|bar/context|tray/context)$"
+              },
+              "command": {
+                "$ref": "#/$defs/commandRef"
+              },
+              "group": {
+                "type": "string"
+              },
+              "when": {
+                "$ref": "#/$defs/when"
+              }
+            }
+          }
+        },
+        "launcher": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "command",
+              "title"
+            ],
+            "properties": {
+              "command": {
+                "$ref": "#/$defs/commandRef"
+              },
+              "title": {
+                "type": "string"
+              },
+              "keywords": {
+                "type": "array",
+                "maxItems": 30,
+                "items": {
+                  "type": "string"
+                }
+              },
+              "icon": {
+                "type": "string"
+              },
+              "desktopEntry": {
+                "type": "boolean",
+                "default": false,
+                "description": "Also export an XDG .desktop file marked X-views-shell-Managed=true."
+              }
+            }
+          }
+        },
+        "cli": {
+          "description": "Mounted as views-shell <name> <verb>. Help, completions and --json output are generated from this.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "verbs"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$",
+              "not": {
+                "enum": [
+                  "plugin",
+                  "call",
+                  "open",
+                  "bar",
+                  "help",
+                  "version",
+                  "gallery",
+                  "service"
+                ]
+              }
+            },
+            "verbs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "verb",
+                  "command"
+                ],
+                "properties": {
+                  "verb": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "command": {
+                    "$ref": "#/$defs/commandRef"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "confirm": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "compositor": {
+          "description": "Compositor-specific contributions, each gated by a declared capability.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "scroll": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "lua": {
+                  "description": "Lua files loaded by a lua line in this plugin's scroll slot file, so they re-run after every reload. Requires the scroll.lua capability and permission.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/relativePath"
+                  }
+                },
+                "config": {
+                  "description": "Raw scroll config fragments copied into this plugin's slot file. Validated against GET_CONFIG before reload.",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/relativePath"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "events": {
+          "description": "Compositor or session events a process plugin wants delivered. Each needs the matching capability.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(workspace|window|output|mode|binding|reload|session\\.(lock|unlock|idle|resume)|scroll\\.(scroller|trails))$"
+          }
+        },
+        "sources": {
+          "description": "State this plugin publishes as full snapshots for other plugins' ui trees (T0 producers and T2 processes only). One producer per domain.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "description": {
+                "type": "string"
+              },
+              "schema": {
+                "$ref": "#/$defs/relativePath",
+                "description": "JSON Schema of one snapshot, checked by the validator against the trees that bind to it."
+              }
+            }
+          }
+        },
+        "quickSettings": {
+          "description": "Entries in the quick-settings host. The host owns the surface, layout, navigation, focus and look; an entry supplies a ui tree and the state it binds to. First-party entries use exactly this contribution point.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "slot"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/localId"
+              },
+              "slot": {
+                "enum": [
+                  "tile",
+                  "slider",
+                  "card",
+                  "footer",
+                  "page"
+                ],
+                "description": "tile: a FeatureTile face in the grid. slider: a slider row. card: a full-width block (media). footer: the footer row. page: a drill-in page the host pushes onto its stack."
+              },
+              "ui": {
+                "$ref": "#/$defs/relativePath",
+                "description": "builtin and declarative: the ui tree file. process: sent with surface/setTree, surface = this id."
+              },
+              "state": {
+                "$ref": "#/$defs/sourceRef",
+                "description": "The source the tree's bindings read. Default: this plugin's own snapshot."
+              },
+              "size": {
+                "enum": [
+                  "primary",
+                  "compact"
+                ],
+                "default": "primary"
+              },
+              "page": {
+                "$ref": "#/$defs/localId",
+                "description": "tile, slider, card, footer: the id of this plugin's page entry the drill-in opens."
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 48,
+                "description": "page: the title the host draws beside its back button."
+              },
+              "order": {
+                "type": "integer",
+                "minimum": -1000,
+                "maximum": 1000,
+                "default": 0
+              },
+              "when": {
+                "$ref": "#/$defs/when"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "slot": {
+                      "const": "page"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "title"
+                  ],
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "page"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "size"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "slot": {
+                      "enum": [
+                        "slider",
+                        "card",
+                        "footer"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [
+                      "size"
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "slot": {
+                      "enum": [
+                        "tile",
+                        "slider",
+                        "card",
+                        "footer"
+                      ]
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "required": [
+                      "title"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "sourceRef": {
+      "description": "A published state source: <plugin-id>/<source-id>.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/[a-z][a-z0-9-]*$"
+    }
+  }
+}

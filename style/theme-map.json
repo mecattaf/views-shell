@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "description": "How a theme becomes colours in views-shell. The input is an Omarchy theme directory (colors.toml, optionally shell.toml), exactly as Omarchy reads it. This file is the binding only: which colour ids each Omarchy key sets. It holds no colour values; those come from the theme you pass (examples/themes/).",
+  "provenance": {
+    "omarchy": "basecamp/omarchy c05d90196fc0dd5c21e2e797d80ffcc60d5e39fa (docs/theming.md; resolver bin/omarchy-theme-color:176-281, MIT)",
+    "chromium": "ui/color/color_id.h at df5b64d97601a26870372adb1ed6f5ad308365bd; every kColorSys id below was checked there",
+    "notes": "(private scoping notes) theme-input.md section 5; reconciled with private scoping note views-first-rebalance.md (no cros.sys or kColorAsh ids: the Ash colour stack is not ported)"
+  },
+  "input": {
+    "directory": "An Omarchy theme directory. views-shell reads $XDG_CONFIG_HOME/views-shell/themes/<name>/ and ~/.config/omarchy/themes/<name>/ (PROPOSED, open decision P18), and stages the active one under $XDG_STATE_HOME/views-shell/current/theme.",
+    "colors.toml": "Resolved with a port of Omarchy's cascade: color0 = background, color7 = foreground, color8 = muted, color15 = bright_foreground, bright_* derived as +20% white when absent, cursor and selection_foreground = bright_foreground. Unknown keys are kept and readable by plugins.",
+    "shell.toml": "Optional. Per-surface sections (layer 3)."
+  },
+  "layer1_seed": {
+    "note": "The ColorProviderKey every views-shell widget is built with. It is the same seed Chrome receives through the BrowserThemeColor managed policy, so the stock roles views-shell does not pin are the tonal renditions Chrome draws its own frame with.",
+    "color_mode": "colors.toml mode (resolved from mode, a light.mode file, or background luminance)",
+    "user_color": "chromium.theme r,g,b if the theme ships one, else background, after seed neutralisation: if max+min <= 16, or max >= 250 with chroma <= 4, use the channel average",
+    "user_color_source": "kAccent (the branch ThemeService::GetColorProviderKey takes for a policy colour)",
+    "scheme_variant": "kTonalSpot (Chrome's default; no policy sets it)"
+  },
+  "layer2_pins": {
+    "note": "One ColorMixer appended last with ColorProviderManager::AppendColorProviderInitializer. Each id is SET to the resolved value of its Omarchy key. Ids not listed keep layer 1.",
+    "background": [
+      "kColorSysBase",
+      "kColorSysSurface",
+      "kColorSysHeader",
+      "kColorSysHeaderContainer"
+    ],
+    "dark_background": [
+      "kColorSysBaseContainer",
+      "kColorSysHeaderInactive",
+      "kColorSysHeaderContainerInactive"
+    ],
+    "lighter_background": [
+      "kColorSysSurface1",
+      "kColorSysSurface2",
+      "kColorSysSurface3",
+      "kColorSysSurface4",
+      "kColorSysSurface5",
+      "kColorSysBaseContainerElevated",
+      "kColorSysSurfaceSection"
+    ],
+    "foreground": [
+      "kColorSysOnSurface"
+    ],
+    "light_foreground": [
+      "kColorSysOnSurfaceSecondary",
+      "kColorSysOnSurfaceVariant"
+    ],
+    "dark_foreground": [
+      "kColorSysOnSurfaceSubtle",
+      "kColorSysStateDisabled"
+    ],
+    "muted": [
+      "kColorSysDivider",
+      "kColorSysOutline",
+      "kColorSysNeutralOutline"
+    ],
+    "accent": [
+      "kColorSysPrimary",
+      "kColorSysStateFocusRing",
+      "kColorSysOnSurfacePrimary"
+    ],
+    "on_accent (derived: background if contrast(accent, background) >= contrast(accent, bright_foreground), else bright_foreground)": [
+      "kColorSysOnPrimary"
+    ],
+    "selection": [
+      "kColorSysStateTextHighlight"
+    ],
+    "selection_foreground": [
+      "kColorSysStateOnTextHighlight"
+    ],
+    "red": [
+      "kColorSysError"
+    ]
+  },
+  "layer3_surfaces": {
+    "note": "Only when the theme directory has shell.toml. A section's values win over layer 2 for the views-shell surface of the same kind. Gradients collapse to their first stop (Omarchy's own flat fallback). Widths and alphas are honoured.",
+    "[bar]": "the bar layer surface: background, background-alpha, text, active",
+    "[popups]": "every bubble anchored to the bar (detail pages, OSD, dropdowns)",
+    "[tooltip]": "kColorTooltipBackground, kColorTooltipForeground",
+    "[notifications]": "message_center popups; countdown as a progress ring",
+    "[launcher]": "the launcher overlay card and scrim",
+    "[menu]": "views::MenuItemView rows: selected-background(-alpha), selected-text",
+    "[polkit]": "the core credential modal",
+    "[controls]": "state fills of stock buttons and toggles through kColorSysStateHover*/Pressed alphas",
+    "[font] base-size": "scales the views-shell TypographyProvider over views::style",
+    "[spacing] scale": "LayoutProvider distance multiplier",
+    "[lock]": "ignored: the lock screen is not a views-shell surface (rule R4)"
+  },
+  "unmapped_by_design": [
+    "blue, cyan, magenta, orange, brown and the bright_* hues: no shell chrome role; plugins may read them by name for data colours",
+    "green and yellow: ui/color has no kColorSys success or warning role at df5b64d9; status pills and plugins read them by name",
+    "gradient borders: first stop only; no fx work",
+    "extra keys a theme carries for other consumers (brand, desktop_background, inactive_border, terminal_color7, nvim_catppuccin_flavour, claude_code_theme, ...): kept, readable by plugins, never pinned"
+  ]
+}

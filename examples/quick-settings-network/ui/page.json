@@ -1,0 +1,51 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "column",
+    "spacing": "normal",
+    "children": [
+      {
+        "type": "switch",
+        "label": "Wi-Fi",
+        "value": { "$bind": "/wifi/enabled" },
+        "enabled": { "$bind": "/wifi/available" },
+        "action": { "command": "views-shell.network/set-wifi-enabled" }
+      },
+      { "type": "separator" },
+      {
+        "type": "scroll",
+        "maxHeight": "large",
+        "child": {
+          "type": "repeat",
+          "items": { "$bind": "/networks" },
+          "key": "./id",
+          "template": {
+            "type": "listItem",
+            "icon": { "$bind": "./icon" },
+            "label": { "$bind": "./name" },
+            "sublabel": { "$bind": "./status" },
+            "selected": { "$bind": "./connected" },
+            "trailing": {
+              "type": "row",
+              "spacing": "tight",
+              "children": [
+                { "type": "progress", "visible": { "$bind": "./connecting" } },
+                { "type": "icon", "icon": "lock", "size": "small", "role": "subtle", "visible": { "$bind": "./secure" } }
+              ]
+            },
+            "action": { "command": "views-shell.network/activate", "args": { "network": { "$bind": "./id" } } }
+          }
+        }
+      },
+      { "type": "separator" },
+      {
+        "type": "listItem",
+        "icon": "settings",
+        "label": "Other networks and VPN",
+        "sublabel": "Opens the connection editor",
+        "action": { "command": "views-shell.network/open-editor", "close": true }
+      }
+    ]
+  }
+}

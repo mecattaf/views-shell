@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../schemas/ui-tree.schema.json",
+  "schemaVersion": 1,
+  "root": {
+    "type": "tile",
+    "variant": "compact",
+    "icon": "do-not-disturb",
+    "label": "Do not disturb",
+    "toggled": { "$bind": "/quietMode" },
+    "accessibleName": "Do not disturb",
+    "action": { "command": "views-shell.notifications/toggle-quiet-mode" }
+  }
+}

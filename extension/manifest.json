@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuJKnz+EJzVyClKrD1/rynpNNLe8TiNMkQiCx+23U3EiSJgJEwLb/i9nB/u9YwXXoMvHJcJHGFzuHhv5akdQWeZbVu5qAwSqWGdP0JMEkw0YaW8kunccut5Y0jqRa02j21ldJcGUhN0ShpG5JRUXWZsxfcYLsvllm+YfTRYBbIKVfWUojQ+Gd9uHWtaryGmLqE3zuppcOxkPi8RbLxidAZ4qxXj9ZWun6cyP4Xc2oY0QQCVJ0D20mpyumnuf+P0HN3I5r4ELUkoiF0Xg4Is6Y3Y5X7DacWVakxW8Ziorbl/0pazY6zteDcVHlx0I7bXxxIaDREugQlmkW4Xo3n8YWjQIDAQAB",
+  "name": "views-shell",
+  "short_name": "views-shell",
+  "version": "0.0.1",
+  "description": "Control pages for the views-shell desktop shell, in ordinary Chrome tabs. Talks only to views-shell on this machine, through native messaging.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "128": "icons/views-shell-128.png"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "omnibox": {
+    "keyword": "views"
+  },
+  "commands": {
+    "open-views-shell": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K"
+      },
+      "description": "Open the views-shell control pages"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "nativeMessaging"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'"
+  }
+}

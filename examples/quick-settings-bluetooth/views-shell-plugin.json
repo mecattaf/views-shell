@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.qs-bluetooth",
+  "name": "Bluetooth (quick settings)",
+  "version": "0.1.0",
+  "description": "The first-party Bluetooth tile and device page. A T1 plugin with no code.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "declarative" },
+  "permissions": ["call:views-shell.bluetooth/*"],
+  "requires": { "plugins": ["views-shell.bluetooth"] },
+  "contributes": {
+    "quickSettings": [
+      { "id": "tile", "slot": "tile", "ui": "ui/tile.json", "state": "views-shell.bluetooth/state", "page": "page", "order": -90 },
+      { "id": "page", "slot": "page", "title": "Bluetooth", "ui": "ui/page.json", "state": "views-shell.bluetooth/state" }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+# Chromium checkouts and build output never live in this repository.
+/out/
+/chromium/
+*.pyc
+__pycache__/
+node_modules/

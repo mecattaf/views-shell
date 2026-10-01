@@ -1,0 +1,18 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "views-shell.qs-dnd",
+  "name": "Do not disturb (quick settings)",
+  "version": "0.1.0",
+  "description": "The first-party compact do-not-disturb tile. A T1 plugin with no code.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0" },
+  "runtime": { "mode": "declarative" },
+  "permissions": ["call:views-shell.notifications/toggle-quiet-mode"],
+  "requires": { "plugins": ["views-shell.notifications"] },
+  "contributes": {
+    "quickSettings": [
+      { "id": "tile", "slot": "tile", "size": "compact", "ui": "ui/tile.json", "state": "views-shell.notifications/state", "order": 10 }
+    ]
+  }
+}
