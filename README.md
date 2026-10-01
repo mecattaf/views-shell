@@ -11,8 +11,9 @@ binary is a Views program, not a browser: it links no `//content`, no Blink
 renderer and no V8.
 
 > Status: **foundation**. This repository holds the specs, schemas, the component
-> kit inventory, a Chrome extension skeleton and a faithful lift of earlier proven
-> code. Nothing here builds a shell yet. See [What is real](#what-is-real-today).
+> kit inventory, a Chrome extension skeleton and a content-free Views program that
+> draws a layer-shell bar, an `xdg_popup` menu and a workspace strip on a headless
+> compositor. It is not a usable shell yet. See [What is real](#what-is-real-today).
 > There are no releases before v1; see [Releases](#releases).
 
 views-shell is not a compositor, not a browser fork and not a ChromeOS clone. It is one
@@ -144,7 +145,7 @@ schemas/                views-shell-plugin.json, the ui tree, keybinding slot re
 examples/               example plugins and example themes that validate
 cli/                    the views-shell command line: spec and a dispatch skeleton
 extension/              the views-shell Chrome extension (MV3 skeleton, native messaging client)
-shell/                  the C++ shell: BUILD.gn sketches and the lifted prior code
+shell/                  the C++ shell: BUILD.gn, the views_shell main, the live patch series
 tools/                  repository checks (schema validation, fences, identity)
 tools/bench/            the headless build bench: sync, job units, wire, headless run, measure
 ```
@@ -169,15 +170,21 @@ task table are the source of truth, and its gates are what "done" means. The ben
 - **Real:** the rules, the architecture, the adapter matrix, the plugin and `ui`
   schemas with validating examples (`tools/validate.sh` prints `fences: clean`,
   `identity: ok` and `VALIDATE-OK`), the theme binding and example themes, and the
-  extension skeleton (it loads unpacked and shows its pages). The lifted C++ in
-  `shell/` is real code that compiled in its original trees at Chromium 148, 149 and
-  150. It is copied byte for byte and does not build here yet.
+  extension skeleton (it loads unpacked and shows its pages).
+- **Real:** `views_shell` builds at `154.0.8037.92` with no `//content`, Blink
+  renderer or V8, and on headless scroll draws a 32 px top layer surface with an
+  exclusive zone (`--bar`) and a menu that becomes an `xdg_popup` parented to it
+  (`--bar --demo-popup`), through the live patch series in
+  [`shell/patches/`](shell/patches/). `shell/` holds only what is built or
+  applied; the earlier prototype code it was re-cut from is recorded in
+  [`shell/PROVENANCE.md`](shell/PROVENANCE.md) and recoverable from git history.
 - **Real:** `views_shell --left-tabs` draws a vertical workspace strip made of
   Chrome's own tab and vertical-strip layouts (copied from `//chrome`, never linked, see
   [`CHROME-PORT-LEDGER.md`](CHROME-PORT-LEDGER.md) and [`docs/tabs.md`](docs/tabs.md)),
   fed by a static list or by `niri msg -j workspaces`.
-- **Placeholder:** every `BUILD.gn` under `shell/` is a sketch, and the
-  content-free shell main is described but not written. The CLI is a dispatch
+- **Placeholder:** the program still uses the test context factory (debt D1 in
+  [`docs/architecture.md`](docs/architecture.md)), the compositor adapter headers
+  in `shell/wm/` are sketches, and the subsystem directories are empty seams. The CLI is a dispatch
   skeleton. The native messaging host does not exist yet, so the extension pages
   show a "not installed" state.
 - **PROPOSED:** items that wait on a decision are marked **PROPOSED** where they
