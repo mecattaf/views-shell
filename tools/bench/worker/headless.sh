@@ -25,7 +25,7 @@ read -r -a RT_ARGS <<<"${BENCH_RUNTIME_TEST_ARGS:-}"
 REAL_HOME="$HOME"   # the bench user's real home; the scratch HOME below hides it
 [ -x "$RT" ] || { echo 'headless.sh: runtime-test missing on the bench' >&2; exit 1; }
 [ -x "$SCROLL" ] || { echo 'headless.sh: no scroll at $SCROLL' >&2; exit 1; }
-mkdir -p "$OUT"
+mkdir -p "$OUT"; rm -f "$OUT"/fds-*.txt   # a census lists only this run
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # HOME becomes scratch below, so expand a "~/" in the client command against the real home now.
 args=(); for a in "$@"; do a="${a/#\~\//$HOME/}"; args+=("${a// \~\// $HOME/}"); done; set -- "${args[@]}"

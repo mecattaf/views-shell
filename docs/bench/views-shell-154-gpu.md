@@ -82,7 +82,8 @@ alike. Its row is a cost control, not a drawing control.
 - First attach falls from 5771 ms to about 2150 ms with the gles2 compositor,
   whatever the client uses. The baseline's 5771 ms came first in the sequence,
   right after the rebuild (a cold page cache for 270 libraries), so it is not a
-  clean renderer comparison.
+  clean renderer comparison: the C11.1 prove rerun of the same configuration
+  ten minutes later attached after 2093 ms (`PSS_MB=125.4`, FDs 345).
 - The fair rows for a footprint decision are `w1c-gles2-ss` (same client as
   chapter 1, real compositor renderer) and `w1c-gpu` (the configuration a seat
   runs). The numbers stay indicative: a component build, a headless output, and
