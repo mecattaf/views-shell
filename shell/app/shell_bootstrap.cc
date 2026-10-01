@@ -7,6 +7,7 @@
 #include <string>
 #include <utility>
 
+#include "base/allocator/partition_alloc_support.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
 #include "base/i18n/icu_util.h"
@@ -134,9 +135,17 @@ ShellBootstrap::~ShellBootstrap() {
 bool ShellBootstrap::Init() {
   // 1. base, and the memory consumer registry. The accessibility platform comes right after it: Views and Aura
   // ask for it from their first objects on.
+  // PartitionAlloc is configured the way content configures a browser process
+  // (process type ""): the viz compositor thread reconfigures its
+  // scheduler-loop quarantine branch on start, which needs the thread cache
+  // these calls enable.
+  auto* partition_alloc_support = base::allocator::PartitionAllocSupport::Get();
+  partition_alloc_support->ReconfigureEarlyish("");
   base::FeatureList::InitInstance(std::string(), std::string());
+  partition_alloc_support->ReconfigureAfterFeatureListInit("");
   main_task_executor_ =
       std::make_unique<base::SingleThreadTaskExecutor>(base::MessagePumpType::UI);
+  partition_alloc_support->ReconfigureAfterTaskRunnerInit("");
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("views_shell");
   thread_pool_started_ = true;
   // Memory consumers (the discardable manager below, cc's caches) register

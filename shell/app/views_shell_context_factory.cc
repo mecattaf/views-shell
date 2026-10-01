@@ -33,6 +33,7 @@
 #include "gpu/command_buffer/service/service_utils.h"
 #include "gpu/config/gpu_feature_info.h"
 #include "gpu/config/gpu_info.h"
+#include "gpu/config/gpu_preferences.h"
 #include "gpu/ipc/client/gpu_channel_host.h"
 #include "gpu/ipc/common/gpu_client_ids.h"
 #include "gpu/ipc/service/gpu_init.h"
@@ -121,8 +122,9 @@ const char* CompositingModeName(CompositingMode mode) {
 // thread (TearDown()).
 class ViewsShellContextFactory::InProcessGpu {
  public:
-  InProcessGpu()
-      : gpu_main_thread_("ViewsShellGpuMain"),
+  explicit InProcessGpu(CompositingMode mode)
+      : mode_(mode),
+        gpu_main_thread_("ViewsShellGpuMain"),
         gpu_io_thread_("ViewsShellGpuIO") {}
   InProcessGpu(const InProcessGpu&) = delete;
   InProcessGpu& operator=(const InProcessGpu&) = delete;
@@ -181,9 +183,17 @@ class ViewsShellContextFactory::InProcessGpu {
     ui::OzonePlatform::GetInstance()->AddInterfaces(&binders_);
 
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+    gpu::GpuPreferences gpu_preferences =
+        gpu::gles2::ParseGpuPreferences(command_line);
+    if (mode_ == CompositingMode::kSoftware) {
+      // GL is disabled: the service keeps no Skia GPU context (the state a
+      // GPU process is in for WebGL fallback), so there is nothing to fall
+      // back from.
+      gpu_preferences.gr_context_type = gpu::GrContextType::kNone;
+      gpu_preferences.fallback_gr_context_types.clear();
+    }
     gpu_init_ = std::make_unique<gpu::GpuInit>();
-    gpu_init_->InitializeInProcess(
-        command_line, gpu::gles2::ParseGpuPreferences(command_line));
+    gpu_init_->InitializeInProcess(command_line, gpu_preferences);
 
     viz::GpuServiceImpl::InitParams init_params;
     init_params.watchdog_thread = gpu_init_->TakeWatchdogThread();
@@ -252,6 +262,7 @@ class ViewsShellContextFactory::InProcessGpu {
     gpu_io_thread_.Stop();
   }
 
+  const CompositingMode mode_;
   base::Thread gpu_main_thread_;
   base::Thread gpu_io_thread_;
   mojo::BinderMap binders_;
@@ -322,7 +333,7 @@ bool ViewsShellContextFactory::Initialize(
   params->frame_sink_manager = std::move(frame_sink_manager_receiver);
   params->frame_sink_manager_client = std::move(frame_sink_manager_client);
 
-  gpu_ = std::make_unique<InProcessGpu>();
+  gpu_ = std::make_unique<InProcessGpu>(mode_);
   gpu_->Start(std::move(params));
 
   // The platform's UI side connects to its GPU side through the in-process
