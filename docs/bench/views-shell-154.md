@@ -13,11 +13,13 @@ output). Both ran with `--ozone-platform=wayland --use-gl=angle --use-angle=swif
   (finding F1).
 - `tools/bench/worker/wire.sh` (unit `t3-wire`) copies `shell/` to
   `src/views_shell/` and applies `shell/patches/series` with plain `git apply`:
-  `views-shell-ax-automation-bindings.patch` (F1), then
+  `views-shell-ax-automation-bindings.patch` (F1),
+  `views-shell-blink-renderer-edges.patch` (F3, below), then
   `views-shell-build-gate.patch` (root `gn_all` gets `//views_shell` when
   `is_linux && use_ozone`). It prints `WIRE-OK`.
 - Unit `t3-build`: `autoninja -C out/views views_shell`, rc 0. The binary is
-  29,334,856 bytes. It has 6,488 transitive deps; `views_examples` has 6,518.
+  29,334,856 bytes. It has 6,412 transitive deps after the F3 patch (6,488
+  before); `views_examples` had 6,518 before it.
   `ldd` lists 321 libraries for `views_shell` and 326 for `views_examples`.
 - `views_shell` is `testonly = true` under debt D1: its context factory is
   `ui::TestContextFactories` from `//ui/compositor:test_support`. Before
@@ -34,28 +36,42 @@ for `//v8`, `//content`, `//third_party/blink/renderer/core`,
 `//third_party/blink/renderer/platform` and `//chrome`. For `//ash` it prints
 `ERROR Label not found. //ash:ash not found.`: `ash/BUILD.gn` begins with
 `assert(is_chromeos)`, so no `//ash` target exists in an `is_linux` build
-(`out/views/build.ninja` names `//ash` zero times).
+(`out/views/build.ninja` names `//ash` zero times). The C3.3 command therefore
+counts 5 lines, not 6, however clean the graph is; the `assert_no_deps` entry
+`//ash/*` is the guard that holds.
 
-Finding F3 (measured here): the stock Views stack, `views_examples` included,
-reaches these through `//components/viz/host` → `//components/input` →
-`//ui/events/blink` → `//third_party/blink/public:blink_headers`:
+Finding F3 (measured here): at the pinned tag the stock Views stack,
+`views_examples` included, reaches `//v8` and `//third_party/blink/renderer`
+by two edges:
 
-- three shared libraries: `//third_party/blink/renderer/platform/wtf:wtf`,
-  `//v8:v8_libbase` and `//v8:v8_libplatform`;
-- the header-only source sets `//v8:cppgc_headers`, `//v8:v8_headers`,
-  `//v8:v8_config_headers` and `//v8:v8_version`;
-- about twenty Blink code-generation actions under `renderer/core`,
-  `renderer/platform` and `renderer/bindings`.
+- `//components/viz/host` and `//components/viz/service` →
+  `//components/input` → `//ui/events/blink` and `//ui/events/gestures/blink`
+  → `//third_party/blink/public:blink_headers`, which publicly depends on
+  `//third_party/blink/renderer/platform:make_platform_generated`, `wtf` and
+  `//v8:v8_headers`. That brought in `//third_party/blink/renderer/platform/wtf:wtf`,
+  `//v8:v8_libbase`, `//v8:v8_libplatform`, the `cppgc`/`v8` header sets and
+  about twenty Blink code-generation actions.
+- `//services/webnn/public/mojom:webnn_mojom_traits` →
+  `//third_party/blink/renderer/modules/ml:operand_id_hash_traits` → `wtf`.
 
-The V8 engine (`//v8:v8`, `v8_base`, `v8_snapshot`), `//gin`, Blink `core`,
-`platform` and `modules`, and `//content` are not reached. A whole-tree
-`assert_no_deps` on `//v8/*` or `//third_party/blink/renderer/*` therefore
-fails at `gn gen` for any Views program unless that edge is cut upstream. The
-guard in `shell/BUILD.gn` names `//chrome/*`, `//ash/*`, `//chromeos/*`,
-`//content/*` and `//gin/*` whole. For V8 and Blink it names the engine and
-renderer targets: `//v8:v8`, `v8_base`, `v8_base_without_compiler`,
-`v8_compiler`, `v8_initializers`, `v8_snapshot`, `cppgc_base`, Blink `core`,
-`modules` and `platform`, `controller/*`, `bindings/core/*` and `bindings/modules/*`.
+Neither edge is needed. `//ui/events/blink` includes only
+`blink/public/common` headers; `//ui/events/gestures/blink` adds
+`blink/public/platform/web_gesture_curve.h`, a header that includes only
+`ui/gfx/geometry/vector2d_f.h`. The WebNN C++ variant never uses the WTF hash
+traits; only the Blink variant's `HashMap<OperandId, ...>` does.
+`shell/patches/views-shell-blink-renderer-edges.patch` cuts both: the two
+`ui/events` targets depend on `//third_party/blink/public/common` and a new
+header-only `//third_party/blink/public:web_gesture_curve` (also a public dep
+of `blink_headers`, so other users see no change), and the hash traits move
+from `webnn_mojom_traits` to the Blink variant's typemap.
+
+With the patch, `gn desc out/views //views_shell:views_shell deps --all`
+lists no target under `//v8`, `//third_party/blink/renderer`, `//content`,
+`//chrome` or `//gin`, and `ldd views_shell` lists no `libv8*` or `libwtf`.
+`shell/BUILD.gn` guards the whole trees: `assert_no_deps` names `//ash/*`,
+`//chrome/*`, `//chromeos/*`, `//content/*`, `//gin/*`,
+`//third_party/blink/renderer/*` and `//v8/*`, and `gn gen out/views`
+passes.
 
 ## Runs
 
@@ -78,7 +94,9 @@ client	dur=10	procs=2	threads=30	cpu%=0.00	PSS_MB=141.3	RSS_MB=153.6	ctxsw/s=0.1
 two `xdg_surface.ack_configure` and four `wl_shm.create_pool`. The window is
 tiled to the whole output and shows a black ground with the label
 `views-shell` in white. With `--run-for-seconds=3` the program exits 0
-(results `t3-exit`, `VIEWS_SHELL_EXIT=0`).
+(results `t3-exit`, `VIEWS_SHELL_EXIT=0`). These rows were taken before the
+F3 patch; the rerun after it (same harness) gave 2 attaches, 7 colours and
+`PSS_MB=138.7 RSS_MB=150.9`, threads 30, FDs 344.
 
 `views_examples` (results `~/views-bench/results/t3-examples`, same harness, same minute):
 

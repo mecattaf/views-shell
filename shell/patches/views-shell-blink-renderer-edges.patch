@@ -1,0 +1,103 @@
+diff --git a/services/webnn/public/mojom/BUILD.gn b/services/webnn/public/mojom/BUILD.gn
+index c71c21e..58e9a0b 100644
+--- a/services/webnn/public/mojom/BUILD.gn
++++ b/services/webnn/public/mojom/BUILD.gn
+@@ -161,7 +161,16 @@ mojom_component("mojom") {
+   ]
+ 
+   cpp_typemaps = shared_webnn_typemaps
+-  blink_cpp_typemaps = shared_webnn_typemaps
++
++  # WTF containers of OperandId need its HashTraits; only the Blink variant
++  # carries them, so the C++ variant does not reach //third_party/blink/renderer.
++  blink_webnn_typemap = shared_webnn_typemaps[0]
++  blink_webnn_typemap.traits_headers += [
++    "//third_party/blink/renderer/modules/ml/webnn/operand_id_hash_traits.h",
++  ]
++  blink_webnn_typemap.traits_public_deps +=
++      [ "//third_party/blink/renderer/modules/ml:operand_id_hash_traits" ]
++  blink_cpp_typemaps = [ blink_webnn_typemap ]
+ }
+ 
+ component("webnn_mojom_traits") {
+@@ -183,7 +192,6 @@ component("webnn_mojom_traits") {
+     "//base",
+     "//mojo/public/cpp/bindings:struct_traits",
+     "//services/webnn/public/cpp",
+-    "//third_party/blink/renderer/modules/ml:operand_id_hash_traits",
+   ]
+ 
+   defines = [ "IS_WEBNN_MOJOM_TRAITS_IMPL" ]
+diff --git a/services/webnn/public/mojom/operand_id_mojom_traits.h b/services/webnn/public/mojom/operand_id_mojom_traits.h
+index cb2f0cb..f0d46fe 100644
+--- a/services/webnn/public/mojom/operand_id_mojom_traits.h
++++ b/services/webnn/public/mojom/operand_id_mojom_traits.h
+@@ -9,7 +9,6 @@
+ #include "mojo/public/cpp/bindings/struct_traits.h"
+ #include "services/webnn/public/cpp/webnn_types.h"
+ #include "services/webnn/public/mojom/webnn_graph.mojom-shared.h"
+-#include "third_party/blink/renderer/modules/ml/webnn/operand_id_hash_traits.h"
+ 
+ namespace mojo {
+ 
+diff --git a/third_party/blink/public/BUILD.gn b/third_party/blink/public/BUILD.gn
+index 238ac83..3a929be 100644
+--- a/third_party/blink/public/BUILD.gn
++++ b/third_party/blink/public/BUILD.gn
+@@ -118,6 +118,13 @@ source_set("test_headers") {
+   ]
+ }
+ 
++# The fling curve interface, alone: //ui/events/gestures/blink implements it
++# without the rest of the public API, which reaches V8 and Blink renderer code.
++source_set("web_gesture_curve") {
++  sources = [ "platform/web_gesture_curve.h" ]
++  public_deps = [ "//ui/gfx/geometry" ]
++}
++
+ # See public/common/BUILD.gn for the headers that can be referenced both from
+ # the browser- and renderer-side components.
+ source_set("blink_headers") {
+@@ -203,7 +210,6 @@ source_set("blink_headers") {
+     "platform/web_file_system_type.h",
+     "platform/web_font_description.h",
+     "platform/web_font_render_style.h",
+-    "platform/web_gesture_curve.h",
+     "platform/web_graphics_context_3d_provider.h",
+     "platform/web_graphics_shared_image_interface_provider.h",
+     "platform/web_http_body.h",
+@@ -423,6 +429,7 @@ source_set("blink_headers") {
+ 
+   public_deps = [
+     ":devtools_inspector_resources_grit",
++    ":web_gesture_curve",
+     ":resources_grit",
+     ":runtime_features_for_public",
+     "//components/subresource_filter/core/common",
+diff --git a/ui/events/blink/BUILD.gn b/ui/events/blink/BUILD.gn
+index 82effa0..0f37f22 100644
+--- a/ui/events/blink/BUILD.gn
++++ b/ui/events/blink/BUILD.gn
+@@ -33,7 +33,7 @@ source_set("blink") {
+   deps = [
+     "//cc",
+     "//services/tracing/public/cpp",
+-    "//third_party/blink/public:blink_headers",
++    "//third_party/blink/public/common",
+     "//third_party/one_euro_filter",
+     "//ui/base",
+     "//ui/events",
+diff --git a/ui/events/gestures/blink/BUILD.gn b/ui/events/gestures/blink/BUILD.gn
+index 0c392bb..689612f 100644
+--- a/ui/events/gestures/blink/BUILD.gn
++++ b/ui/events/gestures/blink/BUILD.gn
+@@ -16,7 +16,8 @@ source_set("blink") {
+ 
+   deps = [
+     "//base",
+-    "//third_party/blink/public:blink_headers",
++    "//third_party/blink/public:web_gesture_curve",
++    "//third_party/blink/public/common",
+     "//ui/base:features",
+     "//ui/events",
+     "//ui/events:gesture_detection",

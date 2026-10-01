@@ -53,35 +53,20 @@ executable("views_shell") {
   data_deps = [ "//ui/resources:ui_test_pak" ]
 
   # Rules R1, R5 and R24, enforced by the build: no //chrome, no //ash, no
-  # //chromeos, and no browser: no //content, no Blink renderer, no V8 engine.
+  # //chromeos, and no browser: no //content, no Blink renderer, no V8.
   #
-  # Finding F3 (docs/bench/views-shell-154.md): the stock Views stack, as in
-  # views_examples, reaches //v8:cppgc_headers, //v8:v8_libbase,
-  # //v8:v8_libplatform, //third_party/blink/renderer/platform/wtf and Blink
-  # code-generation actions through //components/viz/host ->
-  # //components/input -> //ui/events/blink -> //third_party/blink/public:blink_headers.
-  # So `//v8/*` and `//third_party/blink/renderer/*` cannot be guarded whole
-  # without cutting that edge upstream; the guard names the engine and the
-  # renderer instead, and `gn path` to //v8, //content, Blink core and platform,
-  # //chrome and //ash prints "No non-data paths".
+  # Finding F3 (docs/bench/views-shell-154.md): the stock Views stack reaches
+  # //v8 and //third_party/blink/renderer through //third_party/blink/public:blink_headers
+  # (from //ui/events/blink and //ui/events/gestures/blink) and through
+  # //services/webnn/public/mojom:webnn_mojom_traits. Those edges are cut by
+  # patches/views-shell-blink-renderer-edges.patch, so the whole trees are guarded.
   assert_no_deps = [
-    "//chrome/*",
     "//ash/*",
+    "//chrome/*",
     "//chromeos/*",
     "//content/*",
     "//gin/*",
-    "//third_party/blink/renderer/bindings/core/*",
-    "//third_party/blink/renderer/bindings/modules/*",
-    "//third_party/blink/renderer/controller/*",
-    "//third_party/blink/renderer/core:core",
-    "//third_party/blink/renderer/modules:modules",
-    "//third_party/blink/renderer/platform:platform",
-    "//v8:cppgc_base",
-    "//v8:v8",
-    "//v8:v8_base",
-    "//v8:v8_base_without_compiler",
-    "//v8:v8_compiler",
-    "//v8:v8_initializers",
-    "//v8:v8_snapshot",
+    "//third_party/blink/renderer/*",
+    "//v8/*",
   ]
 }
