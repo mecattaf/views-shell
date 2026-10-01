@@ -6,6 +6,10 @@
 > the short list of IPC additions that would make the scroll adapter better, each
 > one shaped to be sent to dawsers as a single pull request and, until it is
 > merged, degraded around.
+>
+> **Invariant, checked by the docs gate:** no patch queue, no fork with hooks.
+> views-shell carries no scroll patch and runs against the stock scroll already
+> installed on the bench; the filename is kept only so the chapter's links resolve.
 
 views-shell works on stock scroll, sway, niri and Hyprland through adapters. Nothing
 in the core needs anything from scroll's maintainer: every ask below is a capability
