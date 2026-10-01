@@ -11,7 +11,7 @@ bench too: every compositor test runs under `runtime-test`).
 | `sync.sh` | here | rsync this worktree to `bench:~/views-shell-wt/<branch>/` and print the remote path |
 | `job.sh start <name> <script> [args]` | here | start `<script>` (a path on the bench) as unit `vs-<name>`, logging to `~/views-bench/logs/<name>.log` |
 | `job.sh wait <name> [seconds]` | here | poll until the unit stops (default 1200 s); exit with the job's rc, 124 on timeout |
-| `job.sh status <name>` | here | print the recorded rc and exit with it; 125 while running or unknown |
+| `job.sh status <name>` | here | print `rc <n>` (the recorded rc) and exit with it; 125 while running or unknown |
 | `job.sh log <name> [lines]` | here | tail the job log |
 | `worker/run.sh <name> <cmd...>` | bench | the unit body: runs `<cmd>` inside the FHS build environment, records `~/views-bench/results/<name>.rc` |
 | `worker/fhs.sh <cmd...>` | bench | run one command inside the FHS build environment (depot_tools on PATH, ccache) |

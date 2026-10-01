@@ -1,0 +1,16 @@
+diff --git a/BUILD.gn b/BUILD.gn
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -125,6 +125,12 @@ group("gn_all") {
+       "//url:url_unittests",
+     ]
+ 
++    # views-shell: a content-free Views program (//views_shell, copied in by
++    # tools/bench/worker/wire.sh). One edge into gn_all.
++    if (is_linux && use_ozone) {
++      deps += [ "//views_shell" ]
++    }
++
+     if (current_cpu == "arm64" && is_android && host_os == "linux") {
+       deps += [
+         "//components/allocation_recorder/tools:dump_allocation_recorder_data",
