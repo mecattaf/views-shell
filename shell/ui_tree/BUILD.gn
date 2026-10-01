@@ -1,0 +1,14 @@
+# Copyright 2026 The views-shell Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A registered seam: //views_shell lists this directory now so that chapter-2
+# item w3a fills it (sources, deps and tests) without editing the root BUILD.gn.
+# Empty on purpose: no sources and no stubs until w3a lands.
+
+source_set("ui_tree") {
+}
+
+source_set("unittests") {
+  testonly = true
+}
