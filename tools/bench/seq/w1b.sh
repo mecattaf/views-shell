@@ -12,11 +12,44 @@
 #      component views_shell --bar on the restored out/views.
 # Every step echoes its rc; the script exits with the first failing build/wire rc,
 # otherwise with the OR of the run rcs.
+#
+# `w1b.sh prove` instead re-runs the claims that need the bench quiet (C10.2, C10.3,
+# C10.5) on this worktree wired, without rebuilding: ensure-out views twice (the second
+# run must say "unchanged"), the five gn path checks on out/release, the release
+# views_shell --bar run, and `gn path` from views_shell to a few census trees.
 set -uo pipefail
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
 B="$HOME/views-bench"; FHS="$B/build-env"; R="$B/results"
 FLAGS="--ozone-platform=wayland --use-gl=angle --use-angle=swiftshader"
 step() { echo "=== w1b $1 $(date -u +%FT%TZ)"; }
+
+wire_or_stop() {
+  local out; out=$(bash "$WT/tools/bench/worker/wire.sh" "$WT" 2>&1); echo "$out"
+  case "$(printf '%s\n' "$out" | tail -1)" in WIRE-OK*) ;; *) echo "w1b: wire failed"; exit 1;; esac
+}
+
+if [ "${1:-}" = prove ]; then
+  step prove-wire; wire_or_stop
+  step C10.5
+  for i in 1 2; do "$FHS" -c "cd ~/chromium/src && bash $WT/tools/bench/worker/ensure-out.sh views $WT/tools/bench/args.views.gn"; echo "C10.5 run $i rc=$?"; done
+  step C10.2
+  "$FHS" -c "cd ~/chromium/src && for t in //v8 //content //third_party/blink/renderer/core //third_party/blink/renderer/platform //chrome; do gn path out/release //views_shell:views_shell \$t; done" 2>&1 | grep -c 'No non-data paths'
+  step C10.3
+  rm -rf "$R/w1b-release-bar"
+  bash "$WT/tools/bench/worker/headless.sh" "$R/w1b-release-bar" "$FHS" -c "~/chromium/src/out/release/views_shell $FLAGS --bar"; r=$?
+  grep -qE 'attaches: [1-9]' "$R/w1b-release-bar/summary.txt" && grep -qE 'colours: ([2-9]|[1-9][0-9]+)' "$R/w1b-release-bar/summary.txt"; g=$?
+  echo "C10.3 run rc=$r grep rc=$g"
+  step census-paths
+  "$FHS" -c "cd ~/chromium/src && gn desc out/release //views_shell:views_shell deps --all" 2>/dev/null | grep '^//' > "$R/w1b-census/release-views_shell-deps.txt"
+  for pre in //third_party/webrtc/ //third_party/xnnpack //services/network/ //ui/webui/ //third_party/dawn/ //media/capture/ //components/metrics/ //third_party/perfetto/; do
+    t=$(grep -m1 "^$pre" "$R/w1b-census/release-views_shell-deps.txt" | sed 's/(.*$//')
+    [ -n "$t" ] || { echo "--- no dep under $pre"; continue; }
+    echo "--- gn path views_shell $t"
+    "$FHS" -c "cd ~/chromium/src && gn path out/release //views_shell:views_shell $t" 2>&1 | grep -v -e 'FHS sandbox' -e 'depot_tools:' -e 'ccache:'
+  done
+  step prove-done
+  exit $((r|g))
+fi
 
 step wire
 wire_out=$(bash "$WT/tools/bench/worker/wire.sh" "$WT" 2>&1); echo "$wire_out"
