@@ -1,0 +1,5 @@
+| id | claim | task | form | command | rc | result | evidence | commit | at |
+|---|---|---|---|---|---|---|---|---|---|
+| P6.1 | C6.1 | T6 | local | `tools/validate.sh` | 0 | pass | VALIDATE-OK: parsed 55 JSON files; 3 schemas ok; 11 manifests ok, 2 configs ok (default 407/8192 sync item bytes, noir 751/8192), sync-probe.js embedded copy ok; 14 ui trees ok; 22 invalid fixtures rejected; 3 renders ok (hyprland, niri, scroll); 0 failures | 6559e6f | 2026-10-01T18:04Z |
+| P6.2 | C6.2 | T6 | local | `node --check extension/sync-probe.js && grep -q 'sync-probe.html' extension/options.html` | 0 | pass | node --check extension/sync-probe.js passed (syntax ok) and grep found 'sync-probe.html' in extension/options.html (run inside nix shell nixpkgs#nodejs_24 nixpkgs#pnpm) | 6559e6f | 2026-10-01T18:04Z |
+| P6.3 | C6.3 | T6 | local | `grep -q 'H1' docs/storage-sync.md && grep -qi 'unverified' docs/storage-sync.md` | 0 | pass | grep found 'H1' in docs/storage-sync.md and case-insensitive 'unverified' in docs/storage-sync.md; both checks passed | 6559e6f | 2026-10-01T18:04Z |
