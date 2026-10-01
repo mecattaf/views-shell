@@ -1,6 +1,10 @@
-# Footprint-measurement configuration (sketch; never used yet).
+# Footprint configuration, the source of record for every release measurement.
 # Release, non-component, so PSS and binary size mean what a user would see.
-# Build //views_shell:views-shell and //ui/views/examples:views_examples (the control) from it.
+# is_official_build stays false: the PGO profiles are not checked out on the bench.
+# tools/bench/args.release.gn is this file plus the bench lines (no remote execution,
+# ninja instead of siso, ccache, enable_ax_automation_bindings = false for finding F1);
+# keep the two in step. Build //views_shell:views_shell and the control
+# //ui/views/examples:views_examples from it (shell/build/README.md, Measuring footprint).
 is_component_build = false
 is_debug = false
 is_official_build = false

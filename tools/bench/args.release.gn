@@ -1,0 +1,17 @@
+# The bench's release footprint configuration for out/release: shell/build/args.release.gn
+# (the source of record) plus the bench lines. Build //views_shell:views_shell and the
+# control //ui/views/examples:views_examples from it; see shell/build/README.md.
+is_component_build = false
+is_debug = false
+is_official_build = false
+dcheck_always_on = false
+symbol_level = 0
+target_os = "linux"
+use_ozone = true
+ozone_auto_platforms = false
+ozone_platform_wayland = true
+ozone_platform = "wayland"
+use_remoteexec = false
+use_siso = false
+cc_wrapper = "ccache"
+enable_ax_automation_bindings = false
