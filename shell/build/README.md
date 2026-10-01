@@ -3,9 +3,9 @@
 Lifted from agency-mvp `cd7cef3` (see `../PROVENANCE.md`). These files still say
 `agency`; the rename is part of the re-cut.
 
-- `CHROMIUM_VERSION`: the last green tag in this lineage, **150.0.7871.124**.
-  views-shell's first hop re-cuts at a current tag, chosen by hand
-  ([`../../docs/chromium-hop.md`](../../docs/chromium-hop.md)).
+- `CHROMIUM_VERSION`: the pinned tag, **154.0.8037.92** (chapter 1 re-cut the
+  lineage's 150.0.7871.124 here; hops are chosen by hand,
+  [`../../docs/chromium-hop.md`](../../docs/chromium-hop.md)).
 - `args.gn`: the lifted development configuration (component build). Planned
   changes before first use: drop `agency_enable_inbound_server`; replace
   `enable_agency` with `enable_views_shell`; **set `dcheck_always_on = false`
