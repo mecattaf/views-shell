@@ -16,9 +16,9 @@ renderer, no V8, no `//chrome`, no `//ash` (rules R1, R5, R24), enforced by
 
 | Path | What |
 |---|---|
-| `BUILD.gn` | the `views_shell` executable, the `views_shell_unittests` umbrella and the registered subsystem seams, with the rule guards |
+| `BUILD.gn` | the `views_shell` executable and the `tabs` source set, with the rule guards; chapter 2 adds the `views_shell_unittests` umbrella and registers the subsystem seams here |
 | `app/views_shell_main.cc` | the content-free main, shaped like `ui/views/examples/examples_main_proc.cc`: `--bar` (a top layer surface), `--demo-popup` (an `xdg_popup` menu parented to it), `--left-tabs` (the workspace strip), `--run-for-seconds` |
-| `style/`, `wm/`, `ui_tree/`, `plugins/`, `bar/`, `notifications/` | the subsystem seams: each directory has its own `BUILD.gn` reachable from the root one, and is filled by its own item without touching the root |
+| `style/`, `wm/`, `ui_tree/`, `plugins/`, `bar/`, `notifications/` | the subsystem seams of chapter 2: each directory gets its own `BUILD.gn`, reachable from the root one, so each subsystem is filled without touching the root |
 | `wm/compositor_adapter.h`, `wm/wm_model.h`, `wm/wm_snapshot.h`, `wm/adapters/scroll/` | sketches of the compositor-neutral model and the scroll and sway adapter, replaced by the adapter work |
 | `tabs/` | Chrome's tab and vertical-strip layouts, copied (never linked) into a vertical workspace strip; see [`../CHROME-PORT-LEDGER.md`](../CHROME-PORT-LEDGER.md) and [`../docs/tabs.md`](../docs/tabs.md) |
 | `patches/` | the live Chromium patch series; see [`patches/README.md`](patches/README.md) |
