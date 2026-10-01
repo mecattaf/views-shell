@@ -50,6 +50,11 @@ def request(method, params):
     send({"jsonrpc": "2.0", "id": f"p{_next_id}", "method": method, "params": params})
 
 
+def error(mid, code, message):
+    if mid is not None:
+        send({"jsonrpc": "2.0", "id": mid, "error": {"code": code, "message": message}})
+
+
 def uptime_seconds():
     try:
         return int(float(pathlib.Path("/proc/uptime").read_text().split()[0]))
@@ -97,7 +102,11 @@ def handle(msg):
             result = {"result": {"uptime": uptime_seconds(), "panelOpen": state["panelOpen"]}}
         elif command in BROKER:
             request(*BROKER[command])
-        # "toggle" is a surface verb handled by views-shell itself.
+        elif command != "toggle":  # a surface verb views-shell handles itself
+            return error(mid, -32602, f"unknown command {command!r}")
+    elif method not in ("surface/opened", "surface/closed", "event"):
+        # Unknown notifications are ignored; unknown requests are refused.
+        return error(mid, -32601, f"method not found: {method}")
     if mid is not None:
         send({"jsonrpc": "2.0", "id": mid, "result": result})
         if method == "initialize":
@@ -111,9 +120,13 @@ def main():
         if not line:
             continue
         try:
-            handle(json.loads(line))
+            msg = json.loads(line)
         except json.JSONDecodeError:
+            msg = None
+        if not isinstance(msg, dict):
             print("power-menu: dropped a malformed line", file=sys.stderr)
+            continue
+        handle(msg)
 
 
 if __name__ == "__main__":
