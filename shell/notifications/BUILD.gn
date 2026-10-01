@@ -34,11 +34,14 @@ source_set("notifications") {
     "//url",
   ]
 
+  # //components/dbus is not a dependency of this target (gn desc deps); it
+  # cannot be asserted away transitively, because Ozone's Wayland platform
+  # already reaches it (ui/ozone/platform/wayland -> //ui/base/clipboard:
+  # clipboard_util_linux -> //components/dbus), docs/notifications.md.
   assert_no_deps = [
     "//ash/*",
     "//chrome/*",
     "//chromeos/*",
-    "//components/dbus/*",
     "//content/*",
   ]
 }
