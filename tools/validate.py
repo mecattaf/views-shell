@@ -4,7 +4,8 @@
 # found in the LICENSE file.
 """Repository check: every JSON file parses, the schemas are valid Draft 2020-12,
 every example manifest validates against views-shell-plugin.schema.json, every ui/*.json
-against ui-tree.schema.json, every file a manifest names exists, every
+against ui-tree.schema.json, every examples/config/*.json against
+config.schema.json (and against the 8,192-byte chrome.storage.sync per-item quota), every file a manifest names exists, every
 quick-settings entry that opens a page names a declared page, every qualified
 command a manifest handler or ui tree calls belongs to the plugin or is covered
 by a call: permission, and every fixture under tools/fixtures/invalid/ is
@@ -66,7 +67,9 @@ def main():
 
     plugin_schema = load(ROOT / "schemas/views-shell-plugin.schema.json")
     ui_schema = load(ROOT / "schemas/ui-tree.schema.json")
-    for name, s in (("views-shell-plugin", plugin_schema), ("ui-tree", ui_schema)):
+    config_schema = load(ROOT / "schemas/config.schema.json")
+    for name, s in (("views-shell-plugin", plugin_schema), ("ui-tree", ui_schema),
+                    ("config", config_schema)):
         Draft202012Validator.check_schema(s)
         print(f"schema ok: {name}")
     plugin_v = Draft202012Validator(plugin_schema)
@@ -118,6 +121,36 @@ def main():
             if not covered(data["id"], perms, call):
                 failures.append(f"{rel}: calls {call} without a call: permission")
         print(f"{'FAIL' if errs else 'ok  '} manifest {rel}")
+
+    # User configuration examples: schema-valid and sized for one
+    # chrome.storage.sync item (QUOTA_BYTES_PER_ITEM = 8,192 bytes).
+    config_v = Draft202012Validator(config_schema)
+    for cfg in sorted(ROOT.glob("examples/config/*.json")):
+        rel = cfg.relative_to(ROOT)
+        data = load(cfg)
+        errs = sorted(config_v.iter_errors(data), key=lambda e: list(e.path))
+        for e in errs:
+            failures.append(f"{rel}: {'/'.join(map(str, e.path))}: {e.message[:300]}")
+        size = len(json.dumps(data, separators=(",", ":")).encode())
+        if size > 8192:
+            failures.append(f"{rel}: {size} bytes exceeds the 8,192-byte chrome.storage.sync per-item quota")
+            errs = errs or [True]
+        print(f"{'FAIL' if errs else 'ok  '} config   {rel} ({size} of 8192 sync item bytes)")
+
+    # The sync probe embeds a copy of examples/config/default.json (an extension
+    # page cannot reach outside the extension directory); it must not drift.
+    probe = (ROOT / "extension/sync-probe.js").read_text()
+    m = re.search(r"// BEGIN examples/config/default\.json.*?const DEFAULT_CONFIG = (\{.*?\n\});\n// END",
+                  probe, re.DOTALL)
+    if not m:
+        failures.append("extension/sync-probe.js: embedded default config block not found")
+        print("FAIL config   extension/sync-probe.js (embedded copy)")
+    else:
+        embedded = json.loads(m.group(1))
+        ok = embedded == load(ROOT / "examples/config/default.json")
+        if not ok:
+            failures.append("extension/sync-probe.js: embedded default config differs from examples/config/default.json")
+        print(f"{'FAIL' if not ok else 'ok  '} config   extension/sync-probe.js (embedded copy)")
 
     for tree in sorted(ROOT.glob("examples/*/ui/*.json")):
         rel = tree.relative_to(ROOT)

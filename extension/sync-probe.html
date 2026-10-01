@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>views-shell · storage sync probe</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main style="padding: 32px 48px; max-width: 960px; margin: 0 auto;">
+    <h1>Storage sync probe</h1>
+    <p>Settles open question Q1 (<code>../../SPEC.md</code>): does Chrome sync
+    <code>chrome.storage.sync</code> for an unpacked extension with a pinned
+    <code>key</code>? Run the two-seat procedure H1 in
+    <a href="../docs/storage-sync.md"><code>docs/storage-sync.md</code></a>: open this
+    page on both seats, write on one, watch the event log on the other. This page
+    needs no views-shell process and no native messaging — only the
+    <code>storage</code> permission.</p>
+    <p><a href="options.html">← Back to the control pages</a></p>
+
+    <div id="status" class="banner" role="status">Idle.</div>
+
+    <section>
+      <h2>Actions</h2>
+      <p>
+        <button id="write" type="button">Write probe record + default config</button>
+        <button id="read" type="button">Read back</button>
+        <button id="clear" type="button">Clear sync area</button>
+      </p>
+      <p class="locked">Write stores <code>probe</code> (a timestamped record) and
+      <code>config</code> (a copy of <code>examples/config/default.json</code>, kept
+      inline in <code>sync-probe.js</code>; <code>tools/validate.py</code> checks the
+      copy matches the file).</p>
+    </section>
+
+    <section>
+      <h2>Quotas and usage</h2>
+      <table>
+        <thead><tr><th>Constant</th><th>Value</th></tr></thead>
+        <tbody id="quota"></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Items in <code>chrome.storage.sync</code></h2>
+      <table>
+        <thead><tr><th>Key</th><th>Bytes (item)</th><th>Value</th></tr></thead>
+        <tbody id="items"><tr><td colspan="3" class="locked">Not read yet.</td></tr></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2><code>chrome.storage.onChanged</code> events</h2>
+      <p class="locked">Every event since this page opened, with its storage area.
+      On the observing seat, a synced write arrives here as area
+      <code>sync</code>.</p>
+      <table>
+        <thead><tr><th>Local time</th><th>Area</th><th>Keys</th><th>Change</th></tr></thead>
+        <tbody id="events"><tr><td colspan="4" class="locked">No events yet.</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+  <script src="sync-probe.js"></script>
+</body>
+</html>

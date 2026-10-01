@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://views-shell.invalid/schemas/config.schema.json",
+  "title": "views-shell.json",
+  "description": "The views-shell user configuration. The Chrome extension keeps it as a single chrome.storage.sync item under the key \"config\", so it is sized for the chrome.storage.sync quotas: 102,400 bytes total (QUOTA_BYTES), 8,192 bytes per item (QUOTA_BYTES_PER_ITEM) and 512 items (MAX_ITEMS). A valid configuration serialises to at most 8,192 bytes; tools/validate.py enforces that on every example. Presence in \"plugins\" means enabled; built-ins appear only as deviations (docs/architecture.md, settings store).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "description": "Configuration format version. The JSON number 1; the string \"1\" is rejected.",
+      "const": 1
+    },
+    "theme": {
+      "description": "The active theme. views-shell reads Omarchy theme directories; Chrome follows the same theme through the BrowserThemeColor policy (docs/architecture.md section 4).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "description": "Theme directory name, for example \"noir\" or \"all-black\".",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "maxLength": 64
+        },
+        "chromeThemeId": {
+          "description": "Chrome Web Store theme id Chrome should wear for consistency, for example the All Black theme mkplpffahhkjfocfbfapcemhhkgmljpn.",
+          "type": "string",
+          "pattern": "^[a-p]{32}$"
+        }
+      }
+    },
+    "plugins": {
+      "description": "Enabled plugins as ids, each with its per-plugin settings object. The key is the plugin id; the value is validated against that plugin's contributes.configuration schema, so an empty object means \"enabled, all defaults\". Absence means disabled; built-ins appear only as deviations.",
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": {
+        "$ref": "#/$defs/pluginId"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "maxProperties": 32
+      }
+    },
+    "bar": {
+      "description": "Bar layout: geometry and the ordered surface entries of its three sections.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "height": {
+          "description": "Bar height in DIP; also its exclusive zone.",
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 128,
+          "default": 32
+        },
+        "position": {
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "default": "top"
+        },
+        "sections": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "$ref": "#/$defs/barEntries"
+            },
+            "center": {
+              "$ref": "#/$defs/barEntries"
+            },
+            "right": {
+              "$ref": "#/$defs/barEntries"
+            }
+          }
+        }
+      }
+    },
+    "keybindings": {
+      "description": "User overrides of plugin-declared bindings, compositor-neutral (schemas/keybinding-rendering.md). The user wins: an entry here replaces the binding a plugin declared for the same command.",
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command",
+          "key"
+        ],
+        "properties": {
+          "command": {
+            "$ref": "#/$defs/commandRef"
+          },
+          "key": {
+            "$ref": "#/$defs/key"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "pluginId": {
+      "description": "A qualified plugin id (publisher.name).",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$",
+      "maxLength": 128
+    },
+    "commandRef": {
+      "description": "A command id (local) or plugin-id/command (qualified). Overrides normally use the qualified form.",
+      "type": "string",
+      "pattern": "^([a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/)?[a-z][a-z0-9-]*$",
+      "maxLength": 192
+    },
+    "key": {
+      "description": "Compositor-neutral key chord: modifiers then one key, joined by +. Mod is the user's $mod. Example: Mod+Shift+Escape.",
+      "type": "string",
+      "pattern": "^((Mod|Super|Ctrl|Alt|Shift)\\+)*([A-Za-z0-9]|F[0-9]{1,2}|Escape|Return|Space|Tab|BackSpace|Delete|Insert|Home|End|Prior|Next|Left|Right|Up|Down|Comma|Period|Slash|Semicolon|Minus|Equal|Grave|Print|XF86[A-Za-z0-9]+)$",
+      "maxLength": 64
+    },
+    "barEntries": {
+      "description": "Ordered bar section entries, each naming a plugin's bar-widget surface as plugin-id/surface-id.",
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+/[a-z][a-z0-9-]*$",
+        "maxLength": 192
+      }
+    }
+  }
+}
