@@ -21,8 +21,9 @@ TEST(ThemeKitProvidersTest, DefaultsAreStockViews) {
                      views::DISTANCE_UNRELATED_CONTROL_HORIZONTAL}) {
     EXPECT_EQ(kit.GetDistanceMetric(metric), stock.GetDistanceMetric(metric));
   }
-  EXPECT_EQ(kit.GetInsetsMetric(views::INSETS_DIALOG),
-            stock.GetInsetsMetric(views::INSETS_DIALOG));
+  // Compared as text: gfx::Insets' gtest printer lives in test support.
+  EXPECT_EQ(kit.GetInsetsMetric(views::INSETS_DIALOG).ToString(),
+            stock.GetInsetsMetric(views::INSETS_DIALOG).ToString());
   EXPECT_EQ(kit.GetTypographyProvider()
                 .GetFontDetails(views::style::CONTEXT_LABEL,
                                 views::style::STYLE_PRIMARY)
