@@ -7,12 +7,14 @@
 # patches/views-shell-build-gate.patch puts this target in the root gn_all).
 #
 # views-shell is a Views program, not a content embedder (rule R24). The lifted
-# sources under app/cowl_*, host/, rail/ and wm/ are provenance only and are not
-# built; app/views_shell_main.cc is new and shaped like
-# ui/views/examples/examples_main_proc.cc.
+# sources under app/cowl_*, host/, rail/, bar/*.cc and wm/ are provenance only
+# and are not built; app/ holds the program: views_shell_main.cc (flags and
+# widgets), shell_bootstrap.{h,cc} (process bring-up) and
+# views_shell_context_factory.{h,cc} (the in-process viz host).
 
 import("//build/config/ozone.gni")
 import("//build/config/ui.gni")
+import("//testing/test.gni")
 
 assert(is_linux, "views-shell is an is_linux program. It never builds for ChromeOS.")
 assert(!is_chromeos, "Port Ash, never link it.")
@@ -82,57 +84,114 @@ source_set("tabs") {
   ]
 }
 
-executable("views_shell") {
-  # Debt D1 (docs/architecture.md): the context factory comes from
-  # //ui/compositor:test_support until the production in-process viz host
-  # exists, so the executable is testonly until D1 is paid.
-  testonly = true
+# The registered chapter-2 seams. GN only generates targets in BUILD.gn files
+# reachable from this root, so the root lists every seam now and later items
+# fill their own directory without editing this file.
+views_shell_seams = [
+  "bar",
+  "notifications",
+  "plugins",
+  "style",
+  "ui_tree",
+  "wm",
+]
 
-  sources = [ "app/views_shell_main.cc" ]
+# Rules R1, R5 and R24, enforced by the build: no //chrome, no //ash, no
+# //chromeos, and no browser: no //content, no Blink renderer, no V8.
+#
+# Finding F3 (docs/bench/views-shell-154.md): the stock Views stack reaches
+# //v8 and //third_party/blink/renderer through //third_party/blink/public:blink_headers
+# (from //ui/events/blink and //ui/events/gestures/blink) and through
+# //services/webnn/public/mojom:webnn_mojom_traits. Those edges are cut by
+# patches/views-shell-blink-renderer-edges.patch, so the whole trees are guarded.
+views_shell_no_deps = [
+  "//ash/*",
+  "//chrome/*",
+  "//chromeos/*",
+  "//content/*",
+  "//gin/*",
+  "//third_party/blink/renderer/*",
+  "//v8/*",
+]
+
+executable("views_shell") {
+  # Debt D1 is paid (docs/architecture.md): the context factory is the
+  # production in-process viz host in app/views_shell_context_factory.cc, and
+  # nothing here is test support.
+  testonly = false
+
+  sources = [
+    "app/shell_bootstrap.cc",
+    "app/shell_bootstrap.h",
+    "app/views_shell_context_factory.cc",
+    "app/views_shell_context_factory.h",
+    "app/views_shell_main.cc",
+  ]
 
   deps = [
     ":tabs",
     "//base",
     "//base:i18n",
-    "//base/test:test_support",
+    "//cc",
+    "//cc/mojo_embedder",
+    "//components/discardable_memory/service",
+    "//components/viz/common",
+    "//components/viz/host",
+    "//components/viz/service",
+    "//components/viz/service/main",
+    "//gpu/command_buffer/client:raster_interface",
+    "//gpu/command_buffer/common",
+    "//gpu/command_buffer/service:gles2",
+    "//gpu/config",
+    "//gpu/ipc/client",
+    "//gpu/ipc/common",
+    "//gpu/ipc/service",
     "//mojo/core/embedder",
+    "//mojo/public/cpp/bindings",
+    "//mojo/public/cpp/system",
+    "//services/viz/privileged/mojom",
+    "//services/viz/privileged/mojom/compositing",
+    "//services/viz/privileged/mojom/gl",
+    "//services/viz/public/cpp/gpu",
     "//skia",
     "//ui/accessibility",
     "//ui/aura",
     "//ui/base",
+    "//ui/base/clipboard",
     "//ui/base/ime/init",
     "//ui/color",
     "//ui/color:mixers",
     "//ui/compositor",
-    "//ui/compositor:test_support",
     "//ui/display",
     "//ui/gfx",
     "//ui/gl",
-    "//ui/gl/init",
     "//ui/menus",
     "//ui/ozone",
-    "//ui/platform_window/common",
+    "//ui/platform_window",
     "//ui/views",
     "//ui/wm",
+    "//url",
   ]
+  deps += views_shell_seams
 
+  # Debt D2 (docs/architecture.md): the resources are ui_test_pak (a plain
+  # copy() on Linux, not testonly) until views-shell repacks its own pak.
   data_deps = [ "//ui/resources:ui_test_pak" ]
 
-  # Rules R1, R5 and R24, enforced by the build: no //chrome, no //ash, no
-  # //chromeos, and no browser: no //content, no Blink renderer, no V8.
-  #
-  # Finding F3 (docs/bench/views-shell-154.md): the stock Views stack reaches
-  # //v8 and //third_party/blink/renderer through //third_party/blink/public:blink_headers
-  # (from //ui/events/blink and //ui/events/gestures/blink) and through
-  # //services/webnn/public/mojom:webnn_mojom_traits. Those edges are cut by
-  # patches/views-shell-blink-renderer-edges.patch, so the whole trees are guarded.
-  assert_no_deps = [
-    "//ash/*",
-    "//chrome/*",
-    "//chromeos/*",
-    "//content/*",
-    "//gin/*",
-    "//third_party/blink/renderer/*",
-    "//v8/*",
+  assert_no_deps = views_shell_no_deps
+}
+
+# The unit-test umbrella. Each seam contributes its own :unittests source_set;
+# with none filled yet it builds and runs zero tests.
+test("views_shell_unittests") {
+  deps = [
+    "//base/test:run_all_unittests",
+    "//base/test:test_support",
+    "//testing/gtest",
   ]
+  foreach(seam, views_shell_seams) {
+    deps += [ "$seam:unittests" ]
+  }
+
+  assert_no_deps = views_shell_no_deps
 }

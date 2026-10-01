@@ -70,27 +70,62 @@ browser window on a layer surface is deleted. The current lifts are untrimmed: s
 ## 3. The shell main
 
 A Views program, shaped like Chromium's own `ui/views/examples:views_examples`,
-which builds Views with no `//content`, Blink or V8:
-- `main()` initialises `base` (a UI `SingleThreadTaskExecutor`, the thread pool,
-  one IO thread for D-Bus and sockets), the feature list, `mojo::core::Init()`,
-  ICU, and the `ResourceBundle` with a repacked `views-shell.pak` (ui/views resources,
-  `ui/strings`, views-shell's own strings and the icon subset) and `locales/<lang>.pak`.
-- Ozone is initialised for Wayland in single-process mode.
-- **An in-process viz host** gives the compositor its GPU path: views-shell owns a
-  production `ui::ContextFactory`, modelled on `ui/compositor`'s
-  `InProcessContextFactory` and on `components/viz/demo` (which runs `VizMainImpl`
-  without `//content`), without the test providers. This is the one real piece of
-  new engineering the content-free shape costs. A GPU fault restarts the shell;
-  the systemd user unit brings it back and the layer surfaces reappear. Until that
-  factory exists, the executable borrows the test one: see debt D1 below.
-- `ShellMainParts` creates `aura::Env` and `wm::WMState`, installs a production
-  focus client, `wm::DefaultActivationClient` and a capture client on every
-  surface root, a production `ui::AXPlatform` delegate (for Orca), and defers
-  `Widget::Show` until those exist.
-- `ShellViewsDelegate` installs the layer-surface host on every top-level widget. It
-  `CHECK`s that each top-level `Widget` has a registered `SurfaceSpec`. That check
-  is how rule R1 is enforced at runtime.
-- A `LayoutProvider` and the views-shell `TypographyProvider` are installed at start.
+which builds Views with no `//content`, Blink or V8. Three files in `shell/app/`:
+
+- `views_shell_main.cc` keeps the flags (`--bar`, `--demo-popup`, `--left-tabs`,
+  `--run-for-seconds`, `--software-compositing` / `--gpu-compositing`) and the
+  widgets, and nothing else.
+- `shell_bootstrap.{h,cc}` (`ShellBootstrap`) brings the process up in this
+  order and tears it down in reverse, so later chapters add content without
+  re-reading it:
+  1. `base`: the feature list, a UI `SingleThreadTaskExecutor`, the thread pool,
+     then the `ui::AXPlatform` delegate (native APIs only, for Orca);
+  2. Ozone for Wayland in single-process mode: `InitializeForUI` (the Wayland
+     connection, threaded event polling), then `InitializeForGPU`;
+  3. mojo: `mojo::core::Init()` and a `ScopedIPCSupport` on a mojo IO thread;
+  4. ICU and fonts;
+  5. the discardable allocator: `discardable_memory::DiscardableSharedMemoryManager`,
+     in process, as a browser process has it;
+  6. the `ResourceBundle` (still `ui_test_pak`: debt D2);
+  7. the context factory (below);
+  8. `aura::Env` with that factory;
+  9. the input method (`ui::InitializeInputMethod()`);
+  10. the desktop screen;
+  11. `ShellViewsDelegate` (the `LayoutProvider`; every top-level `Widget` is a
+      `DesktopNativeWidgetAura`) and `wm::WMState`.
+- `views_shell_context_factory.{h,cc}` is **the in-process viz host**, the one
+  real piece of new engineering the content-free shape costs. Its service side
+  runs on a GPU main thread of its own (plus a GPU IO thread), as the GPU thread
+  of `components/viz/service/main/viz_main_impl.cc` does in a GPU process:
+  `gpu::GpuInit::InitializeInProcess`, a `viz::GpuServiceImpl` (shaped after
+  `components/viz/demo/service/demo_service.cc`), Ozone's GPU-side interfaces
+  (on Wayland the buffer manager) and a `viz::VizCompositorThreadRunnerImpl`
+  that owns `viz::FrameSinkManagerImpl` on the viz compositor thread. Its host
+  side, on the UI thread, is a `viz::HostFrameSinkManager` bound to that
+  manager over mojo and one `gpu::GpuChannelHost` to the in-process service.
+  Each `ui::Compositor` gets a root frame sink through
+  `HostFrameSinkManager::CreateRootCompositorFrameSink` (its
+  `AcceleratedWidget`, a `DisplayPrivate`, a `viz::HostDisplayClient`) and a
+  `cc::mojo_embedder::AsyncLayerTreeFrameSink` on the client end, the pattern of
+  `content/browser/compositor/viz_process_transport_factory.cc` (read, never
+  linked). The root sink forwards the compositor's parent `LocalSurfaceId` to
+  `viz::Display`, so `WaylandWindow` latches its configure sequence and acks it
+  (finding F2) with no test platform-window configuration.
+  `--software-compositing` draws with viz's software renderer into the Ozone
+  canvas surface (`wl_shm` buffers), with GL disabled in the process;
+  `--gpu-compositing` runs `SkiaRenderer` over GL (ANGLE). Both draw on the
+  headless bench (`docs/bench/views-shell-154-production.md`); software is the
+  default, because it needs no GL, no render node and no GPU context, costs half
+  the threads and about 20 MB less PSS, and is the mode that cannot fail on a
+  seat without a usable GPU. A lost viz connection ends the process; the systemd user unit brings it
+  back and the layer surfaces reappear.
+
+Still to come in this layer: `ShellMainParts` installs a production focus
+client, `wm::DefaultActivationClient` and a capture client on every surface
+root, and `ShellViewsDelegate` grows the layer-surface host that `CHECK`s each
+top-level `Widget` has a registered `SurfaceSpec` (how rule R1 is enforced at
+runtime), with the views-shell `TypographyProvider` beside the
+`LayoutProvider`.
 
 On Linux, Aura is Chrome's in-process window tree (`DesktopWindowTreeHostLinux`
 maps one Aura root onto one platform window). It manages no one else's windows:
@@ -267,8 +302,9 @@ names it or the next one. Nothing else may diverge from this page silently.
 
 | Id | Debt | Carried since | Paid when |
 |---|---|---|---|
-| D1 | `views_shell` takes its `ui::ContextFactory` from `//ui/compositor:test_support` (the test in-process context factory), so the executable is `testonly = true` and links test support it would not ship | chapter 1, allowed by the orchestrator's ruling of 2026-10-01 | a production in-process viz host exists (`app/views_shell_context_factory.{h,cc}`: `viz::HostFrameSinkManager` and `VizMainImpl` on a GPU thread, after `components/viz/demo`), the target drops `//ui/compositor:test_support` and `//base/test:test_support`, `testonly = false`, and the shell still draws its bar under headless scroll |
+| D1 | `views_shell` took its `ui::ContextFactory` from `//ui/compositor:test_support` (the test in-process context factory), so the executable was `testonly = true` and linked test support it would not ship | chapter 1, allowed by the orchestrator's ruling of 2026-10-01 | **paid** in chapter 2 item w1a (branch `w/w1a`, commit 7a48fe1): `app/views_shell_context_factory.{h,cc}` is the production in-process viz host (§3), the target drops `//ui/compositor:test_support` and `//base/test:test_support` (`gn desc ... deps --all` names no `test_support`), `testonly = false`, `ui::test::EnableTestConfigForPlatformWindows()` is gone (F2 resolved the faithful way), and the bar, the popup and the plain window draw under headless scroll |
+| D2 | the `ResourceBundle` loads `ui_test_pak` (`//ui/resources:ui_test_pak`, a plain `copy()` on Linux, not `testonly`) instead of a repacked `views_shell.pak` (ui/views resources, `ui/strings`, views-shell's own strings and the icon subset) with `locales/<lang>.pak` | chapter 2 (w1a) | views-shell repacks its own pak with a `repack` target under `//views_shell`, the bootstrap loads it by path, and the executable drops the `ui_test_pak` data dep |
 
-While D1 is open, every footprint number measured next to `views_examples` is
-indicative only, and the `testonly` flag is the visible marker that the binary is not
-shippable.
+Footprint numbers measured while D1 was open (chapter 1) were indicative only;
+the chapter-2 numbers in `docs/bench/views-shell-154-production.md` are of the
+shippable shape, still under the pixman/SwiftShader caveat.
