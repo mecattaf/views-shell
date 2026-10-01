@@ -1,0 +1,76 @@
+{
+  "activation": [
+    "onCommand:example.quick-settings-brightness/set",
+    "onCommand:example.quick-settings-brightness/state",
+    "onQuickSettings:slider"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [
+    {
+      "args": [
+        {
+          "name": "value",
+          "required": true,
+          "type": "number"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": "brightness",
+      "id": "example.quick-settings-brightness/set",
+      "result": "none",
+      "surface": null,
+      "title": "Set display brightness",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "example.quick-settings-brightness/state",
+      "result": "json",
+      "surface": null,
+      "title": "Brightness as JSON",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [],
+  "events": [],
+  "id": "example.quick-settings-brightness",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "exec:brightnessctl",
+    "path:read:/sys/class/backlight/*"
+  ],
+  "quickSettings": [
+    {
+      "id": "slider",
+      "order": -80,
+      "page": null,
+      "size": null,
+      "slot": "slider",
+      "state": null,
+      "title": null,
+      "ui": null,
+      "when": "!config.views-shell.qs-brightness.enabled"
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "process"
+}

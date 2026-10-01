@@ -1,0 +1,41 @@
+{
+  "snapshot": {
+    "output": {
+      "id": "speakers",
+      "name": "Built-in speakers",
+      "icon": "volume-medium",
+      "volume": 0.62,
+      "muted": false
+    },
+    "input": {
+      "id": "usb-mic",
+      "name": "USB microphone",
+      "icon": "mic",
+      "gain": 0.8,
+      "present": true
+    },
+    "outputs": [
+      {
+        "value": "speakers",
+        "label": "Built-in speakers",
+        "icon": "speaker"
+      },
+      {
+        "value": "headphones",
+        "label": "Headphones",
+        "icon": "headset"
+      }
+    ],
+    "inputs": [
+      {
+        "value": "internal-mic",
+        "label": "Internal microphone"
+      },
+      {
+        "value": "usb-mic",
+        "label": "USB microphone"
+      }
+    ]
+  },
+  "sources": {}
+}

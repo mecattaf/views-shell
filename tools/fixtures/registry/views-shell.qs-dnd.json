@@ -1,0 +1,42 @@
+{
+  "activation": [
+    "onQuickSettings:tile"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [
+    "views-shell.notifications"
+  ],
+  "events": [],
+  "id": "views-shell.qs-dnd",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "call:views-shell.notifications/toggle-quiet-mode"
+  ],
+  "quickSettings": [
+    {
+      "id": "tile",
+      "order": 10,
+      "page": null,
+      "size": "compact",
+      "slot": "tile",
+      "state": "views-shell.notifications/state",
+      "title": null,
+      "ui": "ui/tile.json",
+      "when": null
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "declarative"
+}

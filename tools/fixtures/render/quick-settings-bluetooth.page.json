@@ -1,0 +1,219 @@
+{
+  "plugin": "views-shell.qs-bluetooth",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "switch",
+        "props": {
+          "action": {
+            "args": {},
+            "close": false,
+            "command": "views-shell.bluetooth/set-powered",
+            "confirm": null
+          },
+          "label": "Bluetooth",
+          "value": true
+        },
+        "view": "views::ToggleButton"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "label",
+        "props": {
+          "role": "subtle",
+          "text": "Your devices",
+          "typography": "label"
+        },
+        "view": "views::Label"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "error": null,
+                "layout": null,
+                "node": "label",
+                "props": {
+                  "role": "subtle",
+                  "text": "86%",
+                  "typography": "annotation",
+                  "visible": true
+                },
+                "view": "views::Label"
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {
+                  "device": "00:1A:7D:DA:71:13"
+                },
+                "close": false,
+                "command": "views-shell.bluetooth/toggle-connection",
+                "confirm": null
+              },
+              "icon": "headset",
+              "label": "Headphones",
+              "selected": true,
+              "sublabel": "Connected"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": null,
+                "layout": null,
+                "node": "label",
+                "props": {
+                  "role": "subtle",
+                  "text": "",
+                  "typography": "annotation",
+                  "visible": false
+                },
+                "view": "views::Label"
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {
+                  "device": "00:1A:7D:DA:71:14"
+                },
+                "close": false,
+                "command": "views-shell.bluetooth/toggle-connection",
+                "confirm": null
+              },
+              "icon": "mouse",
+              "label": "Mouse",
+              "selected": false,
+              "sublabel": "Not connected"
+            },
+            "view": "views_shell::ListItemView"
+          }
+        ],
+        "error": null,
+        "layout": null,
+        "node": "repeat",
+        "props": {
+          "count": 2,
+          "items": {
+            "$bind": "/paired"
+          },
+          "key": "./address",
+          "keys": [
+            "00:1A:7D:DA:71:13",
+            "00:1A:7D:DA:71:14"
+          ]
+        },
+        "view": null
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "label",
+            "props": {
+              "flex": 1,
+              "role": "subtle",
+              "text": "Pair a new device",
+              "typography": "label"
+            },
+            "view": "views::Label"
+          },
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "progress",
+            "props": {
+              "visible": true
+            },
+            "view": "views::ProgressBar"
+          }
+        ],
+        "error": null,
+        "layout": "box-horizontal",
+        "node": "row",
+        "props": {
+          "align": "center"
+        },
+        "view": "views::BoxLayoutView"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {
+                  "device": "00:1A:7D:DA:71:20"
+                },
+                "close": false,
+                "command": "views-shell.bluetooth/pair",
+                "confirm": null
+              },
+              "icon": "keyboard",
+              "label": "Keyboard"
+            },
+            "view": "views_shell::ListItemView"
+          }
+        ],
+        "error": null,
+        "layout": null,
+        "node": "repeat",
+        "props": {
+          "count": 1,
+          "items": {
+            "$bind": "/discovered"
+          },
+          "key": "./address",
+          "keys": [
+            "00:1A:7D:DA:71:20"
+          ]
+        },
+        "view": null
+      }
+    ],
+    "error": null,
+    "layout": "box-vertical",
+    "node": "column",
+    "props": {
+      "spacing": "normal"
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

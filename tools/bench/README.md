@@ -20,7 +20,10 @@ bench too: every compositor test runs under `runtime-test`).
 | `worker/headless.sh <outdir> <cmd...>` | bench | under `runtime-test`: headless scroll (pixman), run `<cmd>` with `WAYLAND_DEBUG=1`, capture the tree, a screenshot and the log, then stop everything |
 | `worker/measure.sh <label> <seconds> <pid> <results.tsv>` | bench | PSS, RSS, CPU, context switches, threads and fds of a process tree, one row |
 | `worker/runtime-test-gpu` | bench | a copy of the bench's `runtime-test` with one added flag, `--allow-dri` (binds `/dev/dri`, nothing else); installed at `~/views-bench/bin/runtime-test-gpu`, never in place of `~/.local/bin/runtime-test` |
+| `worker/ensure-out.sh <out> <args-file>` | bench | bring `out/<out>` to `<args-file>` idempotently (a `gn clean` when the args differ or siso built it last), `gn gen`, print `ENSURE-OK` |
+| `worker/census.sh <out> <label> <binary> <report>` | bench | size (as linked and stripped), `ldd`, `runtime_deps` and `gn desc deps --all` counts of one target |
 | `seq/<item>.sh` | bench | one work item's whole bench sequence (wire, build, runs), run as a unit under the bench lock |
+| `lock.sh hold\|release\|status` | here | hold `~/views-bench/bench.lock` from a detached ssh session across many separate commands, end it, or report who holds it (read-only); see below |
 
 ## headless.sh switches
 
@@ -77,3 +80,56 @@ Bench layout (`~/views-bench/` on the host): `build-env` (a link to the FHS envi
 (component, development) and `out/release` (non-component, for footprint).
 
 The bench host name is `worker` (an ssh alias). Override with `BENCH_HOST`.
+
+### Holding the lock from here: `lock.sh`
+
+`tools/bench/lock.sh hold` waits (up to 14,400 s) for the lock on the bench,
+prints `HOLDING` and returns while a detached ssh session keeps it
+(`flock -w 14400 ~/views-bench/bench.lock sh -c 'echo HOLDING; read _'`, the
+local process group's id in `.bench-lock.pid`, its output in `.bench-lock.log`,
+both gitignored). `lock.sh release` kills that process group; the remote
+`read` sees end of input and flock lets go. A dropped connection releases it
+the same way, so check `status` after a network fault. `lock.sh status` reads
+`stat` and `/proc/locks` on the bench and never opens or creates the lock file:
+it prints `not held`, or `held by pid N: <command>` and a `waiting: N` line,
+plus `this checkout: holding (pgid N)` when this checkout's session is alive.
+It exits 0 in every case and 2 when the bench cannot be reached.
+
+The lock exists for a verifier that re-runs bench rows of PROVE.md, which ssh
+one by one and never take the lock themselves:
+
+```
+tools/bench/lock.sh hold
+tools/prove.sh --form bench --latest --ids '^P(9|10|11)\.'
+tools/bench/lock.sh release
+```
+
+A row that takes the lock itself (`flock ... bench.lock`; `tools/prove.sh
+--dry-run` marks it `[takes bench.lock]`) would wait for the hold: run it
+outside one. `BENCH_HOST` and `BENCH_LOCK` (a plain path) point the script at
+another host or file, which is how it is tested without the bench.
+
+## Re-running proofs: `tools/prove.sh` and `tools/prove-lint.py`
+
+`PROVE.md` is one append-only table (`id | claim | task | form | command | rc |
+result | evidence | commit | at`). `python3 tools/prove-lint.py` checks every
+row (ten cells, `P<n>.<m>` beside `C<n>.<m>`, the task, form, rc ⇔ result,
+an existing commit, an ISO-8601 UTC `at`, no `/home/<user>`, and a runnable
+command cell) and prints `prove-lint ok (N rows)` or each offending row.
+`tools/prove.sh` re-runs rows from the repository root:
+
+| Flag | Effect |
+|---|---|
+| `--latest` | the newest row per id only (re-verification repeats ids) |
+| `--ids <regex>` | rows whose id matches |
+| `--form local\|bench` | by effective form: a row is bench when recorded so or when its command ssh-es or calls `tools/bench/{sync,job,lock}.sh` or a `worker/` script |
+| `--dry-run` | print `<id> [<form>] <command>` and run nothing |
+| `--timeout <s>` | per-row limit, default 1800 (rc 124) |
+| `--no-toolbox` | do not put nixpkgs' python3 with jsonschema and node on PATH |
+| `-v` | print each row's output |
+
+It prints `<id> <rc> <pass|fail> <seconds>` per row and `PROVE-RUN
+<passed>/<total>`, writes `prove-results.tsv` (gitignored) and exits 1 if a row
+failed. Rows whose command cell is prose (legacy exceptions listed in
+`tools/prove-lint.py`) print `<id> - manual 0` and are run by hand. The runner
+never ssh-es and never takes the lock by itself; the commands in bench rows do.

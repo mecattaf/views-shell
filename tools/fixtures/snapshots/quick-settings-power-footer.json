@@ -1,0 +1,15 @@
+{
+  "snapshot": {
+    "battery": {
+      "present": true,
+      "icon": "battery-70",
+      "fraction": 0.7,
+      "timeRemaining": "3 h 10 min left"
+    }
+  },
+  "sources": {
+    "views-shell.power/profiles": {
+      "profile": "Balanced"
+    }
+  }
+}
