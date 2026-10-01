@@ -44,6 +44,7 @@ executable("views_shell") {
     "//ui/gfx",
     "//ui/gl",
     "//ui/gl/init",
+    "//ui/menus",
     "//ui/ozone",
     "//ui/platform_window/common",
     "//ui/views",

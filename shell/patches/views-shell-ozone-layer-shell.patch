@@ -1,0 +1,1781 @@
+diff --git a/third_party/wayland-protocols/BUILD.gn b/third_party/wayland-protocols/BUILD.gn
+index 1ff4af39ff..016bb68c76 100644
+--- a/third_party/wayland-protocols/BUILD.gn
++++ b/third_party/wayland-protocols/BUILD.gn
+@@ -192,6 +192,12 @@ wayland_protocol("wayland_drm_protocol") {
+   sources = [ "mesa/wayland-drm/wayland-drm.xml" ]
+ }
+ 
++# views-shell: wlr-layer-shell from wlr-protocols (MIT; see README.chromium).
++# Desktop shell surfaces (bars, docks, overlays) for the views-shell program.
++wayland_protocol("wlr_layer_shell_protocol") {
++  sources = [ "unstable/wlr-layer-shell/wlr-layer-shell-unstable-v1.xml" ]
++}
++
+ wayland_protocol("xdg_activation") {
+   # XDG activation has been introduced in wayland-protocols version 1.21, which
+   # is newer than 1.18 which is in the sysroot for Debian 11.5 (Bullseye).
+diff --git a/third_party/wayland-protocols/README.chromium b/third_party/wayland-protocols/README.chromium
+index faf7b32a0f..bb42beded3 100644
+--- a/third_party/wayland-protocols/README.chromium
++++ b/third_party/wayland-protocols/README.chromium
+@@ -78,3 +78,25 @@ https://github.com/KDE/plasma-wayland-protocols.git.
+ 
+ Source checkout path:
+ src/third_party/wayland-protocols/kde
++
++-------------------- DEPENDENCY DIVIDER --------------------
++Name: wlr-protocols (wlr-layer-shell only)
++URL: https://gitlab.freedesktop.org/wlroots/wlr-protocols
++Version: wlr-layer-shell-unstable-v1, interface version 5
++Update Mechanism: Manual
++License: MIT
++License File: unstable/wlr-layer-shell/wlr-layer-shell-unstable-v1.xml (inline copyright)
++Security Critical: yes
++Shipped: yes
++
++Description:
++unstable/wlr-layer-shell contains the wlr-layer-shell protocol from
++wlr-protocols, vendored by the views-shell layer-shell patch so
++//ui/ozone/platform/wayland can bind zwlr_layer_shell_v1 and create desktop
++shell surfaces (bars, docks, overlays).
++
++Repository:
++https://gitlab.freedesktop.org/wlroots/wlr-protocols.git
++
++Source checkout path:
++src/third_party/wayland-protocols/unstable/wlr-layer-shell
+diff --git a/ui/ozone/platform/wayland/BUILD.gn b/ui/ozone/platform/wayland/BUILD.gn
+index bb9b85116b..00f118034a 100644
+--- a/ui/ozone/platform/wayland/BUILD.gn
++++ b/ui/ozone/platform/wayland/BUILD.gn
+@@ -131,6 +131,13 @@ source_set("wayland") {
+     "host/wayland_input_method_context.h",
+     "host/wayland_keyboard.cc",
+     "host/wayland_keyboard.h",
++
++    # views-shell: wlr-layer-shell host support (zwlr_layer_shell_v1 binding
++    # and the WaylandLayerShellWindow role object).
++    "host/wayland_layer_shell.cc",
++    "host/wayland_layer_shell.h",
++    "host/wayland_layer_shell_window.cc",
++    "host/wayland_layer_shell_window.h",
+     "host/wayland_menu_utils.cc",
+     "host/wayland_menu_utils.h",
+     "host/wayland_output.cc",
+@@ -277,6 +284,7 @@ source_set("wayland") {
+     "//third_party/wayland-protocols:text_input_protocol",
+     "//third_party/wayland-protocols:viewporter_protocol",
+     "//third_party/wayland-protocols:wayland_drm_protocol",
++    "//third_party/wayland-protocols:wlr_layer_shell_protocol",
+     "//third_party/wayland-protocols:xdg_activation",
+     "//third_party/wayland-protocols:xdg_decoration_protocol",
+     "//third_party/wayland-protocols:xdg_foreign",
+diff --git a/ui/ozone/platform/wayland/common/wayland_object.cc b/ui/ozone/platform/wayland/common/wayland_object.cc
+index 743ff65d17..26b11cca16 100644
+--- a/ui/ozone/platform/wayland/common/wayland_object.cc
++++ b/ui/ozone/platform/wayland/common/wayland_object.cc
+@@ -33,6 +33,11 @@
+ #include <wayland-client-core.h>
+ #include <wayland-cursor.h>
+ #include <wayland-drm-client-protocol.h>
++// views-shell: wlr-layer-shell. 'namespace' is a C++ keyword but is used as
++// a parameter name in the protocol XML; work around the generated C header.
++#define namespace namespace_
++#include <wlr-layer-shell-unstable-v1-client-protocol.h>
++#undef namespace
+ #include <xdg-activation-v1-client-protocol.h>
+ #include <xdg-decoration-unstable-v1-client-protocol.h>
+ #include <xdg-foreign-unstable-v1-client-protocol.h>
+@@ -217,6 +222,9 @@ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zcr_extended_drag_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zcr_extended_keyboard_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zcr_extended_text_input_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zcr_keyboard_extension_v1)
++// views-shell: wlr-layer-shell (desktop shell surfaces).
++IMPLEMENT_WAYLAND_OBJECT_TRAITS(zwlr_layer_shell_v1)
++IMPLEMENT_WAYLAND_OBJECT_TRAITS(zwlr_layer_surface_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zwp_idle_inhibit_manager_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zwp_idle_inhibitor_v1)
+ IMPLEMENT_WAYLAND_OBJECT_TRAITS(zwp_keyboard_shortcuts_inhibit_manager_v1)
+diff --git a/ui/ozone/platform/wayland/common/wayland_object.h b/ui/ozone/platform/wayland/common/wayland_object.h
+index 3842fcc714..2e243292a1 100644
+--- a/ui/ozone/platform/wayland/common/wayland_object.h
++++ b/ui/ozone/platform/wayland/common/wayland_object.h
+@@ -179,6 +179,9 @@ DECLARE_WAYLAND_OBJECT_TRAITS(zcr_extended_drag_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zcr_extended_keyboard_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zcr_extended_text_input_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zcr_keyboard_extension_v1)
++// views-shell: wlr-layer-shell (desktop shell surfaces).
++DECLARE_WAYLAND_OBJECT_TRAITS(zwlr_layer_shell_v1)
++DECLARE_WAYLAND_OBJECT_TRAITS(zwlr_layer_surface_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zwp_idle_inhibit_manager_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zwp_idle_inhibitor_v1)
+ DECLARE_WAYLAND_OBJECT_TRAITS(zwp_keyboard_shortcuts_inhibit_manager_v1)
+diff --git a/ui/ozone/platform/wayland/host/wayland_connection.cc b/ui/ozone/platform/wayland/host/wayland_connection.cc
+index 1ab81633d4..684e221277 100644
+--- a/ui/ozone/platform/wayland/host/wayland_connection.cc
++++ b/ui/ozone/platform/wayland/host/wayland_connection.cc
+@@ -50,6 +50,7 @@
+ #include "ui/ozone/platform/wayland/host/wayland_event_source.h"
+ #include "ui/ozone/platform/wayland/host/wayland_input_method_context.h"
+ #include "ui/ozone/platform/wayland/host/wayland_keyboard.h"
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell.h"
+ #include "ui/ozone/platform/wayland/host/wayland_output_manager.h"
+ #include "ui/ozone/platform/wayland/host/wayland_pointer.h"
+ #include "ui/ozone/platform/wayland/host/wayland_seat.h"
+@@ -170,6 +171,8 @@ bool WaylandConnection::Initialize(bool use_threaded_polling) {
+                               &WaylandDataDeviceManager::Instantiate);
+   RegisterGlobalObjectFactory(WaylandDrm::kInterfaceName,
+                               &WaylandDrm::Instantiate);
++  RegisterGlobalObjectFactory(WaylandLayerShell::kInterfaceName,
++                              &WaylandLayerShell::Instantiate);
+   RegisterGlobalObjectFactory(WaylandOutput::kInterfaceName,
+                               &WaylandOutput::Instantiate);
+   RegisterGlobalObjectFactory(WaylandSeat::kInterfaceName,
+diff --git a/ui/ozone/platform/wayland/host/wayland_connection.h b/ui/ozone/platform/wayland/host/wayland_connection.h
+index e1029f4ac0..03ba605de0 100644
+--- a/ui/ozone/platform/wayland/host/wayland_connection.h
++++ b/ui/ozone/platform/wayland/host/wayland_connection.h
+@@ -56,6 +56,7 @@ class WaylandDataDeviceManager;
+ class WaylandWpColorManager;
+ class WaylandDataDragController;
+ class WaylandEventSource;
++class WaylandLayerShell;
+ class WaylandOutputManager;
+ class WaylandSeat;
+ class WaylandTabletManager;
+@@ -240,6 +241,11 @@ class WaylandConnection {
+     return overlay_prioritizer_.get();
+   }
+ 
++  // views-shell: the zwlr_layer_shell_v1 global. Optional: nullptr when the
++  // compositor does not offer wlr-layer-shell, in which case kLayerShell
++  // windows cannot be created.
++  WaylandLayerShell* layer_shell() const { return layer_shell_.get(); }
++
+   SinglePixelBuffer* single_pixel_buffer() const {
+     return single_pixel_buffer_.get();
+   }
+@@ -322,6 +328,7 @@ class WaylandConnection {
+   friend class ToplevelIconManager;
+   friend class WaylandCursorFactory;
+   friend class WaylandDataDeviceManager;
++  friend class WaylandLayerShell;
+   friend class WaylandOutput;
+   friend class WaylandSeat;
+   friend class WaylandTabletManager;
+@@ -458,6 +465,7 @@ class WaylandConnection {
+   std::unique_ptr<XdgForeignWrapper> xdg_foreign_;
+   std::unique_ptr<ZwpIdleInhibitManager> zwp_idle_inhibit_manager_;
+   std::unique_ptr<OverlayPrioritizer> overlay_prioritizer_;
++  std::unique_ptr<WaylandLayerShell> layer_shell_;
+   std::unique_ptr<SinglePixelBuffer> single_pixel_buffer_;
+ 
+   // Clipboard-related objects. |clipboard_| must be declared after all
+diff --git a/ui/ozone/platform/wayland/host/wayland_surface.cc b/ui/ozone/platform/wayland/host/wayland_surface.cc
+index 0efd9ed752..2393ada1aa 100644
+--- a/ui/ozone/platform/wayland/host/wayland_surface.cc
++++ b/ui/ozone/platform/wayland/host/wayland_surface.cc
+@@ -319,6 +319,14 @@ void WaylandSurface::set_opaque_region(
+   if (!root_window_)
+     return;
+ 
++  // views-shell (re-cut of ozone-empty-opaque-region.patch): never advertise
++  // an opaque region for a translucent window. Stock Chromium declared
++  // translucent layer-shell surfaces opaque (full size_px), so the compositor
++  // skipped drawing anything behind them -> the "black box". An empty opaque
++  // region is always correct; it is only an optimization hint.
++  if (!root_window_->IsOpaqueWindow())
++    region_px.reset();
++
+   if (region_px)
+     pending_state_.opaque_region_px = *region_px;
+ 
+diff --git a/ui/ozone/platform/wayland/host/wayland_window_factory.cc b/ui/ozone/platform/wayland/host/wayland_window_factory.cc
+index 333b59ff32..ebce7c3518 100644
+--- a/ui/ozone/platform/wayland/host/wayland_window_factory.cc
++++ b/ui/ozone/platform/wayland/host/wayland_window_factory.cc
+@@ -7,6 +7,7 @@
+ #include "base/logging.h"
+ #include "ui/ozone/platform/wayland/host/wayland_bubble.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell_window.h"
+ #include "ui/ozone/platform/wayland/host/wayland_popup.h"
+ #include "ui/ozone/platform/wayland/host/wayland_toplevel_window.h"
+ #include "ui/ozone/platform/wayland/host/wayland_window.h"
+@@ -21,6 +22,14 @@ std::unique_ptr<WaylandWindow> WaylandWindow::Create(
+     PlatformWindowInitProperties properties) {
+   std::unique_ptr<WaylandWindow> window;
+   switch (properties.type) {
++    // views-shell: a wlr-layer-shell surface (bar, dock, overlay). This case
++    // stands alone with its own break so kPopup keeps falling through to
++    // kBubble as upstream intends (the lifted factory bug interleaved the
++    // cases, which made every popup a layer surface).
++    case PlatformWindowType::kLayerShell:
++      window =
++          std::make_unique<WaylandLayerShellWindow>(delegate, connection);
++      break;
+     case PlatformWindowType::kPopup:
+     case PlatformWindowType::kBubble:
+       // kPopup can be created by MessagePopupView without a parent window set.
+diff --git a/ui/platform_window/platform_window_init_properties.h b/ui/platform_window/platform_window_init_properties.h
+index 21a542a563..44a3c89923 100644
+--- a/ui/platform_window/platform_window_init_properties.h
++++ b/ui/platform_window/platform_window_init_properties.h
+@@ -5,6 +5,7 @@
+ #ifndef UI_PLATFORM_WINDOW_PLATFORM_WINDOW_INIT_PROPERTIES_H_
+ #define UI_PLATFORM_WINDOW_PLATFORM_WINDOW_INIT_PROPERTIES_H_
+ 
++#include <cstdint>
+ #include <optional>
+ #include <string>
+ 
+@@ -36,6 +37,10 @@ enum class PlatformWindowType {
+   kTooltip,
+   kDrag,
+   kBubble,
++  // views-shell: a wlr-layer-shell-v1 desktop shell surface (bar, dock,
++  // overlay). Wayland only; the Ozone/Wayland window factory creates these
++  // as WaylandLayerShellWindow.
++  kLayerShell,
+ };
+ 
+ enum class PlatformWindowOpacity {
+@@ -50,6 +55,48 @@ enum class PlatformWindowShadowType {
+   kDrop,
+ };
+ 
++// views-shell: layer-shell (wlr-layer-shell-v1) surface properties.
++
++enum class LayerShellLayer : uint32_t {
++  kBackground = 0,
++  kBottom = 1,
++  kTop = 2,
++  kOverlay = 3,
++};
++
++enum class LayerShellKeyboardInteractivity : uint32_t {
++  kNone = 0,
++  kExclusive = 1,
++  kOnDemand = 2,
++};
++
++// Anchor bitfield (matches zwlr_layer_surface_v1_anchor values):
++enum LayerShellAnchor : uint32_t {
++  kLayerShellAnchorNone = 0,
++  kLayerShellAnchorTop = 1,
++  kLayerShellAnchorBottom = 2,
++  kLayerShellAnchorLeft = 4,
++  kLayerShellAnchorRight = 8,
++};
++
++// The layer-shell request as expressed by a views::Widget
++// (Widget::InitParams::layer_shell). DesktopWindowTreeHostLinux flattens it
++// into the layer_shell_* fields of PlatformWindowInitProperties below and
++// sets type = PlatformWindowType::kLayerShell.
++struct LayerShellProperties {
++  LayerShellLayer layer = LayerShellLayer::kTop;
++  uint32_t anchor = kLayerShellAnchorNone;
++  int32_t exclusive_zone = 0;
++  LayerShellKeyboardInteractivity keyboard_interactivity =
++      LayerShellKeyboardInteractivity::kNone;
++  int32_t margin_top = 0;
++  int32_t margin_right = 0;
++  int32_t margin_bottom = 0;
++  int32_t margin_left = 0;
++  std::string layer_namespace = "views-shell";
++  std::optional<int64_t> output_id;
++};
++
+ class WorkspaceExtensionDelegate;
+ 
+ #if BUILDFLAG(IS_FUCHSIA)
+@@ -141,6 +188,22 @@ struct COMPONENT_EXPORT(PLATFORM_WINDOW) PlatformWindowInitProperties {
+   // with the launch event that created it. Used for both X11 and Wayland.
+   std::string startup_id;
+ 
++  // views-shell: layer-shell properties (used when type ==
++  // PlatformWindowType::kLayerShell; Wayland only). Flattened from
++  // views::Widget::InitParams::layer_shell by
++  // DesktopWindowTreeHostLinux::AddAdditionalInitProperties.
++  LayerShellLayer layer_shell_layer = LayerShellLayer::kTop;
++  uint32_t layer_shell_anchor = kLayerShellAnchorNone;
++  int32_t layer_shell_exclusive_zone = 0;
++  LayerShellKeyboardInteractivity layer_shell_keyboard_interactivity =
++      LayerShellKeyboardInteractivity::kNone;
++  int32_t layer_shell_margin_top = 0;
++  int32_t layer_shell_margin_right = 0;
++  int32_t layer_shell_margin_bottom = 0;
++  int32_t layer_shell_margin_left = 0;
++  std::string layer_shell_namespace = "views-shell";
++  std::optional<int64_t> layer_shell_output_id;
++
+   // Specifies the id of the target display the window will be created on.
+   std::optional<int64_t> display_id;
+ #endif
+diff --git a/ui/views/widget/desktop_aura/desktop_window_tree_host_linux.cc b/ui/views/widget/desktop_aura/desktop_window_tree_host_linux.cc
+index 3b6e7c0b55..ad21aa9efa 100644
+--- a/ui/views/widget/desktop_aura/desktop_window_tree_host_linux.cc
++++ b/ui/views/widget/desktop_aura/desktop_window_tree_host_linux.cc
+@@ -514,6 +514,25 @@ void DesktopWindowTreeHostLinux::AddAdditionalInitProperties(
+   properties->wayland_app_id = params.wayland_app_id;
+   properties->startup_id = params.startup_id;
+ 
++  // views-shell: a layer-shell request becomes a kLayerShell platform window
++  // (wlr-layer-shell-v1; Wayland only). See
++  // ui/platform_window/platform_window_init_properties.h.
++  if (params.layer_shell) {
++    properties->type = ui::PlatformWindowType::kLayerShell;
++    properties->layer_shell_layer = params.layer_shell->layer;
++    properties->layer_shell_anchor = params.layer_shell->anchor;
++    properties->layer_shell_exclusive_zone =
++        params.layer_shell->exclusive_zone;
++    properties->layer_shell_keyboard_interactivity =
++        params.layer_shell->keyboard_interactivity;
++    properties->layer_shell_margin_top = params.layer_shell->margin_top;
++    properties->layer_shell_margin_right = params.layer_shell->margin_right;
++    properties->layer_shell_margin_bottom = params.layer_shell->margin_bottom;
++    properties->layer_shell_margin_left = params.layer_shell->margin_left;
++    properties->layer_shell_namespace = params.layer_shell->layer_namespace;
++    properties->layer_shell_output_id = params.layer_shell->output_id;
++  }
++
+   DCHECK(!properties->x11_extension_delegate);
+   properties->x11_extension_delegate = this;
+ 
+diff --git a/ui/views/widget/widget.h b/ui/views/widget/widget.h
+index 4b71f0122b..eb4adba195 100644
+--- a/ui/views/widget/widget.h
++++ b/ui/views/widget/widget.h
+@@ -50,6 +50,10 @@
+ #include "ui/ozone/public/platform_session_manager.h"
+ #endif
+ 
++#if BUILDFLAG(IS_LINUX)
++#include "ui/platform_window/platform_window_init_properties.h"
++#endif
++
+ namespace base {
+ class TimeDelta;
+ }
+@@ -506,6 +510,12 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
+     // The startup ID (or XDG activation token) used to associate the window
+     // with the launch event that created it. Used for both X11 and Wayland.
+     std::string startup_id;
++
++    // views-shell: when set, the widget's platform window is created as a
++    // wlr-layer-shell surface (ui::PlatformWindowType::kLayerShell) with
++    // these properties. Wayland only; see
++    // ui/platform_window/platform_window_init_properties.h.
++    std::optional<ui::LayerShellProperties> layer_shell;
+ #endif  // BUILDFLAG(IS_LINUX)
+ 
+     // If true then the widget uses software compositing.
+diff --git a/ui/ozone/platform/wayland/host/wayland_window.cc b/ui/ozone/platform/wayland/host/wayland_window.cc
+--- a/ui/ozone/platform/wayland/host/wayland_window.cc
++++ b/ui/ozone/platform/wayland/host/wayland_window.cc
+@@ -305,8 +305,10 @@ std::optional<WaylandOutput::Id> WaylandWindow::GetPreferredEnteredOutputId() {
+   }
+ 
+   // PlatformWindowType::kPopup are created as toplevel windows as well.
++  // views-shell: kLayerShell windows are anchored to outputs like toplevels.
+   DCHECK(type() == PlatformWindowType::kWindow ||
+-         type() == PlatformWindowType::kPopup);
++         type() == PlatformWindowType::kPopup ||
++         type() == PlatformWindowType::kLayerShell);
+ 
+   WaylandOutput::Id preferred_id = root_surface_->entered_outputs().front();
+   const auto* output_manager = connection_->wayland_output_manager();
+@@ -528,7 +530,8 @@ void WaylandWindow::DumpState(std::ostream& out) const {
+            {PlatformWindowType::kMenu, "menu"},
+            {PlatformWindowType::kTooltip, "tooltip"},
+            {PlatformWindowType::kDrag, "drag"},
+-           {PlatformWindowType::kBubble, "bubble"}});
++           {PlatformWindowType::kBubble, "bubble"},
++           {PlatformWindowType::kLayerShell, "layer_shell"}});
+   out << "type=" << GetMapValueOrDefault(kWindowTypeToString, type_)
+       << ", bounds_in_dip=" << GetBoundsInDIP().ToString()
+       << ", bounds_in_pixels=" << GetBoundsInPixels().ToString()
+diff --git a/ui/ozone/platform/wayland/host/wayland_window.h b/ui/ozone/platform/wayland/host/wayland_window.h
+--- a/ui/ozone/platform/wayland/host/wayland_window.h
++++ b/ui/ozone/platform/wayland/host/wayland_window.h
+@@ -59,6 +59,8 @@ class WaylandWindowDragController;
+ class WaylandFrameManager;
+ class WaylandPopup;
+ class WaylandToplevelWindow;
++// views-shell: a wlr-layer-shell surface window (bar, dock, overlay).
++class WaylandLayerShellWindow;
+ 
+ using WidgetSubsurfaceSet = base::flat_set<std::unique_ptr<WaylandSubsurface>>;
+ 
+@@ -142,7 +144,10 @@ class WaylandWindow : public PlatformWindow,
+   void OnPointerFocusChanged(bool focused);
+ 
+   // Called when the keyboard focus changed on this window.
+-  void OnKeyboardFocusChanged(bool focused);
++  // views-shell: virtual so WaylandLayerShellWindow can additionally deliver
++  // the activation change to its delegate (layer surfaces bypass the
++  // toplevel activation path of WaylandWindowManager).
++  virtual void OnKeyboardFocusChanged(bool focused);
+ 
+   // Called when the text input focus changed on this window.
+   void OnTextInputFocusChanged(bool focused);
+diff --git a/third_party/wayland-protocols/unstable/wlr-layer-shell/wlr-layer-shell-unstable-v1.xml b/third_party/wayland-protocols/unstable/wlr-layer-shell/wlr-layer-shell-unstable-v1.xml
+new file mode 100644
+--- /dev/null
++++ b/third_party/wayland-protocols/unstable/wlr-layer-shell/wlr-layer-shell-unstable-v1.xml
+@@ -0,0 +1,407 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<protocol name="wlr_layer_shell_unstable_v1">
++  <copyright>
++    Copyright © 2017 Drew DeVault
++
++    Permission to use, copy, modify, distribute, and sell this
++    software and its documentation for any purpose is hereby granted
++    without fee, provided that the above copyright notice appear in
++    all copies and that both that copyright notice and this permission
++    notice appear in supporting documentation, and that the name of
++    the copyright holders not be used in advertising or publicity
++    pertaining to distribution of the software without specific,
++    written prior permission.  The copyright holders make no
++    representations about the suitability of this software for any
++    purpose.  It is provided "as is" without express or implied
++    warranty.
++
++    THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
++    SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
++    FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
++    SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++    WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
++    AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
++    ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
++    THIS SOFTWARE.
++  </copyright>
++
++  <interface name="zwlr_layer_shell_v1" version="5">
++    <description summary="create surfaces that are layers of the desktop">
++      Clients can use this interface to assign the surface_layer role to
++      wl_surfaces. Such surfaces are assigned to a "layer" of the output and
++      rendered with a defined z-depth respective to each other. They may also be
++      anchored to the edges and corners of a screen and specify input handling
++      semantics. This interface should be suitable for the implementation of
++      many desktop shell components, and a broad number of other applications
++      that interact with the desktop.
++    </description>
++
++    <request name="get_layer_surface">
++      <description summary="create a layer_surface from a surface">
++        Create a layer surface for an existing surface. This assigns the role of
++        layer_surface, or raises a protocol error if another role is already
++        assigned.
++
++        Creating a layer surface from a wl_surface which has a buffer attached
++        or committed is a client error, and any attempts by a client to attach
++        or manipulate a buffer prior to the first layer_surface.configure call
++        must also be treated as errors.
++
++        After creating a layer_surface object and setting it up, the client
++        must perform an initial commit without any buffer attached.
++        The compositor will reply with a layer_surface.configure event.
++        The client must acknowledge it and is then allowed to attach a buffer
++        to map the surface.
++
++        You may pass NULL for output to allow the compositor to decide which
++        output to use. Generally this will be the one that the user most
++        recently interacted with.
++
++        Clients can specify a namespace that defines the purpose of the layer
++        surface.
++      </description>
++      <arg name="id" type="new_id" interface="zwlr_layer_surface_v1"/>
++      <arg name="surface" type="object" interface="wl_surface"/>
++      <arg name="output" type="object" interface="wl_output" allow-null="true"/>
++      <arg name="layer" type="uint" enum="layer" summary="layer to add this surface to"/>
++      <arg name="scope" type="string" summary="namespace for the layer surface"/>
++    </request>
++
++    <enum name="error">
++      <entry name="role" value="0" summary="wl_surface has another role"/>
++      <entry name="invalid_layer" value="1" summary="layer value is invalid"/>
++      <entry name="already_constructed" value="2" summary="wl_surface has a buffer attached or committed"/>
++    </enum>
++
++    <enum name="layer">
++      <description summary="available layers for surfaces">
++        These values indicate which layers a surface can be rendered in. They
++        are ordered by z depth, bottom-most first. Traditional shell surfaces
++        will typically be rendered between the bottom and top layers.
++        Fullscreen shell surfaces are typically rendered at the top layer.
++        Multiple surfaces can share a single layer, and ordering within a
++        single layer is undefined.
++      </description>
++
++      <entry name="background" value="0"/>
++      <entry name="bottom" value="1"/>
++      <entry name="top" value="2"/>
++      <entry name="overlay" value="3"/>
++    </enum>
++
++    <!-- Version 3 additions -->
++
++    <request name="destroy" type="destructor" since="3">
++      <description summary="destroy the layer_shell object">
++        This request indicates that the client will not use the layer_shell
++        object any more. Objects that have been created through this instance
++        are not affected.
++      </description>
++    </request>
++  </interface>
++
++  <interface name="zwlr_layer_surface_v1" version="5">
++    <description summary="layer metadata interface">
++      An interface that may be implemented by a wl_surface, for surfaces that
++      are designed to be rendered as a layer of a stacked desktop-like
++      environment.
++
++      Layer surface state (layer, size, anchor, exclusive zone,
++      margin, interactivity) is double-buffered, and will be applied at the
++      time wl_surface.commit of the corresponding wl_surface is called.
++
++      Attaching a null buffer to a layer surface unmaps it.
++
++      Unmapping a layer_surface means that the surface cannot be shown by the
++      compositor until it is explicitly mapped again. The layer_surface
++      returns to the state it had right after layer_shell.get_layer_surface.
++      The client can re-map the surface by performing a commit without any
++      buffer attached, waiting for a configure event and handling it as usual.
++    </description>
++
++    <request name="set_size">
++      <description summary="sets the size of the surface">
++        Sets the size of the surface in surface-local coordinates. The
++        compositor will display the surface centered with respect to its
++        anchors.
++
++        If you pass 0 for either value, the compositor will assign it and
++        inform you of the assignment in the configure event. You must set your
++        anchor to opposite edges in the dimensions you omit; not doing so is a
++        protocol error. Both values are 0 by default.
++
++        Size is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="width" type="uint"/>
++      <arg name="height" type="uint"/>
++    </request>
++
++    <request name="set_anchor">
++      <description summary="configures the anchor point of the surface">
++        Requests that the compositor anchor the surface to the specified edges
++        and corners. If two orthogonal edges are specified (e.g. 'top' and
++        'left'), then the anchor point will be the intersection of the edges
++        (e.g. the top left corner of the output); otherwise the anchor point
++        will be centered on that edge, or in the center if none is specified.
++
++        Anchor is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="anchor" type="uint" enum="anchor"/>
++    </request>
++
++    <request name="set_exclusive_zone">
++      <description summary="configures the exclusive geometry of this surface">
++        Requests that the compositor avoids occluding an area with other
++        surfaces. The compositor's use of this information is
++        implementation-dependent - do not assume that this region will not
++        actually be occluded.
++
++        A positive value is only meaningful if the surface is anchored to one
++        edge or an edge and both perpendicular edges. If the surface is not
++        anchored, anchored to only two perpendicular edges (a corner), anchored
++        to only two parallel edges or anchored to all edges, a positive value
++        will be treated the same as zero.
++
++        A positive zone is the distance from the edge in surface-local
++        coordinates to consider exclusive.
++
++        Surfaces that do not wish to have an exclusive zone may instead specify
++        how they should interact with surfaces that do. If set to zero, the
++        surface indicates that it would like to be moved to avoid occluding
++        surfaces with a positive exclusive zone. If set to -1, the surface
++        indicates that it would not like to be moved to accommodate for other
++        surfaces, and the compositor should extend it all the way to the edges
++        it is anchored to.
++
++        For example, a panel might set its exclusive zone to 10, so that
++        maximized shell surfaces are not shown on top of it. A notification
++        might set its exclusive zone to 0, so that it is moved to avoid
++        occluding the panel, but shell surfaces are shown underneath it. A
++        wallpaper or lock screen might set their exclusive zone to -1, so that
++        they stretch below or over the panel.
++
++        The default value is 0.
++
++        Exclusive zone is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="zone" type="int"/>
++    </request>
++
++    <request name="set_margin">
++      <description summary="sets a margin from the anchor point">
++        Requests that the surface be placed some distance away from the anchor
++        point on the output, in surface-local coordinates. Setting this value
++        for edges you are not anchored to has no effect.
++
++        The exclusive zone includes the margin.
++
++        Margin is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="top" type="int"/>
++      <arg name="right" type="int"/>
++      <arg name="bottom" type="int"/>
++      <arg name="left" type="int"/>
++    </request>
++
++    <enum name="keyboard_interactivity">
++      <description summary="types of keyboard interaction possible for a layer shell surface">
++        Types of keyboard interaction possible for layer shell surfaces. The
++        rationale for this is twofold: (1) some applications are not interested
++        in keyboard events and not allowing them to be focused can improve the
++        desktop experience; (2) some applications will want to take exclusive
++        keyboard focus.
++      </description>
++
++      <entry name="none" value="0">
++        <description summary="no keyboard focus is possible">
++          This value indicates that this surface is not interested in keyboard
++          events and the compositor should never assign it the keyboard focus.
++
++          This is the default value, set for newly created layer shell surfaces.
++
++          This is useful for e.g. desktop widgets that display information or
++          only have interaction with non-keyboard input devices.
++        </description>
++      </entry>
++      <entry name="exclusive" value="1">
++        <description summary="request exclusive keyboard focus">
++          Request exclusive keyboard focus if this surface is above the shell surface layer.
++
++          For the top and overlay layers, the seat will always give
++          exclusive keyboard focus to the top-most layer which has keyboard
++          interactivity set to exclusive. If this layer contains multiple
++          surfaces with keyboard interactivity set to exclusive, the compositor
++          determines the one receiving keyboard events in an implementation-
++          defined manner. In this case, no guarantee is made when this surface
++          will receive keyboard focus (if ever).
++
++          For the bottom and background layers, the compositor is allowed to use
++          normal focus semantics.
++
++          This setting is mainly intended for applications that need to ensure
++          they receive all keyboard events, such as a lock screen or a password
++          prompt.
++        </description>
++      </entry>
++      <entry name="on_demand" value="2" since="4">
++        <description summary="request regular keyboard focus semantics">
++          This requests the compositor to allow this surface to be focused and
++          unfocused by the user in an implementation-defined manner. The user
++          should be able to unfocus this surface even regardless of the layer
++          it is on.
++
++          Typically, the compositor will want to use its normal mechanism to
++          manage keyboard focus between layer shell surfaces with this setting
++          and regular toplevels on the desktop layer (e.g. click to focus).
++          Nevertheless, it is possible for a compositor to require a special
++          interaction to focus or unfocus layer shell surfaces (e.g. requiring
++          a click even if focus follows the mouse normally, or providing a
++          keybinding to switch focus between layers).
++
++          This setting is mainly intended for desktop shell components (e.g.
++          panels) that allow keyboard interaction. Using this option can allow
++          implementing a desktop shell that can be fully usable without the
++          mouse.
++        </description>
++      </entry>
++    </enum>
++
++    <request name="set_keyboard_interactivity">
++      <description summary="requests keyboard events">
++        Set how keyboard events are delivered to this surface. By default,
++        layer shell surfaces do not receive keyboard events; this request can
++        be used to change this.
++
++        This setting is inherited by child surfaces set by the get_popup
++        request.
++
++        Layer surfaces receive pointer, touch, and tablet events normally. If
++        you do not want to receive them, set the input region on your surface
++        to an empty region.
++
++        Keyboard interactivity is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="keyboard_interactivity" type="uint" enum="keyboard_interactivity"/>
++    </request>
++
++    <request name="get_popup">
++      <description summary="assign this layer_surface as an xdg_popup parent">
++        This assigns an xdg_popup's parent to this layer_surface.  This popup
++        should have been created via xdg_surface::get_popup with the parent set
++        to NULL, and this request must be invoked before committing the popup's
++        initial state.
++
++        See the documentation of xdg_popup for more details about what an
++        xdg_popup is and how it is used.
++      </description>
++      <arg name="popup" type="object" interface="xdg_popup"/>
++    </request>
++
++    <request name="ack_configure">
++      <description summary="ack a configure event">
++        When a configure event is received, if a client commits the
++        surface in response to the configure event, then the client
++        must make an ack_configure request sometime before the commit
++        request, passing along the serial of the configure event.
++
++        If the client receives multiple configure events before it
++        can respond to one, it only has to ack the last configure event.
++
++        A client is not required to commit immediately after sending
++        an ack_configure request - it may even ack_configure several times
++        before its next surface commit.
++
++        A client may send multiple ack_configure requests before committing, but
++        only the last request sent before a commit indicates which configure
++        event the client really is responding to.
++      </description>
++      <arg name="serial" type="uint" summary="the serial from the configure event"/>
++    </request>
++
++    <request name="destroy" type="destructor">
++      <description summary="destroy the layer_surface">
++        This request destroys the layer surface.
++      </description>
++    </request>
++
++    <event name="configure">
++      <description summary="suggest a surface change">
++        The configure event asks the client to resize its surface.
++
++        Clients should arrange their surface for the new states, and then send
++        an ack_configure request with the serial sent in this configure event at
++        some point before committing the new surface.
++
++        The client is free to dismiss all but the last configure event it
++        received.
++
++        The width and height arguments specify the size of the window in
++        surface-local coordinates.
++
++        The size is a hint, in the sense that the client is free to ignore it if
++        it doesn't resize, pick a smaller size (to satisfy aspect ratio or
++        resize in steps of NxM pixels). If the client picks a smaller size and
++        is anchored to two opposite anchors (e.g. 'top' and 'bottom'), the
++        surface will be centered on this axis.
++
++        If the width or height arguments are zero, it means the client should
++        decide its own window dimension.
++      </description>
++      <arg name="serial" type="uint"/>
++      <arg name="width" type="uint"/>
++      <arg name="height" type="uint"/>
++    </event>
++
++    <event name="closed">
++      <description summary="surface should be closed">
++        The closed event is sent by the compositor when the surface will no
++        longer be shown. The output may have been destroyed or the user may
++        have asked for it to be removed. Further changes to the surface will be
++        ignored. The client should destroy the resource after receiving this
++        event, and create a new surface if they so choose.
++      </description>
++    </event>
++
++    <enum name="error">
++      <entry name="invalid_surface_state" value="0" summary="provided surface state is invalid"/>
++      <entry name="invalid_size" value="1" summary="size is invalid"/>
++      <entry name="invalid_anchor" value="2" summary="anchor bitfield is invalid"/>
++      <entry name="invalid_keyboard_interactivity" value="3" summary="keyboard interactivity is invalid"/>
++      <entry name="invalid_exclusive_edge" value="4" summary="exclusive edge is invalid given the surface anchors"/>
++    </enum>
++
++    <enum name="anchor" bitfield="true">
++      <entry name="top" value="1" summary="the top edge of the anchor rectangle"/>
++      <entry name="bottom" value="2" summary="the bottom edge of the anchor rectangle"/>
++      <entry name="left" value="4" summary="the left edge of the anchor rectangle"/>
++      <entry name="right" value="8" summary="the right edge of the anchor rectangle"/>
++    </enum>
++
++    <!-- Version 2 additions -->
++
++    <request name="set_layer" since="2">
++      <description summary="change the layer of the surface">
++        Change the layer that the surface is rendered on.
++
++        Layer is double-buffered, see wl_surface.commit.
++      </description>
++      <arg name="layer" type="uint" enum="zwlr_layer_shell_v1.layer" summary="layer to move this surface to"/>
++    </request>
++
++    <!-- Version 5 additions -->
++
++    <request name="set_exclusive_edge" since="5">
++      <description summary="set the edge the exclusive zone will be applied to">
++        Requests an edge for the exclusive zone to apply. The exclusive
++        edge will be automatically deduced from anchor points when possible,
++        but when the surface is anchored to a corner, it will be necessary
++        to set it explicitly to disambiguate, as it is not possible to deduce
++        which one of the two corner edges should be used.
++
++        The edge must be one the surface is anchored to, otherwise the
++        invalid_exclusive_edge protocol error will be raised.
++      </description>
++      <arg name="edge" type="uint" enum="anchor"/>
++    </request>
++  </interface>
++</protocol>
+diff --git a/ui/ozone/platform/wayland/host/wayland_layer_shell.h b/ui/ozone/platform/wayland/host/wayland_layer_shell.h
+new file mode 100644
+--- /dev/null
++++ b/ui/ozone/platform/wayland/host/wayland_layer_shell.h
+@@ -0,0 +1,72 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++//
++// views-shell: re-cut at 154.0.8037.92 from the lifted cowl/agency substrate
++// (views-shell repo shell/ozone/layer_shell/, see PROVENANCE.md there). The
++// lift's ENABLE_COWL_LAYER_SHELL buildflag is dropped: views-shell has no
++// //cowl or //agency tree, so this code compiles unconditionally on
++// Ozone/Wayland.
++//
++// Wraps the zwlr_layer_shell_v1 Wayland global, which allows clients to
++// create layer surfaces anchored to output edges at specific z-layers.
++// Uses the GlobalObjectRegistrar<T> pattern (like overlay_prioritizer.h)
++// since layer-shell is an optional compositor extension.
++
++#ifndef UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_H_
++#define UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_H_
++
++#include <cstdint>
++#include <string>
++
++#include "base/component_export.h"
++#include "ui/ozone/platform/wayland/common/wayland_object.h"
++
++namespace ui {
++
++class WaylandConnection;
++
++// Wraps the zwlr_layer_shell_v1 global, which provides the ability to
++// create layer surfaces. Layer surfaces are rendered at a specific z-depth
++// relative to normal windows and can be anchored to output edges.
++//
++// This global is optional: not all compositors support wlr-layer-shell.
++// When unavailable, WaylandConnection::layer_shell() returns nullptr and
++// kLayerShell windows cannot be created.
++class COMPONENT_EXPORT(OZONE) WaylandLayerShell
++    : public wl::GlobalObjectRegistrar<WaylandLayerShell> {
++ public:
++  static constexpr char kInterfaceName[] = "zwlr_layer_shell_v1";
++  static constexpr uint32_t kMinVersion = 1;
++  static constexpr uint32_t kMaxVersion = 5;
++
++  static void Instantiate(WaylandConnection* connection,
++                          wl_registry* registry,
++                          uint32_t name,
++                          const std::string& interface,
++                          uint32_t version);
++
++  WaylandLayerShell(zwlr_layer_shell_v1* layer_shell,
++                    WaylandConnection* connection);
++  WaylandLayerShell(const WaylandLayerShell&) = delete;
++  WaylandLayerShell& operator=(const WaylandLayerShell&) = delete;
++  ~WaylandLayerShell();
++
++  // Returns the underlying protocol object for creating layer surfaces.
++  zwlr_layer_shell_v1* wl_object() const { return layer_shell_.get(); }
++
++  // The negotiated protocol version (1-5). Determines available features:
++  //   v2: set_layer (dynamic layer change)
++  //   v3: global destroy
++  //   v4: on_demand keyboard interactivity
++  //   v5: set_exclusive_edge
++  uint32_t version() const { return version_; }
++
++ private:
++  wl::Object<zwlr_layer_shell_v1> layer_shell_;
++  uint32_t version_ = 0;
++};
++
++}  // namespace ui
++
++#endif  // UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_H_
+diff --git a/ui/ozone/platform/wayland/host/wayland_layer_shell.cc b/ui/ozone/platform/wayland/host/wayland_layer_shell.cc
+new file mode 100644
+--- /dev/null
++++ b/ui/ozone/platform/wayland/host/wayland_layer_shell.cc
+@@ -0,0 +1,66 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++//
++// views-shell: re-cut at 154.0.8037.92 from the lifted cowl/agency substrate
++// (views-shell repo shell/ozone/layer_shell/, see PROVENANCE.md there). The
++// lift's ENABLE_COWL_LAYER_SHELL buildflag is dropped.
++//
++// Binds zwlr_layer_shell_v1 from the Wayland registry using the
++// GlobalObjectRegistrar<T> pattern. The bound version is clamped to
++// kMaxVersion (5) to ensure forward compatibility.
++
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell.h"
++
++// 'namespace' is a C++ keyword but used as a parameter name in the
++// wlr-layer-shell protocol XML.  Work around the generated C header.
++#define namespace namespace_
++#include <wlr-layer-shell-unstable-v1-client-protocol.h>
++#undef namespace
++
++#include <algorithm>
++
++#include "base/check_op.h"
++#include "base/logging.h"
++#include "ui/ozone/platform/wayland/host/wayland_connection.h"
++
++namespace ui {
++
++// static
++constexpr char WaylandLayerShell::kInterfaceName[];
++
++// static
++void WaylandLayerShell::Instantiate(WaylandConnection* connection,
++                                    wl_registry* registry,
++                                    uint32_t name,
++                                    const std::string& interface,
++                                    uint32_t version) {
++  CHECK_EQ(interface, kInterfaceName);
++
++  if (connection->layer_shell_ ||
++      !wl::CanBind(interface, version, kMinVersion, kMaxVersion)) {
++    return;
++  }
++
++  auto bound_version = std::min(version, kMaxVersion);
++  auto layer_shell =
++      wl::Bind<zwlr_layer_shell_v1>(registry, name, bound_version);
++  if (!layer_shell) {
++    LOG(ERROR) << "Failed to bind zwlr_layer_shell_v1";
++    return;
++  }
++
++  connection->layer_shell_ = std::make_unique<WaylandLayerShell>(
++      layer_shell.release(), connection);
++}
++
++WaylandLayerShell::WaylandLayerShell(zwlr_layer_shell_v1* layer_shell,
++                                     WaylandConnection* connection)
++    : layer_shell_(layer_shell),
++      version_(zwlr_layer_shell_v1_get_version(layer_shell_.get())) {
++  VLOG(1) << "Bound zwlr_layer_shell_v1 version " << version_;
++}
++
++WaylandLayerShell::~WaylandLayerShell() = default;
++
++}  // namespace ui
+diff --git a/ui/ozone/platform/wayland/host/wayland_layer_shell_window.h b/ui/ozone/platform/wayland/host/wayland_layer_shell_window.h
+new file mode 100644
+--- /dev/null
++++ b/ui/ozone/platform/wayland/host/wayland_layer_shell_window.h
+@@ -0,0 +1,177 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++//
++// views-shell: re-cut at 154.0.8037.92 from the lifted cowl/agency substrate
++// (views-shell repo shell/ozone/layer_shell/, see PROVENANCE.md there). The
++// lift's ENABLE_COWL_LAYER_SHELL buildflag is dropped, and the optional
++// ext-background-effect blur (SetBlurRegion) is trimmed: this re-cut carries
++// the layer-shell state machine only.
++//
++// WaylandLayerShellWindow is a sibling to WaylandToplevelWindow in the
++// WaylandWindow class hierarchy. It creates a zwlr_layer_surface_v1 role
++// instead of xdg_toplevel, enabling shell content to be rendered as desktop
++// shell components (bars, docks, OSDs, overlays, notifications).
++//
++// The critical implementation detail is the configure-before-buffer state
++// machine: buffers must NOT be attached until the compositor sends the first
++// configure event. This is enforced by IsSurfaceConfigured() returning false
++// until the first configure+ack cycle completes.
++
++#ifndef UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_WINDOW_H_
++#define UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_WINDOW_H_
++
++#include <cstdint>
++#include <memory>
++#include <optional>
++#include <string>
++
++#include "base/component_export.h"
++#include "base/memory/weak_ptr.h"
++#include "ui/gfx/geometry/insets.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/ozone/platform/wayland/common/wayland_object.h"
++#include "ui/ozone/platform/wayland/host/wayland_window.h"
++#include "ui/platform_window/platform_window_init_properties.h"
++
++struct zwlr_layer_surface_v1;
++
++namespace ui {
++
++class WaylandConnection;
++
++// A WaylandWindow subclass that creates a layer-shell surface using the
++// zwlr_layer_shell_v1 protocol. Layer surfaces are anchored to output
++// edges and rendered at specific z-layers (background, bottom, top, overlay).
++//
++// This is used by views-shell to render shell content as desktop shell
++// components (bars, docks, OSDs, overlays). Rule R1: Views draws only on
++// layer-shell surfaces and their xdg_popup children.
++//
++// Property changes are double-buffered and take effect on the next
++// wl_surface.commit, matching the Wayland protocol semantics.
++class COMPONENT_EXPORT(OZONE) WaylandLayerShellWindow : public WaylandWindow {
++ public:
++  WaylandLayerShellWindow(PlatformWindowDelegate* delegate,
++                          WaylandConnection* connection);
++  WaylandLayerShellWindow(const WaylandLayerShellWindow&) = delete;
++  WaylandLayerShellWindow& operator=(const WaylandLayerShellWindow&) = delete;
++  ~WaylandLayerShellWindow() override;
++
++  // Layer-shell property setters. Can be called after creation.
++  // Changes are double-buffered and take effect on next wl_surface.commit.
++  void SetLayer(LayerShellLayer layer);
++  void SetAnchor(uint32_t anchor_bitfield);
++  void SetExclusiveZone(int32_t zone);
++  void SetMargin(int32_t top, int32_t right, int32_t bottom, int32_t left);
++  void SetKeyboardInteractivity(LayerShellKeyboardInteractivity mode);
++
++  // Read-only accessor for the raw zwlr_layer_surface_v1 role object so
++  // xdg_popup.cc can parent an xdg_popup onto this layer surface via
++  // zwlr_layer_surface_v1_get_popup(). Pure const getter over the existing
++  // private handle -- it reads state, never mutates, and does not
++  // participate in the configure-before-buffer chain.
++  zwlr_layer_surface_v1* layer_surface() const { return layer_surface_.get(); }
++
++  // WaylandWindow override: down-cast used by GetXdgParentWindow() and
++  // XdgPopup::Initialize() to recognise a layer-shell parent.
++  WaylandLayerShellWindow* AsWaylandLayerShellWindow() override;
++
++  // WaylandWindow overrides:
++  void HandleSurfaceConfigure(uint32_t serial) override;
++  void OnSequencePoint(int64_t seq) override;
++  bool IsSurfaceConfigured() override;
++  void AckConfigure(uint32_t serial) override;
++
++  bool OnInitialize(PlatformWindowInitProperties properties,
++                    PlatformWindowDelegate::State* state) override;
++
++  void Show(bool inactive) override;
++  void Hide() override;
++  bool IsVisible() const override;
++  bool IsActive() const override;
++
++  // Layer surfaces are excluded from the WaylandToplevelWindow activation
++  // machinery (WaylandWindowManager's UpdateToplevelActivation only refreshes
++  // toplevel roots), so the aura WindowTreeHost is never told the surface
++  // became active when the compositor grants it keyboard focus. Without that
++  // activation the widget's FocusController never activates the content
++  // window, and KeyEvents dispatched to this host's WindowEventDispatcher are
++  // dropped. Override the keyboard-focus hook to additionally deliver the
++  // activation change to our delegate.
++  void OnKeyboardFocusChanged(bool focused) override;
++
++  void SetTitle(const std::u16string& title) override;
++
++  // These are no-ops for layer surfaces: the compositor manages
++  // positioning and stacking. Layer surfaces do not have window states.
++  void SetFullscreen(bool fullscreen, int64_t target_display_id) override {}
++  void Maximize() override {}
++  void Minimize() override {}
++  void Restore() override {}
++
++  void Activate() override;
++  void SetWindowIcons(const gfx::ImageSkia& window_icon,
++                      const gfx::ImageSkia& app_icon) override {}
++  void SizeConstraintsChanged() override {}
++  bool ShouldUpdateWindowShape() const override;
++  void SetWindowGeometry(const PlatformWindowDelegate::State& state) override;
++  std::string GetWindowUniqueId() const override;
++
++  base::WeakPtr<WaylandWindow> AsWeakPtr() override;
++  void DumpState(std::ostream& out) const override;
++
++ private:
++  // Creates the zwlr_layer_surface_v1 protocol object from the existing
++  // wl_surface, sets all initial properties, and performs the empty commit
++  // required before the compositor sends the first configure event.
++  bool CreateLayerSurface();
++
++  // Destroys the layer surface and resets configuration state.
++  // Called from Hide() and the destructor.
++  void DestroyLayerSurface();
++
++  // WaylandWindow protected override:
++  void UpdateWindowMask() override;
++
++  // zwlr_layer_surface_v1 listener callbacks (static, C-style).
++  static void OnConfigure(void* data,
++                          zwlr_layer_surface_v1* surface,
++                          uint32_t serial,
++                          uint32_t width,
++                          uint32_t height);
++  static void OnClosed(void* data,
++                       zwlr_layer_surface_v1* surface);
++
++  // Layer-shell protocol object. Created in Show(), destroyed in Hide().
++  wl::Object<zwlr_layer_surface_v1> layer_surface_;
++
++  // Configure state machine flag. Set true after the first configure+ack
++  // cycle completes. Gates IsSurfaceConfigured() which prevents buffer
++  // submission before the compositor has agreed on a size.
++  bool is_configured_ = false;
++
++  // The size assigned by the compositor in the most recent configure event.
++  // For stretched dimensions (anchored to opposite edges), the compositor
++  // provides the actual pixel size. Stored in surface-local coordinates.
++  gfx::Size configured_size_;
++
++  // Layer-shell properties stored from init and dynamic updates.
++  LayerShellLayer layer_ = LayerShellLayer::kTop;
++  uint32_t anchor_ = kLayerShellAnchorNone;
++  int32_t exclusive_zone_ = 0;
++  LayerShellKeyboardInteractivity keyboard_interactivity_ =
++      LayerShellKeyboardInteractivity::kNone;
++  gfx::Insets margin_;
++  std::string layer_namespace_;
++
++  // Target output. std::nullopt means compositor picks (NULL in protocol).
++  std::optional<int64_t> target_output_id_;
++
++  base::WeakPtrFactory<WaylandLayerShellWindow> weak_ptr_factory_{this};
++};
++
++}  // namespace ui
++
++#endif  // UI_OZONE_PLATFORM_WAYLAND_HOST_WAYLAND_LAYER_SHELL_WINDOW_H_
+diff --git a/ui/ozone/platform/wayland/host/wayland_layer_shell_window.cc b/ui/ozone/platform/wayland/host/wayland_layer_shell_window.cc
+new file mode 100644
+--- /dev/null
++++ b/ui/ozone/platform/wayland/host/wayland_layer_shell_window.cc
+@@ -0,0 +1,612 @@
++// Copyright 2026 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++//
++// views-shell: re-cut at 154.0.8037.92 from the lifted cowl/agency substrate
++// (views-shell repo shell/ozone/layer_shell/wayland_layer_shell_window.cc,
++// see PROVENANCE.md there). The lift's ENABLE_COWL_LAYER_SHELL buildflag is
++// dropped and the optional ext-background-effect blur is trimmed; the
++// configure-before-buffer state machine is unchanged. Do not re-stub any of
++// this state machine on a future re-cut -- the configure-before-buffer gate
++// below is the one invariant that, if dropped, reproduces the historical
++// "black screen" regression (buffers attached before the first configure ack
++// reaches the compositor).
++//
++// Implements the WaylandLayerShellWindow class, a WaylandWindow subclass
++// that uses the zwlr_layer_shell_v1 protocol to create desktop shell
++// surfaces (bars, docks, overlays, etc.).
++//
++// Key implementation details:
++// 1. Configure-before-buffer: CreateLayerSurface() performs an empty commit,
++//    then waits for OnConfigure before allowing frame submission.
++// 2. Constrained sizing: When anchored to opposite edges, that dimension
++//    is set to 0 and the compositor determines the actual size.
++// 3. Dynamic property updates: All setters check if layer_surface_ exists
++//    and send protocol requests immediately (double-buffered by Wayland).
++// 4. Protocol version guards: set_layer (v2+) and on_demand keyboard (v4+)
++//    are guarded by version checks.
++
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell_window.h"
++
++#include <wayland-client-protocol.h>
++// 'namespace' is a C++ keyword but used as a parameter name in the
++// wlr-layer-shell protocol XML.  Work around the generated C header.
++#define namespace namespace_
++#include <wlr-layer-shell-unstable-v1-client-protocol.h>
++#undef namespace
++
++#include <algorithm>
++#include <ostream>
++#include <utility>
++
++#include "base/check.h"
++#include "base/logging.h"
++#include "ui/gfx/geometry/rect.h"
++#include "ui/gfx/geometry/size.h"
++#include "ui/ozone/platform/wayland/host/wayland_connection.h"
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell.h"
++#include "ui/ozone/platform/wayland/host/wayland_output.h"
++#include "ui/ozone/platform/wayland/host/wayland_output_manager.h"
++#include "ui/ozone/platform/wayland/host/wayland_surface.h"
++#include "ui/ozone/platform/wayland/host/wayland_window_manager.h"
++#include "ui/platform_window/platform_window_delegate.h"
++
++namespace ui {
++
++namespace {
++
++// Convert the LayerShellLayer enum to the Wayland protocol constant.
++uint32_t ToWaylandLayer(LayerShellLayer layer) {
++  switch (layer) {
++    case LayerShellLayer::kBackground:
++      return ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND;
++    case LayerShellLayer::kBottom:
++      return ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM;
++    case LayerShellLayer::kTop:
++      return ZWLR_LAYER_SHELL_V1_LAYER_TOP;
++    case LayerShellLayer::kOverlay:
++      return ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY;
++  }
++  return ZWLR_LAYER_SHELL_V1_LAYER_TOP;
++}
++
++// Convert the anchor bitmask to the Wayland protocol anchor bitmask.
++// views-shell uses: top=1, bottom=2, left=4, right=8
++// Protocol uses: top=1, bottom=2, left=4, right=8 (same values)
++uint32_t ToWaylandAnchor(uint32_t anchor) {
++  uint32_t wl = 0;
++  if (anchor & kLayerShellAnchorTop)
++    wl |= ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP;
++  if (anchor & kLayerShellAnchorBottom)
++    wl |= ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;
++  if (anchor & kLayerShellAnchorLeft)
++    wl |= ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT;
++  if (anchor & kLayerShellAnchorRight)
++    wl |= ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
++  return wl;
++}
++
++// Compute the size to send to the compositor via set_size.
++//
++// Protocol rules:
++// - If anchored to both left+right, width MUST be 0 (compositor decides
++//   based on output width minus margins).
++// - If anchored to both top+bottom, height MUST be 0 (same logic).
++// - If NOT anchored to opposite edges on an axis, that dimension MUST be
++//   non-zero (the client specifies the desired size).
++gfx::Size ConstrainedSize(uint32_t anchor, const gfx::Size& requested_size) {
++  int width = requested_size.width();
++  int height = requested_size.height();
++
++  const bool anchored_left = anchor & kLayerShellAnchorLeft;
++  const bool anchored_right = anchor & kLayerShellAnchorRight;
++  const bool anchored_top = anchor & kLayerShellAnchorTop;
++  const bool anchored_bottom = anchor & kLayerShellAnchorBottom;
++
++  if (anchored_left && anchored_right) {
++    width = 0;  // Compositor decides width.
++  } else if (width <= 0) {
++    width = 1;  // Protocol requires non-zero if not stretched.
++  }
++
++  if (anchored_top && anchored_bottom) {
++    height = 0;  // Compositor decides height.
++  } else if (height <= 0) {
++    height = 1;  // Protocol requires non-zero if not stretched.
++  }
++
++  return gfx::Size(width, height);
++}
++
++}  // namespace
++
++// ---------------------------------------------------------------------------
++// Construction / Destruction
++// ---------------------------------------------------------------------------
++
++WaylandLayerShellWindow::WaylandLayerShellWindow(
++    PlatformWindowDelegate* delegate,
++    WaylandConnection* connection)
++    : WaylandWindow(delegate, connection) {}
++
++WaylandLayerShellWindow::~WaylandLayerShellWindow() {
++  DestroyLayerSurface();
++}
++
++// ---------------------------------------------------------------------------
++// OnInitialize: Store properties from PlatformWindowInitProperties
++// ---------------------------------------------------------------------------
++
++bool WaylandLayerShellWindow::OnInitialize(
++    PlatformWindowInitProperties properties,
++    PlatformWindowDelegate::State* state) {
++  // Layer surfaces don't have window states like maximized/minimized.
++  state->window_state = PlatformWindowState::kNormal;
++
++  // Store layer-shell specific properties for later use in CreateLayerSurface.
++  layer_ = properties.layer_shell_layer;
++  anchor_ = properties.layer_shell_anchor;
++  exclusive_zone_ = properties.layer_shell_exclusive_zone;
++  keyboard_interactivity_ = properties.layer_shell_keyboard_interactivity;
++  margin_ = gfx::Insets::TLBR(properties.layer_shell_margin_top,
++                              properties.layer_shell_margin_left,
++                              properties.layer_shell_margin_bottom,
++                              properties.layer_shell_margin_right);
++  layer_namespace_ = std::move(properties.layer_shell_namespace);
++  target_output_id_ = properties.layer_shell_output_id;
++
++  return true;
++}
++
++// ---------------------------------------------------------------------------
++// CreateLayerSurface: Protocol object setup + empty commit
++// ---------------------------------------------------------------------------
++
++bool WaylandLayerShellWindow::CreateLayerSurface() {
++  auto* layer_shell = connection()->layer_shell();
++  if (!layer_shell) {
++    LOG(ERROR) << "Compositor does not support zwlr_layer_shell_v1. "
++               << "Cannot create layer shell window.";
++    return false;
++  }
++
++  // Resolve the target wl_output, if specified.
++  // NULL means the compositor picks (typically the most recently focused
++  // output).
++  wl_output* wl_output_obj = nullptr;
++  if (target_output_id_.has_value()) {
++    auto* output_manager = connection()->wayland_output_manager();
++    if (output_manager) {
++      auto* output = output_manager->GetOutput(
++          static_cast<WaylandOutput::Id>(target_output_id_.value()));
++      if (output) {
++        wl_output_obj = output->get_output();
++      } else {
++        LOG(WARNING) << "Requested output " << target_output_id_.value()
++                     << " not found, falling back to compositor pick";
++      }
++    }
++  }
++
++  // Create the layer surface from the existing wl_surface.
++  // The root_surface is created by WaylandWindow::Initialize() before
++  // OnInitialize() is called, so it is guaranteed to exist.
++  layer_surface_.reset(zwlr_layer_shell_v1_get_layer_surface(
++      layer_shell->wl_object(),
++      root_surface()->surface(),
++      wl_output_obj,
++      ToWaylandLayer(layer_),
++      layer_namespace_.c_str()));
++  if (!layer_surface_) {
++    LOG(ERROR) << "Failed to create zwlr_layer_surface_v1";
++    return false;
++  }
++
++  // Set up listener for configure and close events.
++  static constexpr zwlr_layer_surface_v1_listener kLayerSurfaceListener = {
++      .configure = &OnConfigure,
++      .closed = &OnClosed,
++  };
++  zwlr_layer_surface_v1_add_listener(
++      layer_surface_.get(), &kLayerSurfaceListener, this);
++
++  // --- Set all properties before the initial empty commit ---
++
++  // Size: Apply constraint rules (0 for stretched dimensions).
++  gfx::Size constrained =
++      ConstrainedSize(anchor_, GetBoundsInDIP().size());
++  zwlr_layer_surface_v1_set_size(
++      layer_surface_.get(), constrained.width(), constrained.height());
++
++  // Anchor: Bitmask of edges this surface attaches to.
++  zwlr_layer_surface_v1_set_anchor(
++      layer_surface_.get(), ToWaylandAnchor(anchor_));
++
++  // Exclusive zone: Pixels reserved along the anchored edge.
++  // 0 = no reservation, -1 = don't move for other surfaces' zones.
++  zwlr_layer_surface_v1_set_exclusive_zone(
++      layer_surface_.get(), exclusive_zone_);
++
++  // Margins: Offset from anchored edges (top, right, bottom, left).
++  zwlr_layer_surface_v1_set_margin(
++      layer_surface_.get(),
++      margin_.top(), margin_.right(), margin_.bottom(), margin_.left());
++
++  // Keyboard interactivity: none, exclusive, or on_demand.
++  // The on_demand value (2) was added in protocol version 4. Sending it to
++  // a pre-v4 compositor raises an invalid_keyboard_interactivity error.
++  // Fall back to kNone if on_demand is requested but unsupported.
++  {
++    auto effective_mode = keyboard_interactivity_;
++    if (effective_mode == LayerShellKeyboardInteractivity::kOnDemand &&
++        zwlr_layer_surface_v1_get_version(layer_surface_.get()) < 4) {
++      LOG(WARNING) << "on_demand keyboard interactivity requires layer-shell "
++                   << "v4+, falling back to none";
++      effective_mode = LayerShellKeyboardInteractivity::kNone;
++    }
++    zwlr_layer_surface_v1_set_keyboard_interactivity(
++        layer_surface_.get(), static_cast<uint32_t>(effective_mode));
++  }
++
++  // CRITICAL: Perform the initial empty commit (no buffer attached).
++  // The compositor will respond with a configure event containing the
++  // actual size this surface should use. Only after acking that configure
++  // may we attach a buffer (enforced by IsSurfaceConfigured()).
++  UpdateWindowMask();
++  root_surface()->Commit(/*flush=*/true);
++
++  connection()->Flush();
++
++  VLOG(1) << "Created layer surface: namespace=" << layer_namespace_
++          << " layer=" << static_cast<int>(layer_)
++          << " anchor=0x" << std::hex << anchor_ << std::dec
++          << " exclusive_zone=" << exclusive_zone_;
++
++  return true;
++}
++
++// ---------------------------------------------------------------------------
++// DestroyLayerSurface
++// ---------------------------------------------------------------------------
++
++void WaylandLayerShellWindow::DestroyLayerSurface() {
++  if (layer_surface_) {
++    layer_surface_.reset();
++    is_configured_ = false;
++    configured_size_ = gfx::Size();
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Show / Hide / Visibility
++// ---------------------------------------------------------------------------
++
++void WaylandLayerShellWindow::Show(bool inactive) {
++  if (layer_surface_) {
++    return;  // Already shown.
++  }
++
++  if (!CreateLayerSurface()) {
++    Close();
++    return;
++  }
++
++  UpdateWindowScale(false);
++  WaylandWindow::Show(inactive);
++}
++
++void WaylandLayerShellWindow::Hide() {
++  if (!layer_surface_) {
++    return;
++  }
++
++  DestroyLayerSurface();
++  WaylandWindow::Hide();
++
++  // Clear any pending configure serials since the surface is gone.
++  ClearInFlightRequestsSerial();
++
++  connection()->Flush();
++}
++
++bool WaylandLayerShellWindow::IsVisible() const {
++  return !!layer_surface_;
++}
++
++bool WaylandLayerShellWindow::IsActive() const {
++  // Layer surfaces are "active" when they have keyboard focus.
++  // This is determined by the compositor based on the keyboard_interactivity
++  // setting and user interaction.
++  return HasKeyboardFocus();
++}
++
++void WaylandLayerShellWindow::OnKeyboardFocusChanged(bool focused) {
++  // Preserve the base behavior (notifies the FocusClient of the raw keyboard
++  // focus change).
++  WaylandWindow::OnKeyboardFocusChanged(focused);
++
++  // Drive aura activation from keyboard focus for layer surfaces.
++  // WaylandToplevelWindow reports activation to its delegate from
++  // UpdateActivationState(), which is only reached via the window manager's
++  // UpdateToplevelActivation() -- and that helper resolves the focused
++  // window's root through AsWaylandToplevelWindow(), which returns nullptr
++  // for a layer surface. As a result no activation ever reaches this window's
++  // DesktopWindowTreeHostPlatform, its widget is never activated, no aura
++  // window is focused in this host's dispatcher, and KeyEvents targeted at
++  // the surface are dropped before they can reach the focused control.
++  // Deliver the activation change here so the widget's FocusController
++  // activates the content window. IsActive() (== HasKeyboardFocus()) already
++  // reports the matching state to any subsequent query.
++  delegate()->OnActivationChanged(focused);
++}
++
++// ---------------------------------------------------------------------------
++// No-op overrides for operations that don't apply to layer surfaces
++// ---------------------------------------------------------------------------
++
++void WaylandLayerShellWindow::SetTitle(const std::u16string& title) {
++  // Layer surfaces don't have titles. No-op.
++}
++
++void WaylandLayerShellWindow::Activate() {
++  // Layer surface activation is managed by the compositor based on the
++  // keyboard_interactivity setting. The client cannot request activation.
++}
++
++// ---------------------------------------------------------------------------
++// Window geometry and identity
++// ---------------------------------------------------------------------------
++
++bool WaylandLayerShellWindow::ShouldUpdateWindowShape() const {
++  // Layer surfaces are typically rectangular and don't use CSD shapes.
++  return false;
++}
++
++std::string WaylandLayerShellWindow::GetWindowUniqueId() const {
++  return layer_namespace_;
++}
++
++void WaylandLayerShellWindow::SetWindowGeometry(
++    const PlatformWindowDelegate::State& state) {
++  // Layer surfaces don't use xdg window geometry. The size is controlled
++  // via set_size and the configure response. When the caller changes
++  // bounds, we translate that into a set_size request.
++  if (layer_surface_) {
++    gfx::Size constrained =
++        ConstrainedSize(anchor_, state.bounds_dip.size());
++    zwlr_layer_surface_v1_set_size(
++        layer_surface_.get(), constrained.width(), constrained.height());
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Configure state machine
++// ---------------------------------------------------------------------------
++
++void WaylandLayerShellWindow::HandleSurfaceConfigure(uint32_t serial) {
++  // Process the pending configure state through the standard pipeline.
++  // This queues the state change which will be applied when the frame
++  // callback fires (or immediately if no frame is in flight).
++  ProcessPendingConfigureState(serial);
++}
++
++void WaylandLayerShellWindow::OnSequencePoint(int64_t seq) {
++  if (!layer_surface_) {
++    return;
++  }
++  ProcessSequencePoint(seq);
++  MaybeApplyLatestStateRequest(/*force=*/false);
++}
++
++bool WaylandLayerShellWindow::IsSurfaceConfigured() {
++  // This is the critical gate that prevents buffers from being attached
++  // before the compositor has sent the first configure.
++  // Returning false here causes WaylandWindow to defer buffer attachment.
++  return is_configured_;
++}
++
++void WaylandLayerShellWindow::AckConfigure(uint32_t serial) {
++  if (!layer_surface_) {
++    return;
++  }
++
++  // Send the ack to the compositor, which allows us to attach buffers.
++  zwlr_layer_surface_v1_ack_configure(layer_surface_.get(), serial);
++
++  if (!is_configured_) {
++    // First configure: transition the state machine to "configured".
++    // After this point, IsSurfaceConfigured() returns true and frames
++    // can be submitted and buffers attached.
++    is_configured_ = true;
++    connection()->window_manager()->NotifyWindowConfigured(this);
++    VLOG(1) << "Layer surface configured: " << layer_namespace_
++            << " size=" << configured_size_.ToString();
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Misc overrides
++// ---------------------------------------------------------------------------
++
++base::WeakPtr<WaylandWindow> WaylandLayerShellWindow::AsWeakPtr() {
++  return weak_ptr_factory_.GetWeakPtr();
++}
++
++// Lets XdgPopup::Initialize() recognise a layer-shell parent and reach
++// layer_surface() for zwlr_layer_surface_v1.get_popup. Read-only; does not
++// touch the configure-before-buffer state machine.
++WaylandLayerShellWindow* WaylandLayerShellWindow::AsWaylandLayerShellWindow() {
++  return this;
++}
++
++void WaylandLayerShellWindow::UpdateWindowMask() {
++  // Layer surfaces are typically transparent/shaped by their content.
++  // No window mask is needed.
++}
++
++void WaylandLayerShellWindow::DumpState(std::ostream& out) const {
++  WaylandWindow::DumpState(out);
++  out << ", layer_shell"
++      << ", layer=" << static_cast<int>(layer_)
++      << ", anchor=0x" << std::hex << anchor_ << std::dec
++      << ", exclusive_zone=" << exclusive_zone_
++      << ", keyboard=" << static_cast<int>(keyboard_interactivity_)
++      << ", namespace=" << layer_namespace_
++      << ", configured=" << is_configured_;
++  if (is_configured_) {
++    out << ", configured_size=" << configured_size_.ToString();
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Dynamic property setters
++// ---------------------------------------------------------------------------
++
++void WaylandLayerShellWindow::SetLayer(LayerShellLayer layer) {
++  if (layer_ == layer) {
++    return;
++  }
++  layer_ = layer;
++
++  if (layer_surface_) {
++    // set_layer was added in protocol version 2.
++    uint32_t version =
++        zwlr_layer_surface_v1_get_version(layer_surface_.get());
++    if (version >= ZWLR_LAYER_SURFACE_V1_SET_LAYER_SINCE_VERSION) {
++      zwlr_layer_surface_v1_set_layer(
++          layer_surface_.get(), ToWaylandLayer(layer));
++    } else {
++      // Pre-v2: must remap (destroy + recreate) the surface.
++      VLOG(1) << "Layer change requires remap (protocol v" << version << ")";
++      Hide();
++      Show(/*inactive=*/false);
++    }
++  }
++}
++
++void WaylandLayerShellWindow::SetAnchor(uint32_t anchor_bitfield) {
++  if (anchor_ == anchor_bitfield) {
++    return;
++  }
++  anchor_ = anchor_bitfield;
++
++  if (layer_surface_) {
++    zwlr_layer_surface_v1_set_anchor(
++        layer_surface_.get(), ToWaylandAnchor(anchor_));
++    // Anchor affects which dimensions are constrained, so also update size.
++    gfx::Size constrained =
++        ConstrainedSize(anchor_, GetBoundsInDIP().size());
++    zwlr_layer_surface_v1_set_size(
++        layer_surface_.get(), constrained.width(), constrained.height());
++  }
++}
++
++void WaylandLayerShellWindow::SetExclusiveZone(int32_t zone) {
++  if (exclusive_zone_ == zone) {
++    return;
++  }
++  exclusive_zone_ = zone;
++
++  if (layer_surface_) {
++    zwlr_layer_surface_v1_set_exclusive_zone(layer_surface_.get(), zone);
++  }
++}
++
++void WaylandLayerShellWindow::SetMargin(int32_t top, int32_t right,
++                                        int32_t bottom, int32_t left) {
++  gfx::Insets new_margin = gfx::Insets::TLBR(top, left, bottom, right);
++  if (margin_ == new_margin) {
++    return;
++  }
++  margin_ = new_margin;
++
++  if (layer_surface_) {
++    zwlr_layer_surface_v1_set_margin(
++        layer_surface_.get(), top, right, bottom, left);
++  }
++}
++
++void WaylandLayerShellWindow::SetKeyboardInteractivity(
++    LayerShellKeyboardInteractivity mode) {
++  if (keyboard_interactivity_ == mode) {
++    return;
++  }
++  keyboard_interactivity_ = mode;
++
++  if (layer_surface_) {
++    auto effective_mode = mode;
++    if (effective_mode == LayerShellKeyboardInteractivity::kOnDemand &&
++        zwlr_layer_surface_v1_get_version(layer_surface_.get()) < 4) {
++      LOG(WARNING) << "on_demand keyboard interactivity requires layer-shell "
++                   << "v4+, falling back to none";
++      effective_mode = LayerShellKeyboardInteractivity::kNone;
++    }
++    zwlr_layer_surface_v1_set_keyboard_interactivity(
++        layer_surface_.get(), static_cast<uint32_t>(effective_mode));
++  }
++}
++
++// ---------------------------------------------------------------------------
++// Static Wayland listener callbacks
++// ---------------------------------------------------------------------------
++
++// static
++void WaylandLayerShellWindow::OnConfigure(
++    void* data,
++    zwlr_layer_surface_v1* surface,
++    uint32_t serial,
++    uint32_t width,
++    uint32_t height) {
++  auto* self = static_cast<WaylandLayerShellWindow*>(data);
++  DCHECK(self);
++
++  // Store the configured size from the compositor.
++  self->configured_size_ = gfx::Size(width, height);
++
++  // Update pending configure state with the compositor-provided size.
++  // For layer surfaces there is no window state (maximized/etc), only size.
++  // The configure event provides width/height in surface-local coordinates
++  // (DIP), so we must convert to pixels using the delegate for size_px.
++  if (width > 0 && height > 0) {
++    gfx::Rect bounds_dip(self->GetBoundsInDIP().origin(),
++                         gfx::Size(width, height));
++    self->pending_configure_state_.bounds_dip = bounds_dip;
++    // CRITICAL: Convert DIP to pixels using the proper scale factor.
++    // The layer-shell configure event delivers surface-local (DIP) sizes.
++    // On a 2x scale display, a 1920-wide bar in DIP = 3840px. Using DIP
++    // as pixels would cause GPU buffer size mismatch and visual corruption.
++    self->pending_configure_state_.size_px =
++        self->delegate()->ConvertRectToPixels(bounds_dip).size();
++  }
++
++  // Process the configure through the standard pipeline.
++  // Use weak pointer to guard against destruction during processing.
++  auto weak = self->AsWeakPtr();
++  weak->HandleSurfaceConfigure(serial);
++
++  if (!weak) {
++    return;  // Window was destroyed during configure processing.
++  }
++
++  // Signal that the surface can now accept frames.
++  // On first configure this triggers frame submission.
++  weak->OnSurfaceConfigureEvent();
++}
++
++// static
++void WaylandLayerShellWindow::OnClosed(
++    void* data,
++    zwlr_layer_surface_v1* surface) {
++  auto* self = static_cast<WaylandLayerShellWindow*>(data);
++  DCHECK(self);
++
++  VLOG(1) << "Layer surface closed by compositor: " << self->layer_namespace_;
++
++  // The compositor wants this surface gone. This can happen when:
++  // - The output the surface is on is disconnected
++  // - The compositor is shutting down
++  // - The compositor decides this surface should be removed
++  self->OnCloseRequest();
++}
++
++}  // namespace ui

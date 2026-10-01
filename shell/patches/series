@@ -2,3 +2,5 @@
 views-shell-ax-automation-bindings.patch
 views-shell-blink-renderer-edges.patch
 views-shell-build-gate.patch
+views-shell-ozone-layer-shell.patch
+views-shell-ozone-layer-popup.patch
