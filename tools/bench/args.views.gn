@@ -1,0 +1,15 @@
+# The bench's content-free Views configuration for out/views (development, component build).
+# Finding F1 (SPEC.md): with shell/patches/views-shell-ax-automation-bindings.patch applied, this keeps //v8 out.
+is_component_build = true
+is_debug = false
+symbol_level = 1
+dcheck_always_on = false
+target_os = "linux"
+use_ozone = true
+ozone_auto_platforms = false
+ozone_platform_wayland = true
+ozone_platform = "wayland"
+use_remoteexec = false
+use_siso = false
+cc_wrapper = "ccache"
+enable_ax_automation_bindings = false
