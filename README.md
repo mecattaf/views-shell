@@ -182,6 +182,12 @@ task table are the source of truth, and its gates are what "done" means. The ben
   Chrome's own tab and vertical-strip layouts (copied from `//chrome`, never linked, see
   [`CHROME-PORT-LEDGER.md`](CHROME-PORT-LEDGER.md) and [`docs/tabs.md`](docs/tabs.md)),
   fed by a static list or by `niri msg -j workspaces`.
+- **Real:** [`docs/chrome-lift-inventory.md`](docs/chrome-lift-inventory.md) lists what
+  can be lifted from Chrome and Ash Views at `154.0.8037.92` (each component sized by
+  lines and decoupling cuts, with a verdict), and
+  [`docs/shell-composition.md`](docs/shell-composition.md) says how those components
+  compose every shell surface, the `ui`-tree schema additions they imply and the
+  first three surfaces to build. Both are plans; nothing in them is lifted yet.
 - **Placeholder:** the program still uses the test context factory (debt D1 in
   [`docs/architecture.md`](docs/architecture.md)), the compositor adapter headers
   in `shell/wm/` are sketches, and the subsystem directories are empty seams. The CLI is a dispatch
