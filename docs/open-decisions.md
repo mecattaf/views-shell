@@ -35,7 +35,7 @@ Tom's reasoned list, with a recommendation for each, is in the private scoping n
 | P20 | Adapter order | scroll and sway, niri, then the generic ext-workspace adapter (PROPOSED) before Hyprland. |
 | P21 | MacTahoe on scroll without blur | Translucent MacTahoe GTK4 surfaces draw unfrosted. Alternatives: MacTahoe's solid variant, or blur in the fork (H13). |
 | P22 | Google Drive `appDataFolder` | Not in v1. `chrome.storage.sync` carries light references only. |
-| P23 | A GPU-fair footprint measurement | Not run. Needs `/dev/dri` inside `runtime-test` (a new flag) or a microVM with GPU passthrough. |
+| P23 | A GPU-fair footprint measurement | Run (w1c, `docs/bench/views-shell-154-gpu.md`) with `tools/bench/worker/runtime-test-gpu --allow-dri`, a bench-only copy of `runtime-test` that binds `/dev/dri`. `views_shell --bar` draws the same frame on a gles2 compositor with the SwiftShader client (PSS 152.9 MB, the fair row against chapter 1) and with the default client GL over linux-dmabuf (158.7 MB), against 125.2 MB on pixman. Open: the same rows on the non-component `out/release` build. |
 | P24 | How views-shell moves after v1 | Left for v1. |
 | P25 | Producers as built-in source plugins | Done as a proposal in the schema and `examples/network-source/`. The alternative keeps producers inside the core framework. |
 | P26 | The two ported quick-settings faces (FeatureTile, QuickSettingsSlider) | Ported (ledger A032, A033) for the look. The alternative is a pure-stock tile and `views::Slider`, which takes the ledger to three rows. |
@@ -44,3 +44,4 @@ Tom's reasoned list, with a recommendation for each, is in the private scoping n
 | P29 | Quick-settings shape: one host with a grid (as now), or independent per-domain bubbles anchored to bar indicators (Agency D12 FR-046) | One host. Every item is a plugin either way. |
 | P30 | Per-plugin memory ceiling and crash budget for T2 processes (after noctalia's Luau limits) | Not in the manifest yet. |
 | P31 | Whether the seats bind a screen locker | None bound. swayidle turns the monitors off. |
+| P32 | Adopt the lift inventory's composition: `JsonViewBuilder` copied as the `ui`-tree engine (closing P9 as "copy"), schema additions S1 to S18, and the build order bar, rail, quick settings ([`shell-composition.md`](shell-composition.md), [`chrome-lift-inventory.md`](chrome-lift-inventory.md)) | PROPOSED in both documents; the schema is unchanged until Tom rules. |

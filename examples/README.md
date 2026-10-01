@@ -6,6 +6,7 @@ Run `tools/validate.sh` from the repository root.
 
 | Example | Tier | Shows |
 |---|---|---|
+| [`echo-process/`](echo-process/) | T2 process | the protocol reference: every plugin-protocol row exercised by a python3 stdlib program, including a deliberately undeclared `exec` that the broker refuses with `-32001`; the subject `tools/plugin-conformance.py` and the C++ plugin host are checked against |
 | [`power-menu/`](power-menu/) | T2 process | a bar widget and an anchored panel sent as `ui` trees; commands reachable from Views, Chrome, the CLI, a key, a menu and the launcher; permissions enforced by the broker. Inspired by Omarchy's `blackcode.power-menu` (MIT; nothing copied). |
 | [`workspace-rail/`](workspace-rail/) | T0 built-in | the hero surface's manifest: required and optional compositor capabilities, the collapsed rail and its zone-less flyout, rename and move gated by capability |
 | [`music-scratchpad/`](music-scratchpad/) | T1 declarative | a command with a declarative handler, a static bar button, a neutral key, and scroll Lua as a declared, reviewed permission |
@@ -22,6 +23,9 @@ Run `tools/validate.sh` from the repository root.
 Every quick-settings item is a plugin. The first-party ones are written exactly as
 a third party would write them, and the core has no private path for them.
 
-The T2 examples' programs are complete JSON-RPC loops, but they have never
-run against a views-shell process, because none exists yet. The scroll Lua file follows the
+The T2 examples' programs (`echo-process`, `power-menu`,
+`quick-settings-brightness`) pass `tools/plugin-conformance.py`, which plays
+views-shell over their stdio and is run by `tools/validate.sh`. None has run
+against a views-shell process yet, because the C++ plugin host does not exist
+yet. The scroll Lua file follows the
 API shape in scroll's `TUTORIAL.md` and has not been run.

@@ -87,10 +87,15 @@ less PSS here. `--gpu-compositing` stays selectable.
 
 Chapter 1 (test context factory, GPU path, `views-shell-154.md`): 141 MB PSS,
 30 threads, 344 FDs. Now: 107 MB PSS and 15 threads in software, 129 MB and 33
-threads in GPU mode. The FD count did not fall (352 software, 364 GPU), so the
-344-FD question of chapter 1 is not the test factory; it stays open (w1c owns
-it). All numbers carry chapter 1's caveat: pixman in the compositor and
-SwiftShader in the client make them indicative only.
+threads in GPU mode. The FD count did not fall (352 software, 364 GPU): w1c's
+census (`views-shell-154.md`) traced chapter 1's 344 to
+`base::debug::EnableInProcessStackDumping()`, whose symbolization helper keeps
+one read-only descriptor per mapped module, and the production host maps more
+component libraries (viz service, GPU service, the command-buffer client). The
+production entry point keeps the call: a crash in the shell's own unit should
+symbolize, and in a non-component build the modules are a handful. All numbers
+carry chapter 1's caveat: pixman in the compositor and SwiftShader in the client
+make them indicative only.
 
 ## Findings
 
