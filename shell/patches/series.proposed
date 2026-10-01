@@ -1,6 +1,0 @@
-# Order of application after the re-cut (PROPOSED). Plain git apply, pristine tree.
-views-shell-build-gate.patch
-views-shell-ozone-layer-shell.patch
-views-shell-ozone-layer-popup.patch
-views-shell-ozone-empty-opaque-region.patch
-views-shell-dbus-visibility.patch
