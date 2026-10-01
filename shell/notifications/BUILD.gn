@@ -2,13 +2,81 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w2c fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w2c lands.
+# The notifications seam (docs/architecture.md §8, docs/notifications.md): a
+# freedesktop Notifications server on its own session-bus connection (//dbus,
+# never //components/dbus), feeding //ui/message_center, whose popups are
+# layer-shell surfaces. //views_shell lists this directory; the program starts
+# it through NotificationService.
 
 source_set("notifications") {
+  sources = [
+    "notification_server.cc",
+    "notification_server.h",
+    "notification_service.cc",
+    "notification_service.h",
+    "shell_message_popup_collection.cc",
+    "shell_message_popup_collection.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//dbus",
+    "//ui/display",
+    "//ui/gfx",
+    "//ui/message_center",
+    "//ui/message_center/public/cpp",
+    "//ui/platform_window",
+    "//ui/views",
+  ]
+
+  deps = [
+    "//ui/base",
+    "//url",
+  ]
+
+  assert_no_deps = [
+    "//ash/*",
+    "//chrome/*",
+    "//chromeos/*",
+    "//components/dbus/*",
+    "//content/*",
+  ]
 }
 
+# Run by views_shell_unittests. Notification* and ShellMessagePopup*:
+#   NotificationServerMappingTest      in-process mapping, no bus, no display
+#   NotificationServerBusTest          a real session bus (dbus-run-session);
+#                                      skips when DBUS_SESSION_BUS_ADDRESS is unset
+#   ShellMessagePopupSurfaceSpecTest   the layer-surface request, pure
+#   ShellMessagePopupCollectionTest,
+#   NotificationServiceTest            views::ViewsTestBase; need a Wayland
+#                                      display (a private headless scroll under
+#                                      runtime-test on the bench), skip without
 source_set("unittests") {
   testonly = true
+
+  sources = [
+    "notification_server_unittest.cc",
+    "shell_message_popup_collection_unittest.cc",
+  ]
+
+  deps = [
+    ":notifications",
+    "//base",
+    "//base/test:test_support",
+    "//dbus",
+    "//mojo/core/embedder",
+    "//testing/gtest",
+    "//ui/accessibility:test_support",
+    "//ui/base",
+    "//ui/gl:test_support",
+    "//ui/message_center",
+    "//ui/message_center/public/cpp",
+    "//ui/views",
+    "//ui/views:test_support",
+  ]
+
+  # ViewsTestBase's resources (ui/base strings and images), as the stock
+  # Views test suites load them.
+  data_deps = [ "//ui/resources:ui_test_pak" ]
 }
