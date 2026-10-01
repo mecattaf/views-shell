@@ -17,7 +17,7 @@ Run `tools/validate.sh` from the repository root.
 | [`quick-settings-dnd/`](quick-settings-dnd/) | T1 declarative | `views-shell.qs-dnd`: one compact tile, one exact `call:` permission |
 | [`quick-settings-media/`](quick-settings-media/) | T1 declarative | `views-shell.qs-media`: `card` entries built from the stock `mediaSession` node |
 | [`quick-settings-power-footer/`](quick-settings-power-footer/) | T1 declarative | `views-shell.qs-power-footer`: the `footer` slot, an `open` handler, lock and the power menu |
-| [`themes/`](themes/) | (theme, not a plugin) | Tom's three themes as Omarchy theme directories: `noir` (the default), `claude-dark`, `claude-light` |
+| [`themes/`](themes/) | (theme, not a plugin) | Tom's themes as Omarchy theme directories: `noir` (the default), `claude-dark`, `claude-light`, and `all-black`, the Chrome theme he wears |
 
 Every quick-settings item is a plugin. The first-party ones are written exactly as
 a third party would write them, and the core has no private path for them.

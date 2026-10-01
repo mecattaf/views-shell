@@ -1,0 +1,51 @@
+# all-black: the Chrome Web Store theme "All Black" (id mkplpffahhkjfocfbfapcemhhkgmljpn)
+# expressed as an Omarchy theme directory, so the shell and Chrome wear the same thing.
+# Omarchy theme format (basecamp/omarchy docs/theming.md). Canonical keys first.
+#
+# All Black itself is only black ground and white ink: its frame, toolbar,
+# omnibox_background and ntp_background are #000000, its tab_text, bookmark_text and
+# omnibox_text are #ffffff, and its button tint goes toward white. Keys All Black does
+# not define are marked "derived" below: the greys stay neutral, so the layer-1 seed and
+# the layer-2 pins agree, and the ANSI hues are the noir palette, which theme-map.json
+# leaves unpinned (a terminal palette is not a shell colour).
+
+mode = "dark"
+
+accent = "#ffffff"            # All Black: the button tint toward white
+selection = "#3d3d3d"         # derived: a neutral highlight white ink stays readable on
+muted = "#808080"             # derived: dividers and outlines on a black ground
+
+background = "#000000"        # All Black: frame, toolbar, omnibox and new-tab background
+dark_background = "#000000"   # All Black: there is no blacker black
+lighter_background = "#000000"
+
+foreground = "#ffffff"        # All Black: tab, bookmark and omnibox text
+dark_foreground = "#666666"   # derived: disabled and subtle ink
+light_foreground = "#cccccc"  # derived: secondary ink
+bright_foreground = "#ffffff"
+
+red = "#f47b85"
+yellow = "#f9e2af"
+orange = "#fbad60"
+green = "#9be963"
+cyan = "#5eeded"
+blue = "#70b8ff"
+magenta = "#cc7bf4"
+
+bright_red = "#f47b85"
+bright_yellow = "#f9e2af"
+bright_green = "#9be963"
+bright_cyan = "#5eeded"
+bright_blue = "#70b8ff"
+bright_magenta = "#cc7bf4"
+
+# Extra keys: valid Omarchy input, no Omarchy consumer.
+# Read by the shell's renderer and Tom's templates (theme-input.md section 6.2).
+brand = "#ffffff"
+desktop_background = "#000000"
+hyprland_active_border = "#ffffff"
+inactive_border = "#3d3d3d"
+tab_indicator_inactive = "#808080"
+nvim_catppuccin_flavour = "mocha"
+claude_code_theme = "dark"
+terminal_color7 = "#cccccc"
