@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# runtime-test-gpu: the bench's copy of runtime-test with one added flag, --allow-dri.
+#
+# Installed on the build bench only, at ~/views-bench/bin/runtime-test-gpu, by
+# tools/bench/seq/w1c.sh (a cp from the synced worktree). It must never replace
+# ~/.local/bin/runtime-test on the bench or on any seat: that wrapper is the
+# operator's own and stays as it is. The body below is that wrapper verbatim
+# (read on the bench with `ssh worker cat ~/.local/bin/runtime-test`, which is
+# the copy with --allow-kvm), plus the --allow-dri block and its usage lines.
+#
+# --allow-dri (open decision P23, GPU-fair measurement) adds exactly one
+# directory of device nodes, /dev/dri, to the otherwise minimal /dev, so a
+# headless compositor can render with WLR_RENDERER=gles2 on a render node and a
+# client can try hardware GL. /run/user stays private, the PID and IPC
+# namespaces and every --unsetenv are unchanged. It may precede --allow-kvm.
+# On the bench the GPU also serves other work: this flag only opens the node;
+# it never stops, restarts or reserves anything.
+# Run tests with private user-runtime sockets. This is runtime isolation, not
+# a filesystem sandbox: the checkout, home, /tmp and network remain available.
+#
+# --allow-kvm (#453) adds exactly one device node, /dev/kvm, to the otherwise
+# minimal /dev, so a KVM guest (a microvm.nix declaredRunner) can start. It
+# widens nothing else: /run/user stays private, the PID and IPC namespaces and
+# every --unsetenv below are unchanged, and the checkout, $HOME, /tmp and the
+# network stay as accessible as they already are. It is one flag for one
+# device on purpose; there is no general --dev-bind passthrough.
+set -euo pipefail
+if [ "${1:-}" = --help ] || [ "$#" -eq 0 ]; then
+  echo 'usage: runtime-test-gpu [--allow-dri] [--allow-kvm] [--] command [args...]'
+  echo 'Private /run/user and PID/IPC namespaces; source files remain writable.'
+  echo '--allow-kvm also binds /dev/kvm (and nothing else) for KVM guests.'
+  echo '--allow-dri also binds /dev/dri (and nothing else) for a render node.'
+  exit 0
+fi
+devices=()
+if [ "${1:-}" = --allow-dri ]; then
+  shift
+  if [ ! -d /dev/dri ]; then
+    echo 'runtime-test-gpu: --allow-dri given but /dev/dri is absent' >&2
+    exit 1
+  fi
+  devices=(--dev-bind /dev/dri /dev/dri)
+fi
+if [ "${1:-}" = --allow-kvm ]; then
+  shift
+  # Fail loudly rather than run the guest without the device it asked for.
+  if [ ! -c /dev/kvm ] || [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+    echo 'runtime-test: --allow-kvm given but /dev/kvm is absent or not read-write for this user' >&2
+    exit 1
+  fi
+  devices+=(--dev-bind /dev/kvm /dev/kvm)
+fi
+[ "${1:-}" != -- ] || shift
+[ "$#" -gt 0 ] || { echo 'runtime-test: missing command' >&2; exit 2; }
+command -v bwrap >/dev/null || { echo 'runtime-test: bubblewrap is required' >&2; exit 1; }
+
+# Mask the real PATH as well as changing the environment: tests sometimes
+# hardcode /run/user/<uid>. A fresh procfs also hides host /proc/<pid>/root.
+# Never derive a cleanup target from the inherited XDG_RUNTIME_DIR.
+runtime="/run/user/$(id -u)"
+exec bwrap --die-with-parent --unshare-user --unshare-pid --unshare-ipc \
+  --bind / / --proc /proc --dev /dev "${devices[@]}" --tmpfs /run/user --dir "$runtime" \
+  --chmod 0700 "$runtime" --setenv XDG_RUNTIME_DIR "$runtime" \
+  --unsetenv DBUS_SESSION_BUS_ADDRESS --unsetenv DBUS_SESSION_BUS_PID \
+  --unsetenv NOTIFY_SOCKET --unsetenv WATCHDOG_PID --unsetenv WATCHDOG_USEC \
+  --unsetenv WAYLAND_DISPLAY --unsetenv DISPLAY --unsetenv SWAYSOCK \
+  --unsetenv NIRI_SOCKET --unsetenv SSH_AUTH_SOCK --unsetenv PULSE_SERVER \
+  -- "$@"
