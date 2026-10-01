@@ -173,7 +173,7 @@ task table are the source of truth, and its gates are what "done" means. The ben
   `shell/` is real code that compiled in its original trees at Chromium 148, 149 and
   150. It is copied byte for byte and does not build here yet.
 - **Real:** `views_shell --left-tabs` draws a vertical workspace strip made of
-  Chrome's own tab (copied from `//chrome`, never linked, see
+  Chrome's own tab and vertical-strip layouts (copied from `//chrome`, never linked, see
   [`CHROME-PORT-LEDGER.md`](CHROME-PORT-LEDGER.md) and [`docs/tabs.md`](docs/tabs.md)),
   fed by a static list or by `niri msg -j workspaces`.
 - **Placeholder:** every `BUILD.gn` under `shell/` is a sketch, and the

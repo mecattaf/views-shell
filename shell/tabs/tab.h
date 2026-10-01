@@ -139,6 +139,9 @@ class Tab : public views::MaskedTargeterDelegate, public TabSlotView {
   void UpdateInsets();
 
  private:
+  // Lays out the vertical tab's children (Chrome's TabView layout).
+  friend class TabViewVerticalLayout;
+
   // Computes which icons are visible in the tab. Should be called everytime
   // before layout is performed.
   void UpdateIconVisibility();

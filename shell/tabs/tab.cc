@@ -37,6 +37,7 @@
 #include "views_shell/tabs/tab_slot_controller.h"
 #include "views_shell/tabs/tab_style.h"
 #include "views_shell/tabs/tab_title.h"
+#include "views_shell/tabs/tab_view_vertical_layout.h"
 
 namespace views_shell {
 
@@ -174,6 +175,11 @@ Tab::Tab(TabSlotController* controller, TabStripOrientation orientation)
   // inside the tab shape, rather than to its extents.
   UpdateInsets();
 
+  // A vertical tab is laid out as Chrome lays out its vertical tab view.
+  if (orientation_ == TabStripOrientation::kVertical) {
+    SetLayoutManager(std::make_unique<TabViewVerticalLayout>());
+  }
+
   // Enable keyboard focus.
   SetFocusBehavior(FocusBehavior::ACCESSIBLE_ONLY);
   views::FocusRing::Install(this);
@@ -203,6 +209,14 @@ bool Tab::GetHitTestMask(SkPath* mask) const {
 }
 
 void Tab::Layout(PassKey) {
+  if (orientation_ == TabStripOrientation::kVertical) {
+    LayoutSuperclass<TabSlotView>(this);
+    if (auto* focus_ring = views::FocusRing::Get(this); focus_ring) {
+      focus_ring->DeprecatedLayoutImmediately();
+    }
+    return;
+  }
+
   const gfx::Rect contents_rect = GetContentsBounds();
 
   UpdateIconVisibility();
@@ -366,11 +380,8 @@ void Tab::OnGestureEvent(ui::GestureEvent* event) {
 gfx::Size Tab::CalculatePreferredSize(
     const views::SizeBounds& available_size) const {
   if (orientation_ == TabStripOrientation::kVertical) {
-    // As TabViewVerticalLayout: the strip gives the width, the height is the
-    // vertical tab height.
-    return gfx::Size(available_size.width().value_or(
-                         GetLayoutConstant(LayoutConstant::kVerticalTabMinWidth)),
-                     GetTabHeight());
+    // TabViewVerticalLayout sizes a vertical tab.
+    return TabSlotView::CalculatePreferredSize(available_size);
   }
   return gfx::Size(GetTabSizeInfo().standard_width, GetTabHeight());
 }
@@ -457,11 +468,13 @@ void Tab::SetData(TabData data) {
     SetTooltipText(data_.title);
     UpdateAccessibleName();
   }
+  InvalidateLayout();
   DeprecatedLayoutImmediately();
   SchedulePaint();
 }
 
 void Tab::ActiveStateChanged() {
+  InvalidateLayout();
   UpdateForegroundColors();
   DeprecatedLayoutImmediately();
 }
@@ -480,6 +493,7 @@ bool Tab::IsSelected() const {
 }
 
 void Tab::ShowHover(TabStyle::ShowHoverStyle style) {
+  InvalidateLayout();
   if (hover_controller_) {
     if (style == TabStyle::ShowHoverStyle::kSubtle) {
       hover_controller_->SetSubtleOpacityScale(
@@ -492,6 +506,7 @@ void Tab::ShowHover(TabStyle::ShowHoverStyle style) {
 }
 
 void Tab::HideHover(TabStyle::HideHoverStyle style) {
+  InvalidateLayout();
   if (hover_controller_) {
     hover_controller_->Hide(style);
   }
