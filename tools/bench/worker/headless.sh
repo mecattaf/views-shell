@@ -14,6 +14,8 @@ RT="$HOME/.local/bin/runtime-test"
 [ -x "$SCROLL" ] || { echo 'headless.sh: no scroll at $SCROLL' >&2; exit 1; }
 mkdir -p "$OUT"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# HOME becomes scratch below, so expand a "~/" in the client command against the real home now.
+args=(); for a in "$@"; do a="${a/#\~\//$HOME/}"; args+=("${a// \~\// $HOME/}"); done; set -- "${args[@]}"
 # Everything below runs inside the private runtime. HOME is scratch so nothing reaches real config.
 exec "$RT" -- env OUT="$OUT" SCROLL="$SCROLL" SCROLLMSG="$SCROLLMSG" HERE="$HERE" CLIENT_SETTLE="${CLIENT_SETTLE:-4}" \
   HOME="$OUT/home" XDG_CONFIG_HOME="$OUT/home/.config" XDG_CACHE_HOME="$OUT/home/.cache" XDG_STATE_HOME="$OUT/home/.local/state" XDG_DATA_HOME="$OUT/home/.local/share" \

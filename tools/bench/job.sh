@@ -34,7 +34,7 @@ case "$verb" in
   status)
     rc=$(ssh_ "cat ~/views-bench/results/$name.rc 2>/dev/null")
     if [ -z "$rc" ]; then echo "job $name: no result ($(ssh_ "systemctl --user is-active vs-$name 2>/dev/null"))"; exit 125; fi
-    echo "job $name: rc $rc"; exit "$rc"
+    echo "rc $rc"; exit "$rc"
     ;;
   log)
     ssh_ "tail -n ${3:-40} ~/views-bench/logs/$name.log 2>/dev/null"

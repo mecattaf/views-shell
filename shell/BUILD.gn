@@ -2,91 +2,86 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# SKETCH. Never built. This is the intended shape of //views_shell inside a Chromium
-# checkout at the pinned tag. The lifted sources under app/, host/, rail/ and
-# wm/adapters/niri/ still carry their original names and include paths.
+# //views_shell inside a Chromium checkout at the pinned tag
+# (tools/bench/worker/wire.sh copies shell/ to src/views_shell/, and
+# patches/views-shell-build-gate.patch puts this target in the root gn_all).
 #
-# views-shell is a Views program, not a content embedder (rule R24). The lifted app/
-# files are a //content embedder and stay as provenance only; the shell_main
-# sources below are new and shaped like ui/views/examples:views_examples_proc.
+# views-shell is a Views program, not a content embedder (rule R24). The lifted
+# sources under app/cowl_*, host/, rail/ and wm/ are provenance only and are not
+# built; app/views_shell_main.cc is new and shaped like
+# ui/views/examples/examples_main_proc.cc.
 
-import("//build/config/features.gni")
-import("//views_shell/build/views-shell.gni")  # declares enable_views_shell (sketch)
+import("//build/config/ozone.gni")
+import("//build/config/ui.gni")
 
 assert(is_linux, "views-shell is an is_linux program. It never builds for ChromeOS.")
 assert(!is_chromeos, "Port Ash, never link it.")
-assert(ozone_platform_wayland, "views-shell draws only on Wayland layer-shell surfaces.")
+assert(use_ozone && ozone_platform_wayland,
+       "views-shell draws only on Wayland surfaces.")
 
-group("views_shell_all") {
-  deps = [ ":views-shell" ]
-  testonly = false
-}
+executable("views_shell") {
+  # Debt D1 (docs/architecture.md): the context factory comes from
+  # //ui/compositor:test_support until the production in-process viz host
+  # exists, so the executable is testonly until D1 is paid.
+  testonly = true
 
-executable("views-shell") {
   sources = [ "app/views_shell_main.cc" ]
+
   deps = [
-    ":shell_main",
-    "//views_shell/shell/rail",
-    "//views_shell/wm",
+    "//base",
+    "//base:i18n",
+    "//base/test:test_support",
+    "//mojo/core/embedder",
+    "//skia",
+    "//ui/accessibility",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/base/ime/init",
+    "//ui/color",
+    "//ui/compositor",
+    "//ui/compositor:test_support",
+    "//ui/display",
+    "//ui/gfx",
+    "//ui/gl",
+    "//ui/gl/init",
+    "//ui/ozone",
+    "//ui/platform_window/common",
+    "//ui/views",
+    "//ui/wm",
   ]
 
+  data_deps = [ "//ui/resources:ui_test_pak" ]
+
   # Rules R1, R5 and R24, enforced by the build: no //chrome, no //ash, no
-  # //chromeos, and no browser: no //content, no Blink renderer, no V8.
-  # The Blink guard names the renderer only: components/viz/service pulls the
-  # small //third_party/blink/public/common types library legitimately.
-  # Proof once a tree exists: `gn path out/views-shell //views_shell:views-shell //v8` prints nothing.
+  # //chromeos, and no browser: no //content, no Blink renderer, no V8 engine.
+  #
+  # Finding F3 (docs/bench/views-shell-154.md): the stock Views stack, as in
+  # views_examples, reaches //v8:cppgc_headers, //v8:v8_libbase,
+  # //v8:v8_libplatform, //third_party/blink/renderer/platform/wtf and Blink
+  # code-generation actions through //components/viz/host ->
+  # //components/input -> //ui/events/blink -> //third_party/blink/public:blink_headers.
+  # So `//v8/*` and `//third_party/blink/renderer/*` cannot be guarded whole
+  # without cutting that edge upstream; the guard names the engine and the
+  # renderer instead, and `gn path` to //v8, //content, Blink core and platform,
+  # //chrome and //ash prints "No non-data paths".
   assert_no_deps = [
     "//chrome/*",
     "//ash/*",
     "//chromeos/*",
     "//content/*",
-    "//third_party/blink/renderer/*",
-    "//v8/*",
-  ]
-}
-
-source_set("shell_main") {
-  sources = [
-    "app/views_shell_context_factory.cc",  # production in-process viz host (ui::ContextFactory)
-    "app/views_shell_context_factory.h",
-    "app/views_shell_views_delegate.cc",  # the rule guard: CHECK a SurfaceSpec per top-level Widget
-    "app/views_shell_views_delegate.h",
-    "app/shell_main_parts.cc",  # aura::Env, wm::WMState, focus/activation/capture clients, AXPlatform
-    "app/shell_main_parts.h",
-    "host/shell_host.cc",
-    "host/shell_host.h",
-    "surface/layer_surface_host.cc",  # DesktopWindowTreeHostLinux subclass
-    "surface/layer_surface_host.h",
-    "surface/surface_registry.cc",  # SurfaceSpec rows
-    "surface/surface_registry.h",
-  ]
-  deps = [
-    "//base",
-    "//components/viz/host",
-    "//components/viz/service",
-    "//views_shell/style",
-    "//mojo/core/embedder",
-    "//third_party/icu",
-    "//ui/aura",
-    "//ui/base",
-    "//ui/color",
-    "//ui/compositor",
-    "//ui/ozone",
-    "//ui/views",
-    "//ui/wm",
-  ]
-}
-
-test("views_shell_unittests") {
-  sources = [
-    "ozone/layer_shell/wayland_layer_shell_window_unittest.cc",  # on the test Wayland server
-    "wm/adapters/niri/niri_ipc_client_unittest.cc",  # recorded transcripts
-    "wm/adapters/scroll/scroll_ipc_client_unittest.cc",
-    "wm/wm_model_unittest.cc",  # the rail's 2026-07-17 snapshot as a fixture
-  ]
-  deps = [
-    "//base/test:test_support",
-    "//testing/gtest",
-    "//ui/ozone/platform/wayland:test_support",
+    "//gin/*",
+    "//third_party/blink/renderer/bindings/core/*",
+    "//third_party/blink/renderer/bindings/modules/*",
+    "//third_party/blink/renderer/controller/*",
+    "//third_party/blink/renderer/core:core",
+    "//third_party/blink/renderer/modules:modules",
+    "//third_party/blink/renderer/platform:platform",
+    "//v8:cppgc_base",
+    "//v8:v8",
+    "//v8:v8_base",
+    "//v8:v8_base_without_compiler",
+    "//v8:v8_compiler",
+    "//v8:v8_initializers",
+    "//v8:v8_snapshot",
   ]
 }
