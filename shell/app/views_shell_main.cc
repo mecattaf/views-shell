@@ -5,6 +5,13 @@
 // views-shell: a content-free Views program on Ozone/Wayland. Shaped like
 // ui/views/examples/examples_main_proc.cc: single-process Ozone, aura::Env,
 // wm::WMState, a ViewsDelegate and one Widget. No //content, no Blink, no V8.
+//
+// With --bar the widget is created as a wlr-layer-shell surface (rule R1:
+// Views only on layer-shell surfaces): top layer, anchored to the top edge,
+// 32 px high, exclusive zone, namespace "views-shell-bar". With --bar
+// --demo-popup a views::MenuRunner menu opens from the bar one second after
+// the bar's first paint; on Wayland the menu becomes an xdg_popup
+// parented onto the layer surface via zwlr_layer_surface_v1.get_popup.
 
 #include <memory>
 #include <string>
@@ -36,18 +43,23 @@
 #include "ui/aura/env.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/ime/init/input_method_initializer.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/compositor/test/in_process_context_factory.h"
 #include "ui/compositor/test/test_context_factories.h"
 #include "ui/display/screen.h"
+#include "ui/gfx/canvas.h"
 #include "ui/gfx/font_util.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gl/init/gl_factory.h"
+#include "ui/menus/simple_menu_model.h"
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/platform_window/common/platform_window_defaults.h"
+#include "ui/platform_window/platform_window_init_properties.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/layout/layout_provider.h"
 #include "ui/views/view.h"
@@ -63,6 +75,14 @@ namespace {
 
 constexpr char kAppId[] = "views-shell";
 constexpr char kRunForSeconds[] = "run-for-seconds";
+constexpr char kBar[] = "bar";
+constexpr char kDemoPopup[] = "demo-popup";
+
+// The bar (SPEC.md C4.2, open question Q2's default): top layer, anchored to
+// the top edge, 32 px high, exclusive zone of the same height, namespace
+// "views-shell-bar".
+constexpr int kBarHeight = 32;
+constexpr char kBarNamespace[] = "views-shell-bar";
 
 // The process-wide accessibility mode: native APIs only, never web content.
 class ShellAXPlatformDelegate : public ui::AXPlatform::Delegate {
@@ -112,26 +132,126 @@ class ShellViewsDelegate : public views::ViewsDelegate {
   views::LayoutProvider layout_provider_;
 };
 
+// Contents view that reports its first paint, so --demo-popup can
+// open the menu one second after the first frame (SPEC.md C4.3).
+class FirstPaintView : public views::View {
+ public:
+  explicit FirstPaintView(base::OnceClosure on_first_paint)
+      : on_first_paint_(std::move(on_first_paint)) {}
+  FirstPaintView(const FirstPaintView&) = delete;
+  FirstPaintView& operator=(const FirstPaintView&) = delete;
+
+  // views::View:
+  void OnPaint(gfx::Canvas* canvas) override {
+    views::View::OnPaint(canvas);
+    if (on_first_paint_) {
+      std::move(on_first_paint_).Run();
+    }
+  }
+
+ private:
+  base::OnceClosure on_first_paint_;
+};
+
+// Menu command target for the --demo-popup menu. The items do nothing: the
+// demo proves the xdg_popup path, not command handling.
+class DemoMenuDelegate : public ui::SimpleMenuModel::Delegate {
+ public:
+  DemoMenuDelegate() = default;
+  ~DemoMenuDelegate() override = default;
+
+  // ui::SimpleMenuModel::Delegate:
+  void ExecuteCommand(int command_id, int event_flags) override {}
+  bool IsCommandIdEnabled(int command_id) const override { return true; }
+};
+
 // The one window: a black ground with the label, as in the All Black theme
-// (style/tokens/README.md). Closing it ends the program.
+// (style/tokens/README.md). Closing it ends the program. With --demo-popup it
+// also owns the MenuRunner that opens from the bar one second after the first
+// painted frame.
 class ShellWindowDelegate : public views::WidgetDelegate {
  public:
-  explicit ShellWindowDelegate(base::OnceClosure on_close)
-      : on_close_(std::move(on_close)) {
+  ShellWindowDelegate(base::OnceClosure on_close, bool demo_popup)
+      : on_close_(std::move(on_close)), demo_popup_(demo_popup) {
     SetTitle(u"views-shell");
-    auto contents = std::make_unique<views::View>();
+    base::OnceClosure on_first_paint;
+    if (demo_popup) {
+      // The contents view reports its first paint; the menu then
+      // opens one second later (SPEC.md C4.3).
+      on_first_paint = base::BindOnce(&ShellWindowDelegate::ScheduleDemoPopup,
+                                      base::Unretained(this));
+    }
+    SetContentsView(BuildContents(std::move(on_first_paint)));
+  }
+  ~ShellWindowDelegate() override = default;
+
+  // Builds the contents: black ground, white label.
+  std::unique_ptr<views::View> BuildContents(
+      base::OnceClosure on_first_paint) {
+    auto contents = on_first_paint
+                        ? std::make_unique<FirstPaintView>(
+                              std::move(on_first_paint))
+                        : std::make_unique<views::View>();
     contents->SetLayoutManager(std::make_unique<views::FillLayout>());
     contents->SetBackground(views::CreateSolidBackground(SK_ColorBLACK));
     auto* label =
         contents->AddChildView(std::make_unique<views::Label>(u"views-shell"));
     label->SetEnabledColor(SK_ColorWHITE);
     label->SetBackgroundColor(SK_ColorBLACK);
-    SetContentsView(std::move(contents));
+    return contents;
   }
-  ~ShellWindowDelegate() override = default;
+
+  // First painted frame: open the menu one second from now.
+  void ScheduleDemoPopup() {
+    if (popup_scheduled_) {
+      return;
+    }
+    popup_scheduled_ = true;
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&ShellWindowDelegate::OpenDemoPopup,
+                       base::Unretained(this)),
+        base::Seconds(1));
+  }
+
+  // Opens the demo menu from the bar. Runs a nested (nestable) message loop
+  // until the menu closes; headless runs kill the process instead.
+  void OpenDemoPopup() {
+    if (!demo_popup_ || popup_opened_) {
+      return;
+    }
+    views::Widget* widget = GetWidget();
+    if (!widget) {
+      return;
+    }
+    popup_opened_ = true;
+    if (!menu_model_) {
+      menu_model_ = std::make_unique<ui::SimpleMenuModel>(&menu_delegate_);
+      menu_model_->AddItem(0, u"views-shell demo item");
+      menu_model_->AddSeparator(ui::NORMAL_SEPARATOR);
+      menu_model_->AddItem(1, u"second demo item");
+    }
+    if (!menu_runner_) {
+      menu_runner_ = std::make_unique<views::MenuRunner>(
+          menu_model_.get(), views::MenuRunner::NO_FLAGS);
+    }
+    menu_runner_->RunMenuAt(widget,
+                            /*button_controller=*/nullptr,
+                            gfx::Rect(16, 0, 120, kBarHeight),
+                            views::MenuAnchorPosition::kTopLeft,
+                            ui::mojom::MenuSourceType::kMouse);
+  }
+
+  // Ends the menu's nested loop, if it is running (shutdown ordering).
+  void CancelDemoPopup() {
+    if (menu_runner_ && menu_runner_->IsRunning()) {
+      menu_runner_->Cancel();
+    }
+  }
 
   // views::WidgetDelegate:
   void WindowClosing() override {
+    CancelDemoPopup();
     if (on_close_) {
       std::move(on_close_).Run();
     }
@@ -139,20 +259,49 @@ class ShellWindowDelegate : public views::WidgetDelegate {
 
  private:
   base::OnceClosure on_close_;
+  bool demo_popup_;
+  bool popup_scheduled_ = false;
+  bool popup_opened_ = false;
+  DemoMenuDelegate menu_delegate_;
+  std::unique_ptr<ui::SimpleMenuModel> menu_model_;
+  std::unique_ptr<views::MenuRunner> menu_runner_;
 };
 
-std::unique_ptr<views::Widget> CreateShellWidget(
-    views::WidgetDelegate* delegate) {
+std::unique_ptr<views::Widget> CreateShellWidget(ShellWindowDelegate* delegate,
+                                                 bool bar) {
   auto widget = std::make_unique<views::Widget>();
+  // The bar is frameless: a standard frame would add its caption to the
+  // requested height.
   views::Widget::InitParams params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
-      views::Widget::InitParams::TYPE_WINDOW);
+      bar ? views::Widget::InitParams::TYPE_WINDOW_FRAMELESS
+          : views::Widget::InitParams::TYPE_WINDOW);
   params.delegate = delegate;
   params.name = kAppId;
   params.wayland_app_id = kAppId;
   params.wm_class_name = kAppId;
   params.wm_class_class = kAppId;
-  params.bounds = gfx::Rect(0, 0, 640, 120);
+  if (bar) {
+    // SPEC.md C4.2: the bar is a layer surface on the top layer, anchored to
+    // the top edge (stretched left+right, so the compositor picks the width),
+    // 32 px high with an exclusive zone, namespace "views-shell-bar". The
+    // plumbing is shell/patches/views-shell-ozone-layer-shell.patch:
+    // Widget::InitParams::layer_shell -> PlatformWindowInitProperties ->
+    // PlatformWindowType::kLayerShell -> WaylandLayerShellWindow.
+    ui::LayerShellProperties layer_shell;
+    layer_shell.layer = ui::LayerShellLayer::kTop;
+    layer_shell.anchor =
+        ui::kLayerShellAnchorTop | ui::kLayerShellAnchorLeft |
+        ui::kLayerShellAnchorRight;
+    layer_shell.exclusive_zone = kBarHeight;
+    layer_shell.keyboard_interactivity =
+        ui::LayerShellKeyboardInteractivity::kNone;
+    layer_shell.layer_namespace = kBarNamespace;
+    params.layer_shell = layer_shell;
+    params.bounds = gfx::Rect(0, 0, 1920, kBarHeight);
+  } else {
+    params.bounds = gfx::Rect(0, 0, 640, 120);
+  }
   widget->Init(std::move(params));
   widget->Show();
   return widget;
@@ -169,6 +318,10 @@ int ShellMain() {
     LOG(ERROR) << "--" << kRunForSeconds << " wants an integer";
     return 2;
   }
+  const bool bar = command_line->HasSwitch(kBar);
+  // The demo popup is a menu on the bar; without --bar there is no bar to
+  // open it from (SPEC.md C4.3 runs both).
+  const bool demo_popup = bar && command_line->HasSwitch(kDemoPopup);
 
   base::FeatureList::InitInstance(std::string(), std::string());
 
@@ -216,15 +369,24 @@ int ShellMain() {
         views::CreateDesktopScreen();
 
     base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
-    ShellWindowDelegate window_delegate(run_loop.QuitClosure());
-    std::unique_ptr<views::Widget> widget = CreateShellWidget(&window_delegate);
+    ShellWindowDelegate window_delegate(run_loop.QuitClosure(), demo_popup);
+    std::unique_ptr<views::Widget> widget =
+        CreateShellWidget(&window_delegate, bar);
 
     if (run_for_seconds > 0) {
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-          FROM_HERE, run_loop.QuitClosure(), base::Seconds(run_for_seconds));
+          FROM_HERE,
+          base::BindOnce(
+              [](ShellWindowDelegate* delegate, base::OnceClosure quit) {
+                delegate->CancelDemoPopup();
+                std::move(quit).Run();
+              },
+              &window_delegate, run_loop.QuitClosure()),
+          base::Seconds(run_for_seconds));
     }
     run_loop.Run();
 
+    window_delegate.CancelDemoPopup();
     widget->CloseNow();
     widget.reset();
     ui::ResourceBundle::CleanupSharedInstance();

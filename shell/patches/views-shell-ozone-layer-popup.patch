@@ -1,0 +1,122 @@
+diff --git a/ui/ozone/platform/wayland/host/wayland_window.cc b/ui/ozone/platform/wayland/host/wayland_window.cc
+--- a/ui/ozone/platform/wayland/host/wayland_window.cc
++++ b/ui/ozone/platform/wayland/host/wayland_window.cc
+@@ -1071,7 +1074,11 @@ WaylandWindow* WaylandWindow::GetTopMostChildWindow() {
+ WaylandWindow* WaylandWindow::GetXdgParentWindow() {
+   auto* xdg_parent_window = parent_window();
+   while (xdg_parent_window && !xdg_parent_window->AsWaylandToplevelWindow() &&
+-         !xdg_parent_window->AsWaylandPopup()) {
++         !xdg_parent_window->AsWaylandPopup() &&
++         // views-shell: stop the walk at a layer-shell surface so it is
++         // returned as the xdg-parent instead of being skipped; XdgPopup
++         // then parents onto it via zwlr_layer_surface_v1.get_popup.
++         !xdg_parent_window->AsWaylandLayerShellWindow()) {
+     xdg_parent_window = xdg_parent_window->parent_window();
+   }
+   return xdg_parent_window;
+@@ -1102,6 +1109,11 @@ WaylandToplevelWindow* WaylandWindow::AsWaylandToplevelWindow() {
+   return nullptr;
+ }
+ 
++// views-shell: the base returns nullptr; WaylandLayerShellWindow overrides.
++WaylandLayerShellWindow* WaylandWindow::AsWaylandLayerShellWindow() {
++  return nullptr;
++}
++
+ uint32_t WaylandWindow::DispatchEventToDelegate(
+     const PlatformEvent& native_event) {
+   EventResult result = DispatchEventFromNativeUiEvent(
+diff --git a/ui/ozone/platform/wayland/host/wayland_window.h b/ui/ozone/platform/wayland/host/wayland_window.h
+--- a/ui/ozone/platform/wayland/host/wayland_window.h
++++ b/ui/ozone/platform/wayland/host/wayland_window.h
+@@ -379,6 +384,12 @@ class WaylandWindow : public PlatformWindow,
+   virtual WaylandBubble* AsWaylandBubble();
+   virtual WaylandPopup* AsWaylandPopup();
+   virtual WaylandToplevelWindow* AsWaylandToplevelWindow();
++  // views-shell: down-cast to WaylandLayerShellWindow when |this| is one;
++  // the base returns nullptr. Used by GetXdgParentWindow() and
++  // XdgPopup::Initialize() to recognise a layer-shell parent, so an
++  // xdg_popup can be parented onto the layer surface via
++  // zwlr_layer_surface_v1.get_popup.
++  virtual WaylandLayerShellWindow* AsWaylandLayerShellWindow();
+ 
+   scoped_refptr<base::SingleThreadTaskRunner> ui_task_runner() {
+     return ui_task_runner_;
+diff --git a/ui/ozone/platform/wayland/host/xdg_popup.cc b/ui/ozone/platform/wayland/host/xdg_popup.cc
+--- a/ui/ozone/platform/wayland/host/xdg_popup.cc
++++ b/ui/ozone/platform/wayland/host/xdg_popup.cc
+@@ -17,6 +17,7 @@
+ #include "ui/gfx/geometry/rect.h"
+ #include "ui/ozone/platform/wayland/common/wayland_util.h"
+ #include "ui/ozone/platform/wayland/host/wayland_connection.h"
++#include "ui/ozone/platform/wayland/host/wayland_layer_shell_window.h"
+ #include "ui/ozone/platform/wayland/host/wayland_popup.h"
+ #include "ui/ozone/platform/wayland/host/wayland_seat.h"
+ #include "ui/ozone/platform/wayland/host/wayland_serial_tracker.h"
+@@ -25,6 +26,12 @@
+ #include "ui/ozone/platform/wayland/host/xdg_toplevel.h"
+ #include "ui/ozone/public/ozone_switches.h"
+ 
++// views-shell: 'namespace' is a C++ keyword but is used as a parameter name
++// in the wlr-layer-shell protocol XML. Work around the generated C header.
++#define namespace namespace_
++#include <wlr-layer-shell-unstable-v1-client-protocol.h>
++#undef namespace
++
+ namespace ui {
+ 
+ namespace {
+@@ -133,6 +140,14 @@ bool XdgPopup::Initialize(const InitParams& params) {
+     NOTREACHED() << "xdg_popup does not have a valid parent xdg_surface";
+   }
+ 
++  // views-shell: a wlr-layer-shell parent (bar, dock) has no xdg_surface of
++  // its own. When the resolved xdg-parent is a layer surface, the xdg_popup
++  // is created with a NULL xdg parent and then parented onto the layer
++  // surface via zwlr_layer_surface_v1.get_popup, both before the popup's
++  // initial commit below.
++  WaylandLayerShellWindow* parent_layer =
++      xdg_parent ? xdg_parent->AsWaylandLayerShellWindow() : nullptr;
++
+   struct xdg_surface* parent_xdg_surface = nullptr;
+   // If the xdg_parent window is a popup, the surface of that popup must be used
+   // as a parent to create this xdg_popup.
+@@ -142,9 +157,9 @@ bool XdgPopup::Initialize(const InitParams& params) {
+     parent_xdg_surface = parent_toplevel->xdg_toplevel()->xdg_surface();
+   }
+ 
+-  CHECK(xdg_surface_ && parent_xdg_surface);
++  CHECK(xdg_surface_ && (parent_xdg_surface || parent_layer));
+ 
+-  if (!xdg_surface_ || !parent_xdg_surface) {
++  if (!xdg_surface_ || (!parent_xdg_surface && !parent_layer)) {
+     return false;
+   }
+ 
+@@ -161,8 +176,24 @@ bool XdgPopup::Initialize(const InitParams& params) {
+     return false;
+   }
+ 
+-  xdg_popup_.reset(xdg_surface_get_popup(xdg_surface(), parent_xdg_surface,
+-                                         positioner.get()));
++  if (parent_layer) {
++    // The layer parent must have a live layer surface to adopt the popup.
++    // Refuse rather than fall through and commit an xdg_popup that was
++    // created with a NULL parent and never parented -- an unparented
++    // xdg_popup is an xdg_wm_base protocol error at commit time.
++    if (!parent_layer->layer_surface()) {
++      return false;
++    }
++    xdg_popup_.reset(
++        xdg_surface_get_popup(xdg_surface(), nullptr, positioner.get()));
++    if (xdg_popup_) {
++      zwlr_layer_surface_v1_get_popup(parent_layer->layer_surface(),
++                                      xdg_popup_.get());
++    }
++  } else {
++    xdg_popup_.reset(xdg_surface_get_popup(xdg_surface(), parent_xdg_surface,
++                                           positioner.get()));
++  }
+   if (!xdg_popup_) {
+     return false;
+   }
