@@ -37,8 +37,8 @@ for `//v8`, `//content`, `//third_party/blink/renderer/core`,
 `ERROR Label not found. //ash:ash not found.`: `ash/BUILD.gn` begins with
 `assert(is_chromeos)`, so no `//ash` target exists in an `is_linux` build
 (`out/views/build.ninja` names `//ash` zero times). The C3.3 command therefore
-counts 5 lines, not 6, however clean the graph is; the `assert_no_deps` entry
-`//ash/*` is the guard that holds.
+checks the five labels above and counts 5 lines; for `//ash` the `assert_no_deps`
+entry `//ash/*` is the guard that holds.
 
 Finding F3 (measured here): at the pinned tag the stock Views stack,
 `views_examples` included, reaches `//v8` and `//third_party/blink/renderer`
