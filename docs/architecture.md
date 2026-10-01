@@ -113,8 +113,11 @@ which builds Views with no `//content`, Blink or V8. Three files in `shell/app/`
   (finding F2) with no test platform-window configuration.
   `--software-compositing` draws with viz's software renderer into the Ozone
   canvas surface (`wl_shm` buffers), with GL disabled in the process;
-  `--gpu-compositing` runs `SkiaRenderer` over GL (ANGLE). COMPOSITING-DEFAULT
-  A lost viz connection ends the process; the systemd user unit brings it
+  `--gpu-compositing` runs `SkiaRenderer` over GL (ANGLE). Both draw on the
+  headless bench (`docs/bench/views-shell-154-production.md`); software is the
+  default, because it needs no GL, no render node and no GPU context, costs half
+  the threads and about 20 MB less PSS, and is the mode that cannot fail on a
+  seat without a usable GPU. A lost viz connection ends the process; the systemd user unit brings it
   back and the layer surfaces reappear.
 
 Still to come in this layer: `ShellMainParts` installs a production focus
@@ -299,8 +302,9 @@ names it or the next one. Nothing else may diverge from this page silently.
 
 | Id | Debt | Carried since | Paid when |
 |---|---|---|---|
-| D1 | `views_shell` takes its `ui::ContextFactory` from `//ui/compositor:test_support` (the test in-process context factory), so the executable is `testonly = true` and links test support it would not ship | chapter 1, allowed by the orchestrator's ruling of 2026-10-01 | a production in-process viz host exists (`app/views_shell_context_factory.{h,cc}`: `viz::HostFrameSinkManager` and `VizMainImpl` on a GPU thread, after `components/viz/demo`), the target drops `//ui/compositor:test_support` and `//base/test:test_support`, `testonly = false`, and the shell still draws its bar under headless scroll |
+| D1 | `views_shell` took its `ui::ContextFactory` from `//ui/compositor:test_support` (the test in-process context factory), so the executable was `testonly = true` and linked test support it would not ship | chapter 1, allowed by the orchestrator's ruling of 2026-10-01 | **paid** in chapter 2 item w1a (branch `w/w1a`, commit COMMIT-D1): `app/views_shell_context_factory.{h,cc}` is the production in-process viz host (§3), the target drops `//ui/compositor:test_support` and `//base/test:test_support` (`gn desc ... deps --all` names no `test_support`), `testonly = false`, `ui::test::EnableTestConfigForPlatformWindows()` is gone (F2 resolved the faithful way), and the bar, the popup and the plain window draw under headless scroll |
+| D2 | the `ResourceBundle` loads `ui_test_pak` (`//ui/resources:ui_test_pak`, a plain `copy()` on Linux, not `testonly`) instead of a repacked `views_shell.pak` (ui/views resources, `ui/strings`, views-shell's own strings and the icon subset) with `locales/<lang>.pak` | chapter 2 (w1a) | views-shell repacks its own pak with a `repack` target under `//views_shell`, the bootstrap loads it by path, and the executable drops the `ui_test_pak` data dep |
 
-While D1 is open, every footprint number measured next to `views_examples` is
-indicative only, and the `testonly` flag is the visible marker that the binary is not
-shippable.
+Footprint numbers measured while D1 was open (chapter 1) were indicative only;
+the chapter-2 numbers in `docs/bench/views-shell-154-production.md` are of the
+shippable shape, still under the pixman/SwiftShader caveat.
