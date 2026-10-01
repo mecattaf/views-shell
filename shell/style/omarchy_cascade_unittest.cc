@@ -52,12 +52,12 @@ std::string CanonicalJsonFile(const base::FilePath& path) {
   return base::WriteJson(*value).value_or(std::string());
 }
 
-std::string CanonicalJson(const base::Value::Dict& dict) {
+std::string CanonicalJson(const base::DictValue& dict) {
   return base::WriteJson(dict).value_or(std::string());
 }
 
-base::Value::Dict PaletteAsDict(const ThemePalette& palette) {
-  base::Value::Dict dict;
+base::DictValue PaletteAsDict(const ThemePalette& palette) {
+  base::DictValue dict;
   for (const auto& [key, value] : palette) {
     dict.Set(key, value);
   }

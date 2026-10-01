@@ -102,7 +102,7 @@ base::expected<ResolvedTheme, std::string> LoadAndResolveTheme(
 
 // The pins as style/tokens/fixtures/<theme>.mixer.json holds them:
 // id name -> "#rrggbb".
-base::Value::Dict PinsAsDict(const ResolvedTheme& theme);
+base::DictValue PinsAsDict(const ResolvedTheme& theme);
 
 // Adds the one pin mixer for `theme` to `provider` (layer 2).
 void AddThemePinMixer(const ResolvedTheme& theme, ui::ColorProvider* provider);

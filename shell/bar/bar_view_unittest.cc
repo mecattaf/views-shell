@@ -81,7 +81,7 @@ TEST_F(ClockViewTest, TicksOnTheMinute) {
   task_environment_.FastForwardBy(
       ClockView::DelayToNextMinute(clock->Now()) + base::Seconds(20));
   ClockView view(clock);
-  const std::u16string first = view.GetText();
+  const std::u16string first(view.GetText());
   EXPECT_EQ(first, ClockView::FormatTime(clock->Now()));
   EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 1u);
   EXPECT_EQ(task_environment_.NextMainThreadPendingTaskDelay(),
@@ -98,7 +98,7 @@ TEST_F(ClockViewTest, TicksOnTheMinute) {
     EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 1u);
     EXPECT_EQ(task_environment_.NextMainThreadPendingTaskDelay(),
               base::Minutes(1));
-    const std::u16string before = view.GetText();
+    const std::u16string before(view.GetText());
     task_environment_.FastForwardBy(base::Minutes(1));
     EXPECT_NE(view.GetText(), before);
     EXPECT_EQ(view.GetText(), ClockView::FormatTime(clock->Now()));

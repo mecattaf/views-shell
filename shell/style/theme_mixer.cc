@@ -107,8 +107,8 @@ base::expected<ResolvedTheme, std::string> LoadAndResolveTheme(
   return ResolveTheme(*theme);
 }
 
-base::Value::Dict PinsAsDict(const ResolvedTheme& theme) {
-  base::Value::Dict dict;
+base::DictValue PinsAsDict(const ResolvedTheme& theme) {
+  base::DictValue dict;
   for (const ThemePinBinding& binding : GetThemePinBindings()) {
     for (const auto& [id, value] : theme.pins) {
       if (id == binding.id) {

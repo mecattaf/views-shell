@@ -193,11 +193,13 @@ base::expected<ThemeDirectory, std::string> LoadThemeDirectory(
   if (std::optional<std::string> seed = ReadNameFile(seed_path)) {
     std::vector<std::string_view> parts = base::SplitStringPiece(
         *seed, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    int channels[3] = {0, 0, 0};
+    std::vector<int> channels;
     bool valid = parts.size() == 3;
-    for (size_t i = 0; valid && i < 3; ++i) {
-      valid = base::StringToInt(parts[i], &channels[i]) && channels[i] >= 0 &&
-              channels[i] <= 255;
+    for (std::string_view part : parts) {
+      int channel = 0;
+      valid = valid && base::StringToInt(part, &channel) && channel >= 0 &&
+              channel <= 255;
+      channels.push_back(channel);
     }
     if (!valid) {
       return base::unexpected(seed_path.value() + ": expected r,g,b");
