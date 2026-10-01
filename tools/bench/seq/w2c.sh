@@ -11,8 +11,8 @@
 #   display  every Notification* and ShellMessagePopup* test, inside runtime-test
 #            with a private session bus (dbus-run-session) and a private headless
 #            scroll as the Wayland display the Views tests need (C16.1)
-#   bus      the same filter under dbus-run-session only, no display: the bus
-#            tests run, the Views tests skip
+#   bus      the same filter under dbus-run-session only (started outside the
+#            FHS environment), no display: the bus tests run, the Views tests skip
 #   nobus    NotificationServer* with DBUS_SESSION_BUS_ADDRESS unset: the bus
 #            tests skip (C16.2)
 # Every step echoes its rc; the script exits non-zero if any step failed.
@@ -96,7 +96,9 @@ exit $rc'
 fi
 
 if has bus; then
-  "$FHS" -c "cd $SRC && env -u WAYLAND_DISPLAY dbus-run-session -- out/views/views_shell_unittests --gtest_filter='$FILTER' --test-launcher-jobs=1" > "$RES/w2c-bus.log" 2>&1
+  # dbus-run-session outside the FHS environment: inside it, the FHS's
+  # session.conf has no <listen> element and the daemon does not start.
+  env -u WAYLAND_DISPLAY dbus-run-session -- "$FHS" -c "cd $SRC && out/views/views_shell_unittests --gtest_filter='$FILTER' --test-launcher-jobs=1" > "$RES/w2c-bus.log" 2>&1
   rc=$?; step bus-only $rc
   summarize "$RES/w2c-bus.log"
 fi
