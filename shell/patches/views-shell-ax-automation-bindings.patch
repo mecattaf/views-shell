@@ -1,0 +1,26 @@
+diff --git a/ui/accessibility/platform/BUILD.gn b/ui/accessibility/platform/BUILD.gn
+index eadb44ecc0..2c751f03b4 100644
+--- a/ui/accessibility/platform/BUILD.gn
++++ b/ui/accessibility/platform/BUILD.gn
+@@ -12,6 +12,12 @@ import("//testing/test.gni")
+ import("//tools/json_schema_compiler/json_schema_api.gni")
+ import("//ui/base/ui_features.gni")
+ 
++declare_args() {
++  # The Automation API bindings pull //gin and //v8 into every ax_platform
++  # client. A Views program with no extensions sets this to false (views-shell).
++  enable_ax_automation_bindings = enable_extensions || is_fuchsia
++}
++
+ if (is_win) {
+   import("//build/toolchain/win/midl.gni")
+ }
+@@ -103,7 +109,7 @@ component("platform") {
+     "//ui/display",
+   ]
+ 
+-  if (enable_extensions || is_fuchsia) {
++  if (enable_ax_automation_bindings) {
+     sources += [
+       # Use by the Automation API and the Accessibility service.
+       # TODO(crbug.com/1357889): Rename to atp/ or javascript/?

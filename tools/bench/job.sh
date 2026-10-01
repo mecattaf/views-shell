@@ -17,6 +17,7 @@ case "$verb" in
       RUN="\$HOME/views-shell-wt/$BRANCH/tools/bench/worker/run.sh"
     fi
     args=$(printf '%q ' "$script" "$@")
+    ssh_ "test -f $RUN" || { echo "job.sh start: $RUN is not on the bench; run tools/bench/sync.sh on this branch first" >&2; exit 3; }
     ssh_ "rm -f ~/views-bench/results/$name.rc; systemctl --user reset-failed vs-$name 2>/dev/null; systemd-run --user --unit=vs-$name --collect -p Environment=HOME=\$HOME -p 'Environment=PATH=/run/wrappers/bin:/etc/profiles/per-user/\$USER/bin:/run/current-system/sw/bin:/nix/var/nix/profiles/default/bin' /run/current-system/sw/bin/bash $RUN $name $args"
     ;;
   wait)
