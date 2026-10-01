@@ -86,6 +86,61 @@ class RecordingObserver : public NotificationServer::Observer {
   std::vector<std::pair<uint32_t, std::string>> actions;
 };
 
+// views::ViewsTestBase, held rather than inherited: its destructor CHECKs
+// that SetUp ran, so a fixture that skips (no display) cannot be one. The
+// fixtures below make one only when a display exists and drive its SetUp
+// and TearDown themselves.
+class ViewsHarness : public views::ViewsTestBase {
+ public:
+  ViewsHarness()
+      : views::ViewsTestBase(
+            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
+  void SetUp() override { views::ViewsTestBase::SetUp(); }
+  void TearDown() override { views::ViewsTestBase::TearDown(); }
+  gfx::NativeWindow Context() { return GetContext(); }
+  base::test::TaskEnvironment* Tasks() { return task_environment(); }
+
+ private:
+  void TestBody() override {}
+};
+
+// The common part of the Views fixtures.
+class ViewsFixture : public testing::Test {
+ protected:
+  // Returns false (and the caller returns) when the test skipped.
+  bool SetUpViews() {
+    if (!HaveWaylandDisplay()) {
+      return false;
+    }
+    ViewsProcessSetup();
+    ax_platform_.emplace();
+    harness_ = std::make_unique<ViewsHarness>();
+    harness_->SetUp();
+    return true;
+  }
+
+  void TearDownViews() {
+    if (!harness_) {
+      return;
+    }
+    harness_->TearDown();
+    harness_.reset();
+    ax_platform_.reset();
+  }
+
+  void FastForward(base::TimeDelta delta) {
+    harness_->Tasks()->FastForwardBy(delta);
+  }
+
+  std::optional<ui::AXPlatformForTest> ax_platform_;
+  std::unique_ptr<ViewsHarness> harness_;
+};
+
+constexpr char kNoDisplay[] =
+    "no WAYLAND_DISPLAY: aura::Env needs a compositor on this Wayland-only "
+    "build; tools/bench/seq/w2c.sh runs these tests against a private "
+    "headless scroll";
+
 // The pure part: no widgets, no display.
 TEST(ShellMessagePopupSurfaceSpecTest, MarginsPlaceThePopupInItsSlot) {
   const gfx::Rect work_area(0, 0, 1920, 1080);
@@ -113,24 +168,15 @@ TEST(ShellMessagePopupSurfaceSpecTest, MarginsPlaceThePopupInItsSlot) {
   EXPECT_EQ("views-shell-notification", props.layer_namespace);
 }
 
-class ShellMessagePopupCollectionTest : public views::ViewsTestBase {
+class ShellMessagePopupCollectionTest : public ViewsFixture {
  protected:
-  ShellMessagePopupCollectionTest()
-      : views::ViewsTestBase(
-            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
-
   void SetUp() override {
-    if (!HaveWaylandDisplay()) {
-      GTEST_SKIP() << "no WAYLAND_DISPLAY: aura::Env needs a compositor on "
-                      "this Wayland-only build; tools/bench/seq/w2c.sh runs "
-                      "these tests against a private headless scroll";
+    if (!SetUpViews()) {
+      GTEST_SKIP() << kNoDisplay;
     }
-    ViewsProcessSetup();
-    ax_platform_.emplace();
-    views::ViewsTestBase::SetUp();
     message_center::MessageCenter::Initialize();
     popups_ = std::make_unique<ShellMessagePopupCollection>();
-    popups_->set_widget_context_for_testing(GetContext());
+    popups_->set_widget_context_for_testing(harness_->Context());
     popups_->StartObserving();
     server_ = std::make_unique<NotificationServer>(
         message_center::MessageCenter::Get(), "test");
@@ -138,21 +184,20 @@ class ShellMessagePopupCollectionTest : public views::ViewsTestBase {
   }
 
   void TearDown() override {
-    if (!ax_platform_) {
+    if (!harness_) {
       return;  // Skipped.
     }
     server_->RemoveObserver(&observer_);
     popups_.reset();
     server_.reset();
     message_center::MessageCenter::Shutdown();
-    views::ViewsTestBase::TearDown();
-    ax_platform_.reset();
+    TearDownViews();
   }
 
   // Lets the fade-in/fade-out and move animations finish.
   void Settle() {
     for (int i = 0; i < 5; ++i) {
-      task_environment()->FastForwardBy(base::Seconds(1));
+      FastForward(base::Seconds(1));
       base::RunLoop().RunUntilIdle();
     }
   }
@@ -179,7 +224,6 @@ class ShellMessagePopupCollectionTest : public views::ViewsTestBase {
                : gfx::Rect();
   }
 
-  std::optional<ui::AXPlatformForTest> ax_platform_;
   std::unique_ptr<ShellMessagePopupCollection> popups_;
   std::unique_ptr<NotificationServer> server_;
   RecordingObserver observer_;
@@ -272,30 +316,14 @@ TEST_F(ShellMessagePopupCollectionTest, ActionButtonsMapToActionKeys) {
 
 // NotificationService without a bus: it brings MessageCenter and the popups
 // up and down; Notify through its server shows a popup.
-class NotificationServiceTest : public views::ViewsTestBase {
+class NotificationServiceTest : public ViewsFixture {
  protected:
-  NotificationServiceTest()
-      : views::ViewsTestBase(
-            base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
-
   void SetUp() override {
-    if (!HaveWaylandDisplay()) {
-      GTEST_SKIP() << "no WAYLAND_DISPLAY: see ShellMessagePopupCollectionTest";
+    if (!SetUpViews()) {
+      GTEST_SKIP() << kNoDisplay;
     }
-    ViewsProcessSetup();
-    ax_platform_.emplace();
-    views::ViewsTestBase::SetUp();
   }
-
-  void TearDown() override {
-    if (!ax_platform_) {
-      return;
-    }
-    views::ViewsTestBase::TearDown();
-    ax_platform_.reset();
-  }
-
-  std::optional<ui::AXPlatformForTest> ax_platform_;
+  void TearDown() override { TearDownViews(); }
 };
 
 TEST_F(NotificationServiceTest, StartWithoutBusThenStop) {
@@ -309,7 +337,7 @@ TEST_F(NotificationServiceTest, StartWithoutBusThenStop) {
   ASSERT_TRUE(message_center::MessageCenter::Get());
   ASSERT_TRUE(service.server());
   EXPECT_FALSE(service.server()->exported());
-  service.popups()->set_widget_context_for_testing(GetContext());
+  service.popups()->set_widget_context_for_testing(harness_->Context());
 
   NotifyParams params;
   params.app_name = "service-test";
@@ -317,7 +345,7 @@ TEST_F(NotificationServiceTest, StartWithoutBusThenStop) {
   params.expire_timeout = 0;
   service.server()->Notify(params);
   for (int i = 0; i < 5; ++i) {
-    task_environment()->FastForwardBy(base::Seconds(1));
+    FastForward(base::Seconds(1));
   }
   EXPECT_EQ(1u, service.popups()->GetPopupItemsCount());
 
