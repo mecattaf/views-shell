@@ -1,0 +1,20 @@
+{
+  "plugin": "example.music-scratchpad",
+  "root": {
+    "children": [],
+    "error": null,
+    "layout": null,
+    "node": "iconButton",
+    "props": {
+      "accessibleName": "Music",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "example.music-scratchpad/toggle",
+        "confirm": null
+      },
+      "icon": "music-note"
+    },
+    "view": "views::ImageButton"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "activation": [
+    "onQuickSettings:page",
+    "onQuickSettings:tile"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [
+    "views-shell.network"
+  ],
+  "events": [],
+  "id": "views-shell.qs-network",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "call:views-shell.network/*"
+  ],
+  "quickSettings": [
+    {
+      "id": "tile",
+      "order": -100,
+      "page": "page",
+      "size": "primary",
+      "slot": "tile",
+      "state": "views-shell.network/state",
+      "title": null,
+      "ui": "ui/tile.json",
+      "when": null
+    },
+    {
+      "id": "page",
+      "order": 0,
+      "page": null,
+      "size": null,
+      "slot": "page",
+      "state": "views-shell.network/state",
+      "title": "Network",
+      "ui": "ui/page.json",
+      "when": null
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "declarative"
+}

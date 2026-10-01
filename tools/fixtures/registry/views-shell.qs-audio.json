@@ -1,0 +1,66 @@
+{
+  "activation": [
+    "onQuickSettings:devices",
+    "onQuickSettings:input",
+    "onQuickSettings:output"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [
+    "views-shell.audio"
+  ],
+  "events": [],
+  "id": "views-shell.qs-audio",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "call:views-shell.audio/*"
+  ],
+  "quickSettings": [
+    {
+      "id": "output",
+      "order": -100,
+      "page": "devices",
+      "size": null,
+      "slot": "slider",
+      "state": "views-shell.audio/state",
+      "title": null,
+      "ui": "ui/output.json",
+      "when": null
+    },
+    {
+      "id": "input",
+      "order": -90,
+      "page": "devices",
+      "size": null,
+      "slot": "slider",
+      "state": "views-shell.audio/state",
+      "title": null,
+      "ui": "ui/input.json",
+      "when": null
+    },
+    {
+      "id": "devices",
+      "order": 0,
+      "page": null,
+      "size": null,
+      "slot": "page",
+      "state": "views-shell.audio/state",
+      "title": "Audio",
+      "ui": "ui/page.json",
+      "when": null
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "declarative"
+}

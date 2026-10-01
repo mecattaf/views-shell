@@ -1,0 +1,42 @@
+{
+  "activation": [
+    "onQuickSettings:sessions"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [
+    "views-shell.media"
+  ],
+  "events": [],
+  "id": "views-shell.qs-media",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "call:views-shell.media/control"
+  ],
+  "quickSettings": [
+    {
+      "id": "sessions",
+      "order": 0,
+      "page": null,
+      "size": null,
+      "slot": "card",
+      "state": "views-shell.media/state",
+      "title": null,
+      "ui": "ui/card.json",
+      "when": "session.mediaActive"
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "declarative"
+}
