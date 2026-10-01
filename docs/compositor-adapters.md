@@ -147,15 +147,15 @@ that provides it.
 | `scroll.jump` | yes | no | no | no |
 | `scroll.overview` | yes | no | no | no |
 | `scroll.lua` | yes (reviewed permission) | no | no | no |
-| `overview.events` | with hook H2 | no | yes (`OverviewOpenedOrClosed`, no geometry) | no |
-| `windows.geometry-events` | with hook H3 | no | yes (`WindowLayoutsChanged`) | partial (`movewindowv2`, resize) |
-| `bindings.gesture-events` | with hook H4 | with H4 via sway | no | no |
-| `windows.placement-hook` | with hook H7 (fork only) | no | no | no |
-| `windows.border-colour-rule` | with hook H9 | no | yes | yes (`bordercolor` rule) |
+| `overview.events` | with ask H2 | no | yes (`OverviewOpenedOrClosed`, no geometry) | no |
+| `windows.geometry-events` | with ask H3 | no | yes (`WindowLayoutsChanged`) | partial (`movewindowv2`, resize) |
+| `bindings.gesture-events` | with ask H4 | with H4 via sway | no | no |
+| `windows.placement-hook` | no | no | no | no |
+| `windows.border-colour-rule` | no | no | yes | yes (`bordercolor` rule) |
 
-Rows marked "with hook Hn" are true only on a scroll build carrying that patch,
-and the adapter learns it from the `GET_VERSION` `features` array (hook H10). On
-stock scroll they are "no".
+Rows marked "with ask Hn" are "no" on the stock scroll the dotfiles pin, and become
+"yes" only on a scroll build that has merged that upstream wish; the adapter learns
+it from the `GET_VERSION` `features` array (ask H10).
 
 The table is the adapter's static declaration. The probe at connect can only
 remove a capability, never add one. Rows marked "yes" for niri and Hyprland are
@@ -166,23 +166,23 @@ expected from their IPC references and are unproven until those adapters run.
 On scroll and sway, the window cycle keeps its keys in a scroll mode bound to the
 release of Alt. On niri and Hyprland, the strip takes the keyboard instead.
 
-## scroll upstream, and a fork with hooks (experimental)
+## scroll upstream wishes
 
-Nothing above needs anything from dawsers. What would make the scroll adapter
-better is a short list of listener-guarded IPC additions at stable call sites, in
-this order: gesture binding events (H4), an `app_id` change event (H11), jump
-begin and end with labels (H1), a global overview event with workspace rects (H2),
-a `GET_VERSION` feature list (H10), ext-workspace ids and `REMOVE` (H5), and a
-coalesced geometry event (H3). The earlier ask for "a reorder command" is dropped,
-because scroll already has `workspace swap`, and blur is not asked for. Until a
-`jump` end event exists, the core uses a minimal scroll Lua callback for that one
-signal (rule R13).
+scroll is stock and unpatched, and nothing above needs anything from dawsers. What
+would make the scroll adapter better is a short list of listener-guarded IPC
+additions at stable call sites, in this order: gesture binding events (H4), an
+`app_id` change event (H11), jump begin and end with labels (H1), a global overview
+event with workspace rects (H2), a `GET_VERSION` feature list (H10), ext-workspace
+ids and `REMOVE` (H5), and a coalesced geometry event (H3). The earlier ask for "a
+reorder command" is dropped, because scroll already has `workspace swap`, and blur is
+not asked for. Until a `jump` end event exists, the core uses a minimal scroll Lua
+callback for that one signal (rule R13).
 
-Carrying those as patches, and adding hooks dawsers would decline (a synchronous
-placement hook, per-window border colours, blur), is the experimental scroll fork
-with hooks described in [`scroll-fork-hooks.md`](scroll-fork-hooks.md). Whether to
-build the patch queue and whether to send anything upstream are open decisions
-(P15, P16).
+Those asks, with their sizes, call sites and degraded paths, are written up in
+[`scroll-fork-hooks.md`](scroll-fork-hooks.md). They are wishes for upstream only:
+this repository carries no scroll source and no scroll patch, and a declined ask
+changes nothing here. Sending them to dawsers is outward-facing and still open
+(decision P16).
 
 ## Testing
 

@@ -30,6 +30,7 @@ export WAYLAND_DISPLAY=$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-* | grep -v l
 export SCROLLSOCK=$(ls "$XDG_RUNTIME_DIR"/*-ipc.* 2>/dev/null | head -1); export SWAYSOCK="$SCROLLSOCK"
 echo "compositor: $WAYLAND_DISPLAY $SCROLLSOCK scroll pid $SP" | tee "$OUT/summary.txt"
 "$SCROLLMSG" -t get_outputs -r > "$OUT/outputs.json" 2>/dev/null
+echo "client: $*" | tee -a "$OUT/summary.txt"
 t0=$(date +%s%N)
 WAYLAND_DEBUG=1 "$@" > "$OUT/client.log" 2>&1 & CP=$!
 for i in $(seq 1 3000); do grep -qE "wl_surface[#@][0-9]+\.attach" "$OUT/client.log" && break; sleep 0.005; done
@@ -39,9 +40,21 @@ alive=0; kill -0 $CP 2>/dev/null && alive=1
 echo "client alive at capture: $alive" | tee -a "$OUT/summary.txt"
 "$SCROLLMSG" -t get_tree -r > "$OUT/tree.json" 2>/dev/null
 grim "$OUT/shot.png" 2>>"$OUT/summary.txt" && echo "screenshot: $(stat -c %s "$OUT/shot.png") bytes" | tee -a "$OUT/summary.txt"
+grim -t ppm "$OUT/shot.ppm" 2>/dev/null && python3 - "$OUT/shot.ppm" <<'"'"'PY'"'"' | tee -a "$OUT/summary.txt"
+import sys
+d = open(sys.argv[1], "rb").read()
+# P6 header: magic, width height, maxval, then raw RGB
+parts = d.split(b"\n", 3); w, h = map(int, parts[1].split()); px = parts[3]
+seen = set(); n = w * h
+for i in range(0, n, 97):  # sample every 97th pixel
+    seen.add(px[3*i:3*i+3])
+    if len(seen) > 64: break
+print(f"colours: {len(seen)} (sampled {w}x{h})")
+PY
+echo "attaches: $(grep -c 'wl_surface[#@][0-9]*\.attach' "$OUT/client.log")" | tee -a "$OUT/summary.txt"
 grep -oE "zwlr_layer_shell_v1[#@][0-9]+\.get_layer_surface|zwlr_layer_surface_v1[#@][0-9]+\.configure|xdg_wm_base[#@][0-9]+\.get_xdg_surface|xdg_surface[#@][0-9]+\.get_popup|xdg_surface[#@][0-9]+\.get_toplevel" "$OUT/client.log" | sort | uniq -c | tee -a "$OUT/summary.txt"
 bash "$HERE/measure.sh" client 10 $CP "$OUT/measure.tsv" | tee -a "$OUT/summary.txt"
 kill $CP 2>/dev/null; wait $CP 2>/dev/null
 kill $SP 2>/dev/null; wait $SP 2>/dev/null
 [ "$alive" = 1 ] && [ -s "$OUT/shot.png" ]
-'
+' _ "$@"

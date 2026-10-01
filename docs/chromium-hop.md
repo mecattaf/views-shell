@@ -45,11 +45,30 @@ never a contract. They may change at every hop, before and after v1.
 How views-shell moves after v1 (another Chrome release Tom names, or a cadence) is left
 for v1 to decide (open decision P24).
 
+## Bench policy: the newest Chrome stable at bench time
+
+The bench (the headless build host driven only through
+[`../tools/bench/`](../tools/bench/)) does not wait for a hop decision:
+
+- **The bench tracks the newest Chrome stable at bench time.** When the bench is
+  provisioned or re-provisioned, it fetches the newest Google Chrome Stable release
+  available that day and pins its exact Chromium tag in
+  `shell/build/CHROMIUM_VERSION`. Nothing is built against a tag the bench has not
+  pinned, and every recorded run under `docs/bench/` names the tag it ran on.
+- **A bench pin is not a release.** It carries no promise and no history (rule R27);
+  it is simply the tree the chapter's evidence was produced on.
+- **v1 is the Chrome release Tom names.** When he names one, the hop loop below moves
+  the pin to that release's exact Chromium tag, the gates run, and the contracts
+  freeze. Until then a hop happens only when someone decides it is worth its
+  iterations.
+- **Example, 2026-10-01:** the newest Chrome stable was `154.0.8037.92`, so the bench
+  holds `154.0.8037.92` and the first hop of this lineage is a re-cut at that tag.
+
 ## Inputs
 
 | File | Holds |
 |---|---|
-| `shell/build/CHROMIUM_VERSION` | the pinned tag (one line, for example `150.0.7871.124`) |
+| `shell/build/CHROMIUM_VERSION` | the pinned tag (one line, for example `154.0.8037.92`) |
 | `shell/patches/*.patch` | the carry, applied in the order listed in `shell/patches/series`, each with a header giving its purpose, anchors and last good tag |
 | `ASH-PORT-LEDGER.md` | every ported Ash or Chromium file with its upstream revision |
 | `docs/upgrade/LEDGER-<milestone>.md` | one ledger per hop (template below) |
@@ -57,9 +76,9 @@ for v1 to decide (open decision P24).
 
 ## The loop
 
-1. **Pin.** Choose the target tag: the Chromium version of a current Google Chrome
-   Stable release (from Chromium's release data, the version history API or
-   `chromiumdash`), or, for v1, the exact version of the Chrome release Tom named.
+1. **Pin.** Choose the target tag: the Chromium version of the newest Google Chrome
+   Stable release at bench time (from Chromium's release data, the version history API
+   or `chromiumdash`), or, for v1, the exact version of the Chrome release Tom named.
    Record the tag, the Chrome release it corresponds to and the date in the new
    ledger. Fetch only that tag at depth 1, check it out, and let `gclient sync`
    reconcile DEPS with no `--revision`. A bare `gclient sync --revision` on a
@@ -146,7 +165,9 @@ The ledger records iterations and evidence. It never records durations.
 
 The last green Chromium in this lineage was 150.0.7871.124 (agency-mvp,
 `ninja agency chrome`, 48,159 steps, 0 failed). No tree or binary survives, so
-the first hop is a re-cut: fetch a current Chrome Stable tag (Tom's Chrome reports
-152.0.7977.64 today), trim the lifted patches to layer-shell only, and build the
-content-free shell main for the first time. See [`../shell/PROVENANCE.md`](../shell/PROVENANCE.md)
+the first hop is a re-cut at the bench pin: the newest Chrome stable at bench time,
+`154.0.8037.92` on 2026-10-01. The lifted patches are re-cut against that tag, never
+required to apply from the lineage (Tom, 2026-10-01: "start from a newest chromium (as
+per latest release) no need to 'apply cleanly'"), and the content-free shell main is
+built for the first time. See [`../shell/PROVENANCE.md`](../shell/PROVENANCE.md)
 for what is trimmed.
