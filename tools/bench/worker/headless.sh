@@ -30,6 +30,7 @@ export WAYLAND_DISPLAY=$(basename "$(ls "$XDG_RUNTIME_DIR"/wayland-* | grep -v l
 export SCROLLSOCK=$(ls "$XDG_RUNTIME_DIR"/*-ipc.* 2>/dev/null | head -1); export SWAYSOCK="$SCROLLSOCK"
 echo "compositor: $WAYLAND_DISPLAY $SCROLLSOCK scroll pid $SP" | tee "$OUT/summary.txt"
 "$SCROLLMSG" -t get_outputs -r > "$OUT/outputs.json" 2>/dev/null
+echo "client: $*" | tee -a "$OUT/summary.txt"
 t0=$(date +%s%N)
 WAYLAND_DEBUG=1 "$@" > "$OUT/client.log" 2>&1 & CP=$!
 for i in $(seq 1 3000); do grep -qE "wl_surface[#@][0-9]+\.attach" "$OUT/client.log" && break; sleep 0.005; done
@@ -44,4 +45,4 @@ bash "$HERE/measure.sh" client 10 $CP "$OUT/measure.tsv" | tee -a "$OUT/summary.
 kill $CP 2>/dev/null; wait $CP 2>/dev/null
 kill $SP 2>/dev/null; wait $SP 2>/dev/null
 [ "$alive" = 1 ] && [ -s "$OUT/shot.png" ]
-'
+' _ "$@"
