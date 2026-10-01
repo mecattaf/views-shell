@@ -49,7 +49,7 @@ if has build; then
   [ $rc = 0 ] || { echo "w2c-seq: gn gen failed, stopping"; exit 1; }
   "$FHS" -c "cd $SRC && gn check out/views '//views_shell/*'"
   step gn-check $?
-  "$FHS" -c "cd $SRC && autoninja -C out/views views_shell views_shell_unittests"
+  "$FHS" -c "cd $SRC && autoninja -k 0 -C out/views views_shell views_shell_unittests"
   rc=$?; step build $rc
   [ $rc = 0 ] || { echo "w2c-seq: build failed, stopping"; exit 1; }
   ls -l "$SRC/out/views/views_shell" "$SRC/out/views/views_shell_unittests"

@@ -30,13 +30,6 @@ namespace {
 constexpr char kDefaultActionKey[] = "default";
 constexpr char kErrorInvalidArgs[] = "org.freedesktop.DBus.Error.InvalidArgs";
 
-constexpr const char* kMethods[] = {
-    "GetCapabilities",
-    "Notify",
-    "CloseNotification",
-    "GetServerInformation",
-};
-
 // Forwards clicks on one notification to the server. The server may be gone
 // (the delegate is ref-counted and can outlive it), hence the WeakPtr.
 class ClickForwarder : public message_center::NotificationDelegate {
@@ -228,17 +221,22 @@ void NotificationServer::Export(scoped_refptr<dbus::Bus> bus,
       bus_->GetExportedObject(dbus::ObjectPath(kNotificationsObjectPath));
   using Handler = void (NotificationServer::*)(
       dbus::MethodCall*, dbus::ExportedObject::ResponseSender);
-  constexpr Handler kHandlers[] = {
-      &NotificationServer::HandleGetCapabilities,
-      &NotificationServer::HandleNotify,
-      &NotificationServer::HandleCloseNotification,
-      &NotificationServer::HandleGetServerInformation,
+  struct Method {
+    const char* name;
+    Handler handler;
   };
-  methods_pending_ = std::size(kMethods);
-  for (size_t i = 0; i < std::size(kMethods); ++i) {
+  constexpr Method kMethodTable[] = {
+      {"GetCapabilities", &NotificationServer::HandleGetCapabilities},
+      {"Notify", &NotificationServer::HandleNotify},
+      {"CloseNotification", &NotificationServer::HandleCloseNotification},
+      {"GetServerInformation",
+       &NotificationServer::HandleGetServerInformation},
+  };
+  methods_pending_ = std::size(kMethodTable);
+  for (const Method& method : kMethodTable) {
     exported_object_->ExportMethod(
-        kNotificationsInterface, kMethods[i],
-        base::BindRepeating(kHandlers[i], weak_factory_.GetWeakPtr()),
+        kNotificationsInterface, method.name,
+        base::BindRepeating(method.handler, weak_factory_.GetWeakPtr()),
         base::BindOnce(&NotificationServer::OnMethodExported,
                        weak_factory_.GetWeakPtr()));
   }
