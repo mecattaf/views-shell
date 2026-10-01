@@ -15,22 +15,29 @@
 #include "ui/gfx/animation/tween.h"
 #include "ui/gfx/canvas.h"
 #include "ui/views/accessibility/view_accessibility.h"
+#include "ui/views/layout/box_layout.h"
 #include "ui/views/widget/widget.h"
 #include "views_shell/tabs/layout_constants.h"
 #include "views_shell/tabs/tab.h"
 #include "views_shell/tabs/tab_color_id.h"
+#include "views_shell/tabs/unpinned_tab_container_view_layout.h"
 
 namespace views_shell {
-namespace {
-
-// The gap between two tabs, as in Chrome's
-// chrome/browser/ui/views/tabs/common/unpinned_tab_container_view_layout.cc.
-constexpr int kTabVerticalSpacing = 2;
-
-}  // namespace
-
 WorkspaceStrip::WorkspaceStrip(SelectCallback on_select)
     : on_select_(std::move(on_select)) {
+  // As VerticalTabStripRegionView: uncollapsed vertical padding above and
+  // below the tabs. Chrome's top padding comes from its top button container,
+  // which the strip does not have.
+  const int vertical_padding = GetLayoutConstant(
+      LayoutConstant::kVerticalTabStripUncollapsedVerticalPadding);
+  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kVertical,
+      gfx::Insets::VH(vertical_padding, 0)));
+  layout->set_cross_axis_alignment(
+      views::BoxLayout::CrossAxisAlignment::kStretch);
+  tab_container_ = AddChildView(std::make_unique<views::View>());
+  tab_container_->SetLayoutManager(
+      std::make_unique<UnpinnedTabContainerViewLayout>());
   GetViewAccessibility().SetRole(ax::mojom::Role::kTabList);
   GetViewAccessibility().SetName(u"Workspaces");
 }
@@ -38,9 +45,9 @@ WorkspaceStrip::WorkspaceStrip(SelectCallback on_select)
 WorkspaceStrip::~WorkspaceStrip() = default;
 
 void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
-  // The strip's only children are its tabs.
+  // The container's only children are the tabs.
   tabs_.clear();
-  RemoveAllChildViews();
+  tab_container_->RemoveAllChildViews();
 
   workspaces_ = std::move(workspaces);
   active_index_ = -1;
@@ -51,7 +58,7 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
   }
 
   for (const Workspace& workspace : workspaces_) {
-    Tab* tab = AddChildView(
+    Tab* tab = tab_container_->AddChildView(
         std::make_unique<Tab>(this, TabStripOrientation::kVertical));
     tab->SetData({.title = workspace.title});
     tabs_.push_back(tab);
@@ -67,30 +74,12 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
 
 gfx::Size WorkspaceStrip::CalculatePreferredSize(
     const views::SizeBounds& available_size) const {
-  const int padding = GetLayoutConstant(
-      LayoutConstant::kVerticalTabStripUncollapsedVerticalPadding);
-  int height = 2 * padding;
-  for (const Tab* tab : tabs_) {
-    height += tab->GetPreferredSize().height() + kTabVerticalSpacing;
-  }
-  if (!tabs_.empty()) {
-    height -= kTabVerticalSpacing;
-  }
-  return gfx::Size(kPreferredWidth, height);
-}
-
-void WorkspaceStrip::Layout(PassKey) {
-  const int horizontal_padding =
-      GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
-  const int tab_width = std::max(0, width() - 2 * horizontal_padding);
-  int y = GetLayoutConstant(
-      LayoutConstant::kVerticalTabStripUncollapsedVerticalPadding);
-  for (Tab* tab : tabs_) {
-    const int tab_height =
-        tab->GetPreferredSize(views::SizeBounds(tab_width, {})).height();
-    tab->SetBounds(horizontal_padding, y, tab_width, tab_height);
-    y += tab_height + kTabVerticalSpacing;
-  }
+  // A fixed width; the height is what the box layout asks for the tabs.
+  return gfx::Size(
+      kPreferredWidth,
+      views::View::CalculatePreferredSize(
+          views::SizeBounds(kPreferredWidth, available_size.height()))
+          .height());
 }
 
 void WorkspaceStrip::OnPaint(gfx::Canvas* canvas) {

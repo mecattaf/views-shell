@@ -4,9 +4,11 @@
 //
 // A vertical strip of Chrome tabs, one per workspace. The Tab, its
 // VerticalTabStyleViews and its close button are ported from Chrome
-// (CHROME-PORT-LEDGER.md); this view is views-shell's own. It plays the part
-// Chrome's TabStrip plays for a Tab (it is the TabSlotController) and lays the
-// tabs out top to bottom with the metrics of Chrome's vertical tab strip.
+// (CHROME-PORT-LEDGER.md), and so are the two layouts of Chrome's vertical tab
+// strip: TabViewVerticalLayout inside each tab and
+// UnpinnedTabContainerViewLayout for the column of tabs. This view is
+// views-shell's own: it stands where Chrome's VerticalTabStripRegionView
+// stands (padding, background) and is the TabSlotController of its tabs.
 
 #ifndef VIEWS_SHELL_TABS_WORKSPACE_STRIP_H_
 #define VIEWS_SHELL_TABS_WORKSPACE_STRIP_H_
@@ -53,7 +55,6 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   // views::View:
   gfx::Size CalculatePreferredSize(
       const views::SizeBounds& available_size) const override;
-  void Layout(PassKey) override;
   void OnPaint(gfx::Canvas* canvas) override;
   void AddedToWidget() override;
   void RemovedFromWidget() override;
@@ -85,6 +86,8 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   void UpdateContrastRatioValues();
 
   SelectCallback on_select_;
+  // Holds the tabs; laid out by UnpinnedTabContainerViewLayout.
+  raw_ptr<views::View> tab_container_ = nullptr;
   std::vector<Workspace> workspaces_;
   std::vector<raw_ptr<Tab>> tabs_;
   int active_index_ = -1;

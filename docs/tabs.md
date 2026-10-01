@@ -25,16 +25,35 @@ Everything tied to a browser is cut: `TabStripModel`, `WebContents`, the
 favicon and alert indicator, hover cards, dragging, groups, splits, metrics and
 feature flags. The ledger lists each cut per file.
 
-## Why the vertical layout is ours
+## The vertical strip is Chrome's
 
-Chrome's `TabStrip` lays tabs out horizontally, with overlapping folder shapes.
-Chrome 154 also ships vertical tabs, but as a separate tab class built on its
-tab-collection model, which is welded to `TabStripModel`. So
-`shell/tabs/workspace_strip.{h,cc}` is views-shell code. It is the
-`TabSlotController` for its tabs and stacks them top to bottom. It uses the
-metrics of Chrome's vertical strip: 12 px side padding and top padding, a
-30 px tab height (`kVerticalTabHeight`) and a 2 px gap. The ported `Tab` takes
-an orientation so that it uses the vertical style and height.
+Chrome has its own vertical tab strip, and 154 carries it. The code is in
+`chrome/browser/ui/views/frame/vertical_tab_strip_region_view.*` (the region:
+top and bottom buttons, resize, collapse, expand on hover),
+`chrome/browser/ui/views/tabs/common/` (`TabStripView`,
+`UnpinnedTabContainerView`, `TabView` and their layouts),
+`chrome/browser/ui/views/tabs/vertical/` (the region's button containers and
+scroll bar), `vertical_tab_style_views.*` (the tab's shape and fill) and
+`chrome/browser/ui/tabs/vertical_tab_strip_state*` (the collapse state).
+`TabStripOrientation` (`shared/tab_strip_types.h`) selects horizontal or
+vertical throughout.
+
+The views and the region are welded to `TabCollectionNode`,
+`TabStripCollectionController`, `BrowserView` and prefs. Their painting and
+layout are not, so those are what views-shell ports:
+
+- `VerticalTabStyleViews` paints each tab.
+- `TabViewVerticalLayout`, the layout of Chrome's vertical `TabView`, is
+  installed on the ported `Tab`. It places the close button at the trailing
+  edge and the title in the rest. It shows the close button on the active tab
+  or on a hovered or focused tab.
+- `UnpinnedTabContainerViewLayout`, cut to its vertical half, stacks the tabs.
+  It uses a 12 px side padding, the 30 px `kVerticalTabHeight` and a 2 px gap.
+
+`shell/tabs/workspace_strip.{h,cc}` is views-shell code where Chrome has
+`VerticalTabStripRegionView`. It adds the region's 12 px vertical padding and
+paints the frame colour behind the tabs. It holds one container with the
+ported layout, and it is the `TabSlotController` for its tabs.
 
 One tab per workspace. The active workspace is the selected tab. A click, tap,
 Return or Space on another tab selects it and runs the strip's callback. For
