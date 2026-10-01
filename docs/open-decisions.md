@@ -44,3 +44,4 @@ Tom's reasoned list, with a recommendation for each, is in the private scoping n
 | P29 | Quick-settings shape: one host with a grid (as now), or independent per-domain bubbles anchored to bar indicators (Agency D12 FR-046) | One host. Every item is a plugin either way. |
 | P30 | Per-plugin memory ceiling and crash budget for T2 processes (after noctalia's Luau limits) | Not in the manifest yet. |
 | P31 | Whether the seats bind a screen locker | None bound. swayidle turns the monitors off. |
+| P32 | Adopt the lift inventory's composition: `JsonViewBuilder` copied as the `ui`-tree engine (closing P9 as "copy"), schema additions S1 to S18, and the build order bar, rail, quick settings ([`shell-composition.md`](shell-composition.md), [`chrome-lift-inventory.md`](chrome-lift-inventory.md)) | PROPOSED in both documents; the schema is unchanged until Tom rules. |

@@ -14,7 +14,10 @@ and every fixture under tools/fixtures/invalid/ is rejected.
 
 Needs the python `jsonschema` package (>= 4.18). On NixOS:
   nix shell nixpkgs#python3Packages.jsonschema -c python3 tools/validate.py
-Prints the literal token VALIDATE-OK on success.
+Prints the literal token VALIDATE-OK on success (not with --defer-ok, which
+tools/validate.sh passes so it can print the token after the plugin-conformance
+runs). tools/plugin-conformance.py imports manifest_problems() and validator()
+from here, so a manifest is checked the same way by both.
 """
 import filecmp
 import json
@@ -59,7 +62,69 @@ def load(path):
     return json.loads(path.read_text())
 
 
-def main():
+def validator(name):
+    """A Draft 2020-12 validator for schemas/<name>.schema.json (the schema itself
+    checked first)."""
+    schema = load(ROOT / "schemas" / f"{name}.schema.json")
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
+def manifest_problems(manifest, plugin_v):
+    """Checks one views-shell-plugin.json. Returns (schema_errors, other_errors),
+    each a list of "<path>: <message>" strings. tools/plugin-conformance.py runs
+    the same function before it spawns a process plugin."""
+    rel = manifest.relative_to(ROOT) if manifest.is_relative_to(ROOT) else manifest
+    data = load(manifest)
+    schema_errs = [f"{rel}: {'/'.join(map(str, e.path))}: {e.message}"
+                   for e in sorted(plugin_v.iter_errors(data), key=lambda e: list(e.path))]
+    failures = []
+    base = manifest.parent
+    named = []
+    rt = data.get("runtime", {})
+    if "exec" in rt:
+        named.append(rt["exec"])
+    c = data.get("contributes", {})
+    named += [s["ui"] for s in c.get("surfaces", []) if "ui" in s]
+    named += [q["ui"] for q in c.get("quickSettings", []) if "ui" in q]
+    named += [x["schema"] for x in c.get("sources", []) if "schema" in x]
+    named += [x["path"] for x in data.get("chrome", {}).get("settingsPages", [])]
+    named += c.get("compositor", {}).get("scroll", {}).get("lua", [])
+    named += c.get("compositor", {}).get("scroll", {}).get("config", [])
+    for n in named:
+        if not (base / n).is_file():
+            failures.append(f"{rel}: names missing file {n}")
+    # Every command referenced locally must be declared.
+    ids = {cmd["id"] for cmd in c.get("commands", [])}
+    refs = [k["command"] for k in c.get("keybindings", [])]
+    refs += [m["command"] for m in c.get("menus", [])]
+    refs += [l["command"] for l in c.get("launcher", [])]
+    refs += [v["command"] for v in c.get("cli", {}).get("verbs", [])]
+    for r in refs:
+        if "/" not in r and r not in ids:
+            failures.append(f"{rel}: references undeclared command {r}")
+    # A quick-settings entry that opens a page must name a declared page entry.
+    qs = c.get("quickSettings", [])
+    pages = {q["id"] for q in qs if q.get("slot") == "page"}
+    for q in qs:
+        if "page" in q and q["page"] not in pages:
+            failures.append(f"{rel}: entry {q['id']} opens undeclared page {q['page']}")
+    # Cross-plugin calls need a call: permission (handlers and ui trees alike).
+    perms = set(data.get("permissions", []))
+    calls = commands_in([cmd.get("handler", {}) for cmd in c.get("commands", [])], [])
+    for n in named:
+        if n.endswith(".json") and (base / n).is_file():
+            calls += commands_in(load(base / n), [])
+    for call in calls:
+        if not covered(data.get("id"), perms, call):
+            failures.append(f"{rel}: calls {call} without a call: permission")
+    return schema_errs, failures
+
+
+def main(argv):
+    # --defer-ok: on success print no final token; tools/validate.sh prints
+    # VALIDATE-OK itself after the plugin-conformance runs.
+    defer_ok = "--defer-ok" in argv[1:]
     failures = []
     files = [p for p in ROOT.rglob("*.json") if not SKIP & set(p.parts)]
     for p in files:
@@ -69,66 +134,18 @@ def main():
             failures.append(f"{p.relative_to(ROOT)}: not JSON: {e}")
     print(f"parsed {len(files)} JSON files")
 
-    plugin_schema = load(ROOT / "schemas/views-shell-plugin.schema.json")
-    ui_schema = load(ROOT / "schemas/ui-tree.schema.json")
-    config_schema = load(ROOT / "schemas/config.schema.json")
-    for name, s in (("views-shell-plugin", plugin_schema), ("ui-tree", ui_schema),
-                    ("config", config_schema)):
-        Draft202012Validator.check_schema(s)
+    plugin_v, ui_v, config_v = (validator(n) for n in ("views-shell-plugin", "ui-tree", "config"))
+    for name in ("views-shell-plugin", "ui-tree", "config"):
         print(f"schema ok: {name}")
-    plugin_v = Draft202012Validator(plugin_schema)
-    ui_v = Draft202012Validator(ui_schema)
 
     for manifest in sorted(ROOT.glob("examples/*/views-shell-plugin.json")):
         rel = manifest.relative_to(ROOT)
-        data = load(manifest)
-        errs = sorted(plugin_v.iter_errors(data), key=lambda e: list(e.path))
-        for e in errs:
-            failures.append(f"{rel}: {'/'.join(map(str, e.path))}: {e.message}")
-        base = manifest.parent
-        named = []
-        rt = data.get("runtime", {})
-        if "exec" in rt:
-            named.append(rt["exec"])
-        c = data.get("contributes", {})
-        named += [s["ui"] for s in c.get("surfaces", []) if "ui" in s]
-        named += [q["ui"] for q in c.get("quickSettings", []) if "ui" in q]
-        named += [x["schema"] for x in c.get("sources", []) if "schema" in x]
-        named += [x["path"] for x in data.get("chrome", {}).get("settingsPages", [])]
-        named += c.get("compositor", {}).get("scroll", {}).get("lua", [])
-        named += c.get("compositor", {}).get("scroll", {}).get("config", [])
-        for n in named:
-            if not (base / n).is_file():
-                failures.append(f"{rel}: names missing file {n}")
-        # Every command referenced locally must be declared.
-        ids = {cmd["id"] for cmd in c.get("commands", [])}
-        refs = [k["command"] for k in c.get("keybindings", [])]
-        refs += [m["command"] for m in c.get("menus", [])]
-        refs += [l["command"] for l in c.get("launcher", [])]
-        refs += [v["command"] for v in c.get("cli", {}).get("verbs", [])]
-        for r in refs:
-            if "/" not in r and r not in ids:
-                failures.append(f"{rel}: references undeclared command {r}")
-        # A quick-settings entry that opens a page must name a declared page entry.
-        qs = c.get("quickSettings", [])
-        pages = {q["id"] for q in qs if q.get("slot") == "page"}
-        for q in qs:
-            if "page" in q and q["page"] not in pages:
-                failures.append(f"{rel}: entry {q['id']} opens undeclared page {q['page']}")
-        # Cross-plugin calls need a call: permission (handlers and ui trees alike).
-        perms = set(data.get("permissions", []))
-        calls = commands_in([cmd.get("handler", {}) for cmd in c.get("commands", [])], [])
-        for n in named:
-            if n.endswith(".json") and (base / n).is_file():
-                calls += commands_in(load(base / n), [])
-        for call in calls:
-            if not covered(data["id"], perms, call):
-                failures.append(f"{rel}: calls {call} without a call: permission")
-        print(f"{'FAIL' if errs else 'ok  '} manifest {rel}")
+        schema_errs, other = manifest_problems(manifest, plugin_v)
+        failures += schema_errs + other
+        print(f"{'FAIL' if schema_errs else 'ok  '} manifest {rel}")
 
     # User configuration examples: schema-valid and sized for one
     # chrome.storage.sync item (QUOTA_BYTES_PER_ITEM = 8,192 bytes).
-    config_v = Draft202012Validator(config_schema)
     for cfg in sorted(ROOT.glob("examples/config/*.json")):
         rel = cfg.relative_to(ROOT)
         data = load(cfg)
@@ -232,9 +249,10 @@ def main():
         print("\n".join(failures), file=sys.stderr)
         print("VALIDATE-FAILED")
         return 1
-    print("VALIDATE-OK")
+    if not defer_ok:
+        print("VALIDATE-OK")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv))
