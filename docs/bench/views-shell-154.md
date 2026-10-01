@@ -135,3 +135,104 @@ and the client draws through SwiftShader (software GL) into `wl_shm` buffers. Th
 build is a component build, so PSS counts the shared libraries. A seat with a
 render node and a non-component `out/release` build will give other numbers; the
 release footprint build is the next chapter's first task.
+
+## Layer surface and popup (T4)
+
+Measured on the bench on 2026-10-01 by task T4 (`SPEC.md`, claims C4.2 and
+C4.3; PROVE rows P4.2 and P4.3), same harness as above (pixman compositor,
+SwiftShader client), with the `views-shell-ozone-layer-shell` and
+`views-shell-ozone-layer-popup` patches applied. The lines below are copied from
+`~/views-bench/results/t4-bar/summary.txt` and `t4-popup/summary.txt` on the
+bench.
+
+`views_shell --bar` (screenshot `views-shell-154-bar.png`): one 32 px top
+layer surface with an exclusive zone, namespace `views-shell-bar`.
+
+```
+client: ~/views-bench/build-env -c ~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --bar
+first attach after 3415 ms
+client alive at capture: 1
+screenshot: 6970 bytes
+colours: 3 (sampled 1920x1080)
+attaches: 1
+      1 zwlr_layer_shell_v1#11.get_layer_surface
+      4 zwlr_layer_surface_v1#38.configure
+client	dur=10	procs=2	threads=30	cpu%=0.00	PSS_MB=154.2	RSS_MB=164.5	ctxsw/s=0.0	FDs=344
+```
+
+`views_shell --bar --demo-popup` (screenshot `views-shell-154-popup.png`): the
+bar opens a `MenuRunner` menu, which becomes an `xdg_popup` parented to the
+layer surface with `zwlr_layer_surface_v1.get_popup`.
+
+```
+client: ~/views-bench/build-env -c ~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --bar --demo-popup
+first attach after 2972 ms
+client alive at capture: 1
+screenshot: 12290 bytes
+colours: 48 (sampled 1920x1080)
+attaches: 6
+      1 xdg_surface#45.get_popup
+      1 xdg_wm_base#12.get_xdg_surface
+      1 zwlr_layer_shell_v1#11.get_layer_surface
+      5 zwlr_layer_surface_v1#38.configure
+client	dur=10	procs=2	threads=30	cpu%=0.00	PSS_MB=158.4	RSS_MB=168.9	ctxsw/s=0.0	FDs=346
+```
+
+Against the T3 window the bar row shows 154.2 MB PSS (141.3 for T3, a different
+binary and patch set), the same 30 threads and the same 344 FDs; the open menu
+adds two FDs and about 4 MB. The 344 FDs are explained in the next section.
+
+## File descriptors
+
+Measured on the bench on 2026-10-02 by item w1c with the FD census of
+`tools/bench/worker/headless.sh` (`CLIENT_FD_DUMP=1`, `CLIENT_FD_RECHECK=60`):
+`out/views` restored to `tools/bench/args.views.gn` and rebuilt from origin/main,
+same harness as above (pixman compositor, SwiftShader client), `views_shell --bar`
+(results `~/views-bench/results/w1c-fd`) and `views_examples` as the comparison
+(`w1c-fd-examples`).
+
+```
+fd kinds: socket=2 anon_inode:[eventfd]=5 pipe=2 memfd=3 /dev/shm=0 file=329 other=4
+fd other: /dev/null=2 anon_inode:[signalfd]=1 anon_inode:[eventpoll]=1
+fd per process: 36:bwrap=4 47:views_shell=341
+client	dur=10	procs=2	threads=30	cpu%=0.00	PSS_MB=125.2	RSS_MB=135.3	ctxsw/s=0.0	FDs=345
+fd kinds (recheck): socket=2 anon_inode:[eventfd]=5 pipe=2 memfd=3 /dev/shm=0 file=329 other=4
+fd per process (recheck): 36:bwrap=4 47:views_shell=341
+```
+
+`views_examples`, same minute:
+
+```
+fd kinds: socket=2 anon_inode:[eventfd]=5 pipe=2 memfd=3 /dev/shm=0 file=9 other=4
+fd per process: 36:bwrap=4 48:views_examples=21
+client	dur=10	procs=2	threads=61	cpu%=5.10	PSS_MB=158.9	RSS_MB=169.6	ctxsw/s=201.8	FDs=25
+```
+
+Owners of the 341 descriptors of the `views_shell` process (`fds-47.txt`):
+
+| Owner | FDs | What |
+|---|---|---|
+| `base::debug::EnableInProcessStackDumping()` (called in `views_shell_main.cc` `main`) | 321 | `SandboxSymbolizeHelper::OpenSymbolFiles()` in `base/debug/stack_trace_posix.cc` opens, `O_RDONLY`, every read-only executable mapping in `/proc/self/maps` and keeps the descriptor so a crash can symbolize after sandboxing: the executable, 269 component libraries from `out/views` and 51 system libraries (glibc, glib, nss, at-spi, libdrm, mesa libgbm and the rest), fds 4 to 324 |
+| `base::WaitableEvent`, message pumps and the thread pool | 5 eventfd, 1 epoll, 1 pipe pair | the same set `views_examples` has |
+| `base::SharedMemory` regions | 2 memfd `shared-memory-region` | consistent with the two `wl_shm.create_pool` of the client log (the census does not tie a memfd to a pool); `views_examples` has the same two |
+| SwiftShader | 1 memfd `swiftshader_jit` | the JIT code region of the software GL |
+| unix sockets | 2 | one is the Wayland connection; both are unnamed on the client side and the census does not name the second peer |
+| resources | 3 files | `icudtl.dat` and `ui_test.pak` (opened twice) |
+| stdio and the harness | 4 | `/dev/null`, `client.log` twice, `bench.lock` (inherited from the `flock` holding the bench lock; not the client's) |
+
+The remaining process of the tree is the FHS wrapper's `bwrap` (4 FDs: stdio and
+a signalfd). The chapter-1 rows (344) are the same 340 plus that `bwrap`; the
+341st here is the inherited lock descriptor.
+
+Finding candidate: the 344 FDs are a steady allocation, not a leak. 321 of
+them are the stack-symbolization helper's pre-opened module descriptors,
+which `views_examples` never creates because its `main` does not call
+`EnableInProcessStackDumping()`; without them `views_shell` holds 20
+descriptors to `views_examples`' 21 (it lacks `views_examples_resources.pak`). The census
+60 seconds later lists the same 341 descriptors of the same kinds. The count
+scales with the number of mapped libraries, so a non-component build will
+hold far fewer, and the helper only opens files when `OFFICIAL_BUILD` is unset
+or unwind tables are kept (`!defined(OFFICIAL_BUILD) ||
+!BUILDFLAG(EXCLUDE_UNWIND_TABLES)`). Whether the shell keeps the call is a
+choice for the production entry point (debt D1, T9); it costs descriptors, not
+memory (the files are already mapped).
