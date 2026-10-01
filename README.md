@@ -51,10 +51,11 @@ never assumed.
 | generic (`ext-workspace` + `ext-foreign-toplevel`) | before v1 (PROPOSED order) | Wayland protocols only |
 | Hyprland | before v1 | `.socket.sock` requests, `.socket2.sock` events |
 
-See [`docs/compositor-adapters.md`](docs/compositor-adapters.md). There is no scroll fork and no patch queue (Tom, 2026-10-01: stock scroll, no
-patches); the hooks that would help are recorded as upstream wishes in
-[`docs/scroll-fork-hooks.md`](docs/scroll-fork-hooks.md). "Works on scroll, sway, niri and Hyprland" is the claim only once those
-adapters ship.
+See [`docs/compositor-adapters.md`](docs/compositor-adapters.md). scroll is stock and
+unpatched (Tom, 2026-10-01); the IPC additions that would help are recorded as
+upstream wishes in [`docs/scroll-fork-hooks.md`](docs/scroll-fork-hooks.md), and no
+capability depends on one. "Works on scroll, sway, niri and Hyprland" is the claim
+only once those adapters ship.
 
 ## Plugins
 
@@ -134,6 +135,7 @@ hops to that release's Chromium tag, passes every gate, and the plugin manifest,
 ```
 README.md               this file
 LICENSE                 BSD-3-Clause
+SPEC.md                 the ratified spec of the chapter in progress: claims, rulings, tasks
 ASH-PORT-LEDGER.md      the five files ported from Ash, and the stock twins of the rest
 docs/                   architecture, rules, adapters, upstream wishes for scroll, the Chromium hop, naming
 style/                  views-shell/style: the component kit (inventory, gallery, theme binding)
@@ -142,17 +144,33 @@ examples/               example plugins and example themes that validate
 cli/                    the views-shell command line: spec and a dispatch skeleton
 extension/              the views-shell Chrome extension (MV3 skeleton, native messaging client)
 shell/                  the C++ shell: BUILD.gn sketches and the lifted prior code
-tools/                  repository checks (schema validation)
+tools/                  repository checks (schema validation, fences, identity)
+tools/bench/            the headless build bench: sync, job units, wire, headless run, measure
 ```
+
+## The bench
+
+Nothing is built or run on a seat. Chromium is fetched, built and exercised on one
+headless build host (the **bench**), reached only through
+[`tools/bench/`](tools/bench/): `sync.sh` ships the worktree, `job.sh` starts and
+polls long-running units, and `worker/*.sh` run on the bench (wire the tree, build,
+run a client under a nested headless scroll inside `runtime-test`, measure a process
+tree). The bench pins the Chromium tag in
+[`shell/build/CHROMIUM_VERSION`](shell/build/CHROMIUM_VERSION), currently
+`154.0.8037.92`, and every run it produces is written up under `docs/bench/`.
 
 ## What is real today
 
+The chapter in progress is specified in [`SPEC.md`](SPEC.md): its claims, rulings and
+task table are the source of truth, and its gates are what "done" means. The bench
+([`tools/bench/`](tools/bench/)) holds Chromium at the pinned tag `154.0.8037.92`.
+
 - **Real:** the rules, the architecture, the adapter matrix, the plugin and `ui`
-  schemas with validating examples (`tools/validate.sh` prints `VALIDATE-OK`), the
-  theme binding and example themes, and the extension skeleton (it loads unpacked
-  and shows its pages). The lifted C++ in `shell/` is real code that compiled in
-  its original trees at Chromium 148, 149 and 150. It is copied byte for byte and
-  does not build here yet.
+  schemas with validating examples (`tools/validate.sh` prints `fences: clean`,
+  `identity: ok` and `VALIDATE-OK`), the theme binding and example themes, and the
+  extension skeleton (it loads unpacked and shows its pages). The lifted C++ in
+  `shell/` is real code that compiled in its original trees at Chromium 148, 149 and
+  150. It is copied byte for byte and does not build here yet.
 - **Placeholder:** every `BUILD.gn` under `shell/` is a sketch, and the
   content-free shell main is described but not written. The CLI is a dispatch
   skeleton. The native messaging host does not exist yet, so the extension pages
