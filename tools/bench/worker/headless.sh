@@ -10,6 +10,7 @@ OUT="${1:?usage: headless.sh <outdir> <cmd...>}"; shift
 [ "$#" -gt 0 ] || { echo 'headless.sh: missing client command' >&2; exit 2; }
 B="$HOME/views-bench"; SCROLL="$B/scroll/bin/scroll"; SCROLLMSG="$B/scroll/bin/scrollmsg"
 RT="$HOME/.local/bin/runtime-test"
+REAL_HOME="$HOME"   # the bench user's real home; the scratch HOME below hides it
 [ -x "$RT" ] || { echo 'headless.sh: runtime-test missing on the bench' >&2; exit 1; }
 [ -x "$SCROLL" ] || { echo 'headless.sh: no scroll at $SCROLL' >&2; exit 1; }
 mkdir -p "$OUT"
@@ -17,13 +18,19 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # HOME becomes scratch below, so expand a "~/" in the client command against the real home now.
 args=(); for a in "$@"; do a="${a/#\~\//$HOME/}"; args+=("${a// \~\// $HOME/}"); done; set -- "${args[@]}"
 # Everything below runs inside the private runtime. HOME is scratch so nothing reaches real config.
-exec "$RT" -- env OUT="$OUT" SCROLL="$SCROLL" SCROLLMSG="$SCROLLMSG" HERE="$HERE" CLIENT_SETTLE="${CLIENT_SETTLE:-4}" \
+exec "$RT" -- env OUT="$OUT" SCROLL="$SCROLL" SCROLLMSG="$SCROLLMSG" HERE="$HERE" CLIENT_SETTLE="${CLIENT_SETTLE:-4}" REAL_HOME="$REAL_HOME" \
   HOME="$OUT/home" XDG_CONFIG_HOME="$OUT/home/.config" XDG_CACHE_HOME="$OUT/home/.cache" XDG_STATE_HOME="$OUT/home/.local/state" XDG_DATA_HOME="$OUT/home/.local/share" \
   DBUS_SYSTEM_BUS_ADDRESS=unix:path=/nonexistent \
   dbus-run-session -- bash -c '
 set -u
 if [ -e "$XDG_RUNTIME_DIR/systemd" ]; then echo "refusing: live runtime" >&2; exit 3; fi
 rm -rf "$HOME"; mkdir -p "$XDG_CONFIG_HOME/scroll"
+# The client may name ~ paths (the Chromium checkout, depot_tools); link the
+# real ones into the scratch home so they resolve. Isolation stays: /run/user
+# is private, the compositor config is scratch, nothing is written back.
+for d in chromium depot_tools; do
+  [ -e "$REAL_HOME/$d" ] && ln -s "$REAL_HOME/$d" "$HOME/$d"
+done
 printf "output HEADLESS-1 resolution 1920x1080 scale 1\n" > "$XDG_CONFIG_HOME/scroll/config"
 export WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1
 "$SCROLL" -c "$XDG_CONFIG_HOME/scroll/config" > "$OUT/scroll.log" 2>&1 & SP=$!
