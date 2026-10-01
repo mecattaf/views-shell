@@ -9,7 +9,7 @@ Lifted untrimmed from agency-mvp `cd7cef3`. Planned names and order
 | `agency-layershell-factory-fix.patch` | folded into the above | fixes the enum placement that made every popup a layer surface | fold |
 | `agency-layershell-popup.patch` | `views-shell-ozone-layer-popup.patch` | `xdg_popup` children of layer surfaces | live acceptance pending |
 | `ozone-empty-opaque-region.patch` | `views-shell-ozone-empty-opaque-region.patch` | stops translucent windows being declared opaque (the "black box") | none |
-| `agency-build-gate.patch` | `views-shell-build-gate.patch` | root `gn_all` reaches `//views-shell`; `BUILDFLAG` plumbing | rename flag |
+| `agency-build-gate.patch` | `views-shell-build-gate.patch` | root `gn_all` reaches `//views_shell` | re-cut at 154.0.8037.92 (T3), in `series` |
 | `agency-dbus-visibility.patch` | `views-shell-dbus-visibility.patch` | one shared session-bus owner | rename paths |
 
 Applied with plain `git apply`, from a pristine tree, in this order. Never a
