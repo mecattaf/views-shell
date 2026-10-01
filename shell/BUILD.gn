@@ -19,6 +19,65 @@ assert(!is_chromeos, "Port Ash, never link it.")
 assert(use_ozone && ozone_platform_wayland,
        "views-shell draws only on Wayland surfaces.")
 
+# Chrome's tab, ported (CHROME-PORT-LEDGER.md), and the workspace strip built
+# from it. Copied, never linked: nothing here depends on //chrome.
+source_set("tabs") {
+  sources = [
+    "tabs/glow_hover_controller.cc",
+    "tabs/glow_hover_controller.h",
+    "tabs/layout_constants.cc",
+    "tabs/layout_constants.h",
+    "tabs/tab.cc",
+    "tabs/tab.h",
+    "tabs/tab_close_button.cc",
+    "tabs/tab_close_button.h",
+    "tabs/tab_color_id.h",
+    "tabs/tab_color_mixer.cc",
+    "tabs/tab_color_mixer.h",
+    "tabs/tab_slot_controller.h",
+    "tabs/tab_slot_view.cc",
+    "tabs/tab_slot_view.h",
+    "tabs/tab_strip_layout_types.h",
+    "tabs/tab_strip_types.h",
+    "tabs/tab_style.cc",
+    "tabs/tab_style.h",
+    "tabs/tab_style_views.cc",
+    "tabs/tab_style_views.h",
+    "tabs/tab_title.cc",
+    "tabs/tab_title.h",
+    "tabs/vertical_tab_style_views.cc",
+    "tabs/vertical_tab_style_views.h",
+    "tabs/workspace_source.cc",
+    "tabs/workspace_source.h",
+    "tabs/workspace_strip.cc",
+    "tabs/workspace_strip.h",
+  ]
+
+  deps = [
+    "tabs/vector_icons",
+    "//base",
+    "//cc/paint",
+    "//skia",
+    "//ui/accessibility",
+    "//ui/aura",
+    "//ui/base",
+    "//ui/color",
+    "//ui/compositor",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gfx/animation",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+
+  assert_no_deps = [
+    "//ash/*",
+    "//chrome/*",
+    "//chromeos/*",
+    "//content/*",
+  ]
+}
+
 executable("views_shell") {
   # Debt D1 (docs/architecture.md): the context factory comes from
   # //ui/compositor:test_support until the production in-process viz host
@@ -28,6 +87,7 @@ executable("views_shell") {
   sources = [ "app/views_shell_main.cc" ]
 
   deps = [
+    ":tabs",
     "//base",
     "//base:i18n",
     "//base/test:test_support",
@@ -38,6 +98,7 @@ executable("views_shell") {
     "//ui/base",
     "//ui/base/ime/init",
     "//ui/color",
+    "//ui/color:mixers",
     "//ui/compositor",
     "//ui/compositor:test_support",
     "//ui/display",
