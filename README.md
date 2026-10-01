@@ -137,6 +137,7 @@ README.md               this file
 LICENSE                 BSD-3-Clause
 SPEC.md                 the ratified spec of the chapter in progress: claims, rulings, tasks
 ASH-PORT-LEDGER.md      the five files ported from Ash, and the stock twins of the rest
+CHROME-PORT-LEDGER.md   the tab files copied from //chrome for the workspace strip
 docs/                   architecture, rules, adapters, upstream wishes for scroll, the Chromium hop, naming
 style/                  views-shell/style: the component kit (inventory, gallery, theme binding)
 schemas/                views-shell-plugin.json, the ui tree, keybinding slot rendering, the T2 protocol
@@ -171,6 +172,10 @@ task table are the source of truth, and its gates are what "done" means. The ben
   extension skeleton (it loads unpacked and shows its pages). The lifted C++ in
   `shell/` is real code that compiled in its original trees at Chromium 148, 149 and
   150. It is copied byte for byte and does not build here yet.
+- **Real:** `views_shell --left-tabs` draws a vertical workspace strip made of
+  Chrome's own tab (copied from `//chrome`, never linked, see
+  [`CHROME-PORT-LEDGER.md`](CHROME-PORT-LEDGER.md) and [`docs/tabs.md`](docs/tabs.md)),
+  fed by a static list or by `niri msg -j workspaces`.
 - **Placeholder:** every `BUILD.gn` under `shell/` is a sketch, and the
   content-free shell main is described but not written. The CLI is a dispatch
   skeleton. The native messaging host does not exist yet, so the extension pages

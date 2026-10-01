@@ -1,0 +1,22 @@
+// Copyright 2017 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Ported to views-shell from chrome/app/vector_icons/vector_icons.cc.template @ 154.0.8037.92.
+
+// vector_icons.cc.template is used to generate vector_icons.cc. Edit the former
+// rather than the latter.
+
+#include "views_shell/tabs/vector_icons/vector_icons.h"
+
+#include "components/vector_icons/cc_macros.h"
+#include "ui/gfx/animation/tween.h"
+#include "ui/gfx/vector_icon_types.h"
+
+#define DECLARE_VECTOR_COMMAND(x) using gfx::x;
+DECLARE_VECTOR_COMMANDS
+
+namespace views_shell {
+
+TEMPLATE_PLACEHOLDER
+
+}  // namespace views_shell

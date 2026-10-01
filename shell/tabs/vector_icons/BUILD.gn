@@ -1,0 +1,23 @@
+# Copyright 2026 The views-shell Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# The tab close icon, copied from //chrome/app/vector_icons (CHROME-PORT-LEDGER.md
+# C014) and aggregated with the stock //components/vector_icons template.
+
+import("//components/vector_icons/vector_icons.gni")
+
+aggregate_vector_icons("views_shell_tab_vector_icons") {
+  icon_directory = "."
+  sources = [ "close_tab_chrome_refresh_old.icon" ]
+}
+
+source_set("vector_icons") {
+  sources = get_target_outputs(":views_shell_tab_vector_icons")
+  deps = [
+    ":views_shell_tab_vector_icons",
+    "//base",
+    "//skia",
+    "//ui/gfx",
+  ]
+}

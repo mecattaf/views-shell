@@ -1,0 +1,20 @@
+// Copyright 2023 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Ported to views-shell from chrome/app/vector_icons/close_tab_chrome_refresh_old.icon @ 154.0.8037.92.
+
+CANVAS_DIMENSIONS, 16,
+MOVE_TO, 10.94, 4,
+LINE_TO, 4, 10.94,
+LINE_TO, 5.06, 12,
+LINE_TO, 12, 5.07,
+LINE_TO, 10.94, 4,
+CLOSE,
+NEW_PATH,
+MOVE_TO, 5.06, 4,
+LINE_TO, 4, 5.06,
+LINE_TO, 10.94, 12,
+LINE_TO, 12, 10.93,
+LINE_TO, 5.06, 4,
+CLOSE,
+NEW_PATH
