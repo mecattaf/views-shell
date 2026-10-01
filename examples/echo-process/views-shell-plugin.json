@@ -1,0 +1,30 @@
+{
+  "$schema": "../../schemas/views-shell-plugin.schema.json",
+  "schemaVersion": 1,
+  "id": "example.echo",
+  "name": "Echo (protocol reference)",
+  "version": "0.1.0",
+  "description": "The T2 reference plugin: a python3 program, standard library only, that exercises every part of the plugin protocol tools/plugin-conformance.py checks. It draws a counter in the bar and a panel that shows the greeting and the last event.",
+  "license": "BSD-3-Clause",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0", "protocol": 1 },
+  "runtime": { "mode": "process", "exec": "plugin.py" },
+  "permissions": ["notifications"],
+  "contributes": {
+    "surfaces": [
+      { "id": "button", "kind": "bar-widget", "defaultSection": "right", "keyboard": "none" },
+      { "id": "panel", "kind": "panel", "anchor": "surface:button", "keyboard": "on-demand" }
+    ],
+    "commands": [
+      { "id": "ping", "title": "Echo the text back", "result": "json", "args": [ { "name": "text", "type": "string", "required": true } ] },
+      { "id": "set-counter", "title": "Set the counter", "args": [ { "name": "value", "type": "integer", "required": true } ] },
+      { "id": "try-exec", "title": "Ask the broker to run a program this plugin never declared", "result": "json" }
+    ],
+    "configuration": {
+      "title": "Echo",
+      "properties": {
+        "greeting": { "type": "string", "default": "hello", "description": "Shown at the top of the panel." }
+      }
+    },
+    "events": ["workspace"]
+  }
+}
