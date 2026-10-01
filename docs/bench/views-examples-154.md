@@ -76,17 +76,20 @@ between these two targets."
 ```text
 compositor: wayland-1 /run/user/1000/scroll-ipc.1000.9.sock scroll pid 9
 client: ~/views-bench/build-env -c ~/chromium/src/out/views/views_examples --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader
-first attach after 27544 ms
+first attach after 27233 ms
 client alive at capture: 1
 screenshot: 6121 bytes
 colours: 1 (sampled 1920x1080)
 attaches: 0
       1 xdg_surface#38.get_toplevel
       1 xdg_wm_base#11.get_xdg_surface
-client	dur=10	procs=2	threads=61	cpu%=17.30	PSS_MB=120.0	RSS_MB=171.3	ctxsw/s=201.8	FDs=24
+client	dur=10	procs=2	threads=61	cpu%=17.70	PSS_MB=160.7	RSS_MB=171.8	ctxsw/s=202.2	FDs=24
 ```
 
-("first attach after 27544 ms" is the harness's attach-wait loop timing out:
+(The `client:` line is shown here in the `~` form as issued; `headless.sh`
+expands it against the bench's real home before dropping into the scratch
+`HOME` of `runtime-test`, so the recorded `summary.txt` carries the expanded
+absolute path. "first attach after 27233 ms" is the harness's attach-wait loop timing out:
 there is no attach to wait for. The `measure.sh` row is the 10 s window taken
 while the client sat idle after the settle period; `procs=2` is the FHS
 wrapper's bash plus `views_examples`.)
@@ -114,10 +117,10 @@ fix belongs to T9. The stock binary measured here carries no such patch: the
 The `measure.sh` row for the stock idle client (process tree, 10 s window):
 
 ```text
-client	dur=10	procs=2	threads=61	cpu%=17.30	PSS_MB=120.0	RSS_MB=171.3	ctxsw/s=201.8	FDs=24
+client	dur=10	procs=2	threads=61	cpu%=17.70	PSS_MB=160.7	RSS_MB=171.8	ctxsw/s=202.2	FDs=24
 ```
 
-PSS_MB=120.0, RSS_MB=171.3, 61 threads, CPU 17 % of one core while idle —
+PSS_MB=160.7, RSS_MB=171.8, 61 threads, CPU 17 % of one core while idle —
 the CPU is the compositor-frame spin of a client whose frames are discarded
 (F2); a drawing client idles lower. Run to run the PSS moved between roughly
 120 and 175 MB with no other change.
