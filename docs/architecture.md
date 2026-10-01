@@ -81,7 +81,8 @@ which builds Views with no `//content`, Blink or V8:
   `InProcessContextFactory` and on `components/viz/demo` (which runs `VizMainImpl`
   without `//content`), without the test providers. This is the one real piece of
   new engineering the content-free shape costs. A GPU fault restarts the shell;
-  the systemd user unit brings it back and the layer surfaces reappear.
+  the systemd user unit brings it back and the layer surfaces reappear. Until that
+  factory exists, the executable borrows the test one: see debt D1 below.
 - `ShellMainParts` creates `aura::Env` and `wm::WMState`, installs a production
   focus client, `wm::DefaultActivationClient` and a capture client on every
   surface root, a production `ui::AXPlatform` delegate (for Orca), and defers
@@ -257,3 +258,17 @@ is `gn path out/views-shell //views_shell:views-shell //v8` returning nothing. I
 explicitly. A second, release non-component configuration exists for footprint
 measurements, with `views_examples` built beside it as the control. See
 [`../shell/build/README.md`](../shell/build/README.md).
+
+## Debts
+
+A debt is a known gap between what the architecture says and what the tree does. It
+is recorded here with its payoff condition, and it is paid inside the chapter that
+names it or the next one. Nothing else may diverge from this page silently.
+
+| Id | Debt | Carried since | Paid when |
+|---|---|---|---|
+| D1 | `views_shell` takes its `ui::ContextFactory` from `//ui/compositor:test_support` (the test in-process context factory), so the executable is `testonly = true` and links test support it would not ship | chapter 1, allowed by the orchestrator's ruling of 2026-10-01 | a production in-process viz host exists (`app/views_shell_context_factory.{h,cc}`: `viz::HostFrameSinkManager` and `VizMainImpl` on a GPU thread, after `components/viz/demo`), the target drops `//ui/compositor:test_support` and `//base/test:test_support`, `testonly = false`, and the shell still draws its bar under headless scroll |
+
+While D1 is open, every footprint number measured next to `views_examples` is
+indicative only, and the `testonly` flag is the visible marker that the binary is not
+shippable.
