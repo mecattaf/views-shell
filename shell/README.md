@@ -1,72 +1,46 @@
 # shell: the views-shell C++ program
 
-This directory becomes `//views-shell` inside a Chromium checkout. It holds two kinds of
-files, and the difference matters:
+This directory becomes `//views_shell` inside a Chromium checkout at the pinned
+tag: [`../tools/bench/worker/wire.sh`](../tools/bench/worker/wire.sh) resets the
+checkout to pristine, copies `shell/` to `src/views_shell/` and applies
+[`patches/series`](patches/series) with plain `git apply`. Everything here is
+either built by `BUILD.gn` or applied by that series; prototype code that was
+neither has been deleted, and [`PROVENANCE.md`](PROVENANCE.md) says where each
+piece went and how to recover it from git history.
 
-- **Lifted** (real code, never compiled here): byte-for-byte copies of the
-  layer-shell, embedder, rail and niri code that worked in earlier prototypes. Each
-  is listed with its source and hash in [`PROVENANCE.md`](PROVENANCE.md). They keep
-  their original identifiers until a separate rename commit.
-- **Sketches** (placeholders): `BUILD.gn` at this level, `wm/compositor_adapter.h`,
-  `wm/wm_model.h`, `wm/adapters/scroll/`. They show the intended shape. They have
-  never been built.
-
-Nothing here has been built against a Chromium tree. No tree is checked out.
+The binary is a Views program, not a content embedder: no `//content`, no Blink
+renderer, no V8, no `//chrome`, no `//ash` (rules R1, R5, R24), enforced by
+`assert_no_deps` in `BUILD.gn`.
 
 ## Layout
 
-| Path | Kind | What |
-|---|---|---|
-| `BUILD.gn` | sketch | the `views-shell` executable and its rule guards |
-| `ozone/layer_shell/` | lifted | `zwlr_layer_shell_v1` binding and the layer-surface window, copied into `ui/ozone/platform/wayland/host/` |
-| `ozone/protocol/` | lifted | `wlr-layer-shell-unstable-v1.xml`, vendored only if upstream lacks it |
-| `patches/` | lifted | the Ozone and build-gate carry, untrimmed; see `patches/README.md` |
-| `app/` | lifted, provenance only | the June 30 spike's `//content` embedder, including the surface table and the Views bootstrap. views-shell links no `//content` (rule R24), so these files are replaced, not adapted; see below |
-| `host/` | lifted | the shell host: surface and controller lifetime |
-| `rail/` | lifted | the read-only rail mirror (controller and view) |
-| `bar/`, `launcher/` | lifted | the bar and clock; the launcher panel (pattern only) |
-| `wm/` | sketch | the compositor-neutral model and adapter interface |
-| `wm/adapters/niri/` | lifted | the niri IPC client: the template for every adapter |
-| `wm/adapters/scroll/` | sketch | the scroll and sway adapter (new code) |
-| `tools/` | lifted, one adapted | `headless-eval.sh` (adapted for `runtime-test`), `no_stubs.py` |
-| `build/` | lifted, one sketch | `args.gn`, wire scripts, link gate; `args.release.gn` (sketch) for footprint measurement |
-| `docs/` | new | the 2026-06-27 switcher's behaviour, as acceptance tests |
+| Path | What |
+|---|---|
+| `BUILD.gn` | the `views_shell` executable and the `tabs` source set, with the rule guards; chapter 2 adds the `views_shell_unittests` umbrella and registers the subsystem seams here |
+| `app/views_shell_main.cc` | the content-free main, shaped like `ui/views/examples/examples_main_proc.cc`: `--bar` (a top layer surface), `--demo-popup` (an `xdg_popup` menu parented to it), `--left-tabs` (the workspace strip), `--run-for-seconds` |
+| `style/`, `wm/`, `ui_tree/`, `plugins/`, `bar/`, `notifications/` | the subsystem seams of chapter 2: each directory gets its own `BUILD.gn`, reachable from the root one, so each subsystem is filled without touching the root |
+| `wm/compositor_adapter.h`, `wm/wm_model.h`, `wm/wm_snapshot.h`, `wm/adapters/scroll/` | sketches of the compositor-neutral model and the scroll and sway adapter, replaced by the adapter work |
+| `tabs/` | Chrome's tab and vertical-strip layouts, copied (never linked) into a vertical workspace strip; see [`../CHROME-PORT-LEDGER.md`](../CHROME-PORT-LEDGER.md) and [`../docs/tabs.md`](../docs/tabs.md) |
+| `patches/` | the live Chromium patch series; see [`patches/README.md`](patches/README.md) |
+| `build/` | `CHROMIUM_VERSION` (the pinned tag) and the release configuration for footprint measurement; see [`build/README.md`](build/README.md) |
+| `docs/` | the 2026-06-27 niri switcher's behaviour, kept as acceptance tests for the workspace rail |
+| `tools/no_stubs.py` | the no-stub check, with good and bad fixtures |
 
 ## The shell main, without `//content`
 
-The binary is a Views program, not a content embedder. Its `main()` is shaped like
-Chromium's own `ui/views/examples/examples_main_proc.cc`, which builds Views with no
-`//content`, Blink or V8 (`ui/views/examples/BUILD.gn`, `views_examples_lib`,
-`views_examples_proc`, `views_examples`; read at `df5b64d9`):
-
-1. `base` setup: a UI `SingleThreadTaskExecutor`, the thread pool, an IO thread
-   for D-Bus and the sockets, `base::FeatureList::InitInstance`.
-2. `mojo::core::Init()`, ICU, and the `ResourceBundle` with `views-shell.pak` and the
-   locale pak.
-3. Ozone for Wayland with `single_process = true`.
-4. `aura::Env`, `wm::WMState`, a production `ui::AXPlatform` delegate.
-5. **`ShellContextFactory`**: the production `ui::ContextFactory`. `views_examples`
-   reaches the screen through `ui/compositor:test_support`
-   (`InProcessContextFactory`, `TestContextFactories`), which is `testonly`.
-   Outside `//content`, Chromium has no production context factory, so views-shell owns
-   one: an in-process viz host after `InProcessContextFactory` without the test
-   providers, with `components/viz/demo` (`viz_demo`, not testonly) as the
-   precedent for running `VizMainImpl` without `//content`. This is the one real
-   engineering item of the content-free shape.
-6. `ShellMainParts`, then the shell host and the surfaces.
-
-The cost: a GPU fault takes the shell down instead of a helper process; the
-systemd user unit restarts it. Nothing here is written yet.
-
-## First acceptance targets
-
-Two things have no live proof yet, and come first once a tree builds:
-
-1. `xdg_popup` children of a layer surface (menus, bubbles, tooltips).
-2. A rail click that switches a workspace, observed through the compositor's echo.
+`main()` follows `ui/views/examples/examples_main_proc.cc`: base and the thread
+pool, `mojo::core::Init()`, ICU, the `ResourceBundle`, Ozone for Wayland,
+`aura::Env`, `wm::WMState`, then the surfaces. The context factory is the one
+open engineering item: Chromium has no production `ui::ContextFactory` outside
+`//content`, so the program uses the test `TestContextFactories` with
+`ui::test::EnableTestConfigForPlatformWindows()` (finding F2, debt D1 in
+[`../docs/architecture.md`](../docs/architecture.md)) and is `testonly` until a
+production in-process viz host replaces it. `components/viz/demo` is the
+precedent for running viz without `//content`.
 
 ## Running anything here
 
-Any test that launches a compositor, sources a script fragment or touches a
-runtime directory runs only as `~/.local/bin/runtime-test -- <cmd>`.
-`tools/headless-eval.sh` refuses to run otherwise.
+Nothing is built or run on a seat. The bench builds and runs the program through
+[`../tools/bench/`](../tools/bench/), and every run that launches a compositor
+goes through `runtime-test` inside a nested headless scroll
+([`../tools/bench/worker/headless.sh`](../tools/bench/worker/headless.sh)).
