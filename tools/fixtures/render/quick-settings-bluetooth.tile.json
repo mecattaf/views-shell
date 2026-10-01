@@ -1,0 +1,26 @@
+{
+  "plugin": "views-shell.qs-bluetooth",
+  "root": {
+    "children": [],
+    "error": "not drawn in chapter 2",
+    "layout": null,
+    "node": "tile",
+    "props": {
+      "accessibleName": "Bluetooth",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.bluetooth/toggle-power",
+        "confirm": null
+      },
+      "detail": "page",
+      "icon": "bluetooth-connected",
+      "label": "Bluetooth",
+      "sublabel": "1 device connected",
+      "toggled": true,
+      "variant": "primary",
+      "visible": true
+    },
+    "view": null
+  }
+}

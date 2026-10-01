@@ -1,30 +1,49 @@
 #!/usr/bin/env python3
-"""no_stubs.py -- AST-based stub detector for the agency Chromium fork.
+"""no_stubs.py -- stub detector for views-shell's committed C++ and Python.
 
-This is the Floor Lock / Decision #11 enforcer. It refuses to let stub
-functions land in the tree. It is *structural*, never regex-over-source for
-the live decision: C++ is parsed with libclang (the real Clang AST) and
-Python with the stdlib `ast` module.
+Lifted from the agency lineage (shell/PROVENANCE.md). It refuses to let stub
+functions land in the tree. Python is parsed with the stdlib `ast` module. C++
+has two back ends:
 
-Why AST and not regex: a regex sees `return nullptr;` and screams. The AST
-knows whether that statement is the *sole* body of a non-trivial function
-(a stub) or one branch of a legitimate early-return guard (fine). That
-distinction is the whole point of this gate.
+  libclang  the real Clang AST. Structural: it knows whether `return nullptr;`
+            is the sole body of a function (a stub) or one branch of an
+            early-return guard (fine). It only judges bodies correctly when the
+            file parses, and outside a Chromium build (no include paths, no
+            compile database) a Views file does not: unknown types drop bodies,
+            so ordinary getters read as empty, and headers fail to load.
+  tokens    a C++ lexer (comments, string, raw-string and character literals
+            removed exactly). It needs nothing installed and judges only what is
+            lexical: marker comments and placeholder calls, anywhere in the file.
 
-Detected stub patterns (C++ and, where meaningful, Python):
-  * empty / near-empty bodies (only `pass` / `...` / a docstring / nothing)
-  * `// TODO` / `# TODO` / `/* TODO */` lexically inside a function body
-  * `return {};` as the SOLE statement of a non-trivial function
-  * `return nullptr;` as the SOLE statement of a non-trivial function
-  * `NOTIMPLEMENTED()` / `NOTREACHED()` placeholder calls
-  * placeholder `return mojo::Status::Ok();` as a sole body
-  * Python: `raise NotImplementedError`, bare `return`/`return None` sole body
+`--cpp auto` (the default) picks libclang when the bindings load and tokens
+otherwise; tools/validate.py passes `--cpp tokens`, so the repository gate does
+not depend on what the checking host has installed.
+
+Detected stub patterns:
+  * C++ and Python: a `TODO` / `FIXME` / `XXX:` marker in a comment (libclang
+    and Python: inside a function body; tokens: anywhere in the file)
+  * C++: `NOTIMPLEMENTED()` / `IMMEDIATE_CRASH()` placeholder calls
+  * C++ (libclang only): an empty body that is not a constructor or destructor;
+    `return {};`, `return nullptr;`, `return mojo::Status::Ok();` or
+    `return absl::OkStatus();` as the sole statement
+  * Python: a body that is only `pass`, `...`, a docstring,
+    `raise NotImplementedError` or `return None`
+
+`NOTREACHED()` is not a placeholder: since M128 it is a fatal invariant check,
+and ported Chromium code uses it for impossible switch arms.
+
+ALLOWLIST below names marker lines that are deliberately kept: attributed
+upstream comments carried by code ported from Chromium. An entry is a path
+suffix and a fragment of the line; it is matched by text, never by line number,
+so it survives edits around it. A new entry needs the same justification.
 
 CLI:
-  no_stubs.py <path...>     scan files/dirs; exit 0 clean, nonzero if stubs
-  no_stubs.py --self-test   run the bundled adversarial fixtures
-
-AST backend is auto-selected at runtime and printed with --self-test.
+  no_stubs.py [--cpp auto|libclang|tokens] [--exclude DIR]... <path...>
+                            scan files/dirs; exit 0 clean, 1 if stubs. With
+                            --summary, print "no_stubs ok (N files)" on success.
+  no_stubs.py --self-test   run the bundled adversarial fixtures through every
+                            available C++ back end
+  no_stubs.py --backend     print the back end --cpp auto would pick
 """
 from __future__ import annotations
 
@@ -39,7 +58,22 @@ PY_EXT = {".py"}
 
 # Tokens that, appearing anywhere inside a function body, are stub markers.
 TODO_MARKERS = ("TODO", "FIXME", "XXX:")
-PLACEHOLDER_CALLS = ("NOTIMPLEMENTED", "NOTREACHED", "IMMEDIATE_CRASH")
+PLACEHOLDER_CALLS = ("NOTIMPLEMENTED", "IMMEDIATE_CRASH")
+
+# Marker lines kept on purpose: (path suffix, fragment of the line). Each is an
+# attributed upstream comment in code ported from Chromium 154.0.8037.92
+# (CHROME-PORT-LEDGER.md), kept verbatim so the port diffs cleanly.
+ALLOWLIST = (
+    ("shell/tabs/tab.cc", "TODO(collinbaker): investigate why"),
+    ("shell/tabs/tab_close_button.cc",
+     "TODO(http://crbug.com/40120351): Make ink drops in RTL"),
+    ("shell/tabs/tab_close_button.cc",
+     "TODO(http://crbug.com/40120351): Once this bug is solved"),
+    ("shell/tabs/tab_close_button.cc",
+     "TODO(pkasting): It seems like touch events would generate"),
+    ("shell/tabs/tab_style.h",
+     "TODO(tbergquist): Non-Tab callers of this should probably"),
+)
 
 
 @dataclass
@@ -144,7 +178,7 @@ def _scan_cpp(path: str) -> list[Finding]:
 
         stmts = list(body.get_children())
 
-        # --- TODO/FIXME comments lexically inside the body ---
+        # --- marker comments lexically inside the body ---
         for spelling, cline in _comment_tokens(cidx, body):
             up = spelling.upper()
             if any(m in up for m in TODO_MARKERS):
@@ -266,7 +300,7 @@ def _scan_python(path: str) -> list[Finding]:
                     findings.append(Finding(path, only.lineno,
                         f"stub sole body 'return None' in '{name}'"))
 
-            # TODO/FIXME comments inside the function's source span
+            # marker comments inside the function's source span
             self._todo_scan(node, name)
             self.generic_visit(node)
 
@@ -305,71 +339,210 @@ def _scan_python(path: str) -> list[Finding]:
 
 
 # --------------------------------------------------------------------------
+# C++ token backend (a lexer; no include paths, no compile database)
+# --------------------------------------------------------------------------
+def _cpp_lex(source: str):
+    """Splits C++ source into (kind, text, line) with kind "comment" or "code".
+    String, raw-string and character literals are dropped whole, so a marker
+    inside a literal is never seen; digit separators (1'000) are kept as code."""
+    out = []
+    i, n, line = 0, len(source), 1
+    code_start, code_line = 0, 1
+
+    def flush(end):
+        if end > code_start:
+            out.append(("code", source[code_start:end], code_line))
+
+    while i < n:
+        c = source[i]
+        if c == "\n":
+            line += 1
+            i += 1
+            continue
+        if source.startswith("//", i):
+            flush(i)
+            j = source.find("\n", i)
+            j = n if j == -1 else j
+            # A backslash-newline continues a line comment.
+            while j < n and source[j - 1] == "\\":
+                k = source.find("\n", j + 1)
+                j = n if k == -1 else k
+            out.append(("comment", source[i:j], line))
+            line += source.count("\n", i, j)
+            i = j
+            code_start, code_line = i, line
+            continue
+        if source.startswith("/*", i):
+            flush(i)
+            j = source.find("*/", i + 2)
+            j = n if j == -1 else j + 2
+            out.append(("comment", source[i:j], line))
+            line += source.count("\n", i, j)
+            i = j
+            code_start, code_line = i, line
+            continue
+        if c == "R" and source.startswith('R"', i) and (
+                i == 0 or not (source[i - 1].isalnum() or source[i - 1] == "_")
+                or source[i - 1] in "uU8L"):
+            k = source.find("(", i + 2)
+            if k != -1:
+                delim = source[i + 2:k]
+                j = source.find(")" + delim + '"', k)
+                j = n if j == -1 else j + len(delim) + 2
+                flush(i)
+                line += source.count("\n", i, j)
+                i = j
+                code_start, code_line = i, line
+                continue
+        if c == '"' or (c == "'" and not (i > 0 and source[i - 1].isalnum()
+                                          and i + 1 < n and source[i + 1].isalnum())):
+            flush(i)
+            j = i + 1
+            while j < n and source[j] != c and source[j] != "\n":
+                j += 2 if source[j] == "\\" else 1
+            j = min(j + 1, n)
+            line += source.count("\n", i, j)
+            i = j
+            code_start, code_line = i, line
+            continue
+        i += 1
+    flush(n)
+    return out
+
+
+def _scan_cpp_tokens(path: str) -> list[Finding]:
+    with open(path, "r", encoding="utf-8", errors="replace") as fh:
+        source = fh.read()
+    findings: list[Finding] = []
+    for kind, text, line in _cpp_lex(source):
+        if kind == "comment":
+            for off, row in enumerate(text.split("\n")):
+                if any(m in row.upper() for m in TODO_MARKERS):
+                    findings.append(Finding(path, line + off,
+                        "TODO/FIXME marker in a comment"))
+            continue
+        for call in PLACEHOLDER_CALLS:
+            start = 0
+            while True:
+                k = text.find(call, start)
+                if k == -1:
+                    break
+                start = k + len(call)
+                before = text[k - 1] if k else " "
+                after = text[start:].lstrip(" \t")
+                if (before.isalnum() or before == "_") or not after.startswith("("):
+                    continue
+                if start < len(text) and (text[start].isalnum() or text[start] == "_"):
+                    continue
+                findings.append(Finding(path, line + text.count("\n", 0, k),
+                    f"placeholder call {call}()"))
+    return findings
+
+
+# --------------------------------------------------------------------------
 # Driver
 # --------------------------------------------------------------------------
-def scan_file(path: str) -> list[Finding]:
+def _allowed(finding: Finding) -> bool:
+    if finding.line <= 0:
+        return False
+    norm = finding.file.replace(os.sep, "/")
+    try:
+        with open(finding.file, "r", encoding="utf-8", errors="replace") as fh:
+            rows = fh.read().split("\n")
+    except OSError:
+        return False
+    if finding.line > len(rows):
+        return False
+    row = rows[finding.line - 1]
+    return any(norm.endswith(suffix) and fragment in row
+               for suffix, fragment in ALLOWLIST)
+
+
+def scan_file(path: str, cpp: str = "auto") -> list[Finding]:
     ext = os.path.splitext(path)[1].lower()
     if ext in PY_EXT:
-        return _scan_python(path)
-    if ext in C_EXT:
-        if cpp_backend_name() is None:
-            return [Finding(path, 0,
+        found = _scan_python(path)
+    elif ext in C_EXT:
+        if cpp == "auto":
+            cpp = "libclang" if cpp_backend_name() else "tokens"
+        if cpp == "tokens":
+            found = _scan_cpp_tokens(path)
+        elif cpp_backend_name() is None:
+            found = [Finding(path, 0,
                 "no C++ AST backend available (need libclang)")]
-        return _scan_cpp(path)
-    return []
+        else:
+            found = _scan_cpp(path)
+    else:
+        found = []
+    return [f for f in found if not _allowed(f)]
 
 
-def iter_targets(paths):
+def iter_targets(paths, exclude=()):
+    ex = [os.path.normpath(e) for e in exclude]
+
+    def excluded(p):
+        p = os.path.normpath(p)
+        return any(p == e or p.startswith(e + os.sep) for e in ex)
+
     for p in paths:
         if os.path.isdir(p):
-            for root, _dirs, files in os.walk(p):
+            for root, dirs, files in os.walk(p):
+                dirs[:] = sorted(d for d in dirs
+                                 if not excluded(os.path.join(root, d)))
                 for f in sorted(files):
                     ext = os.path.splitext(f)[1].lower()
-                    if ext in C_EXT or ext in PY_EXT:
-                        yield os.path.join(root, f)
-        else:
+                    full = os.path.join(root, f)
+                    if (ext in C_EXT or ext in PY_EXT) and not excluded(full):
+                        yield full
+        elif not excluded(p):
             yield p
 
 
-def run_scan(paths) -> int:
+def run_scan(paths, cpp: str = "auto", exclude=(), summary=False) -> int:
     findings: list[Finding] = []
-    for target in iter_targets(paths):
-        findings.extend(scan_file(target))
+    count = 0
+    for target in iter_targets(paths, exclude):
+        count += 1
+        findings.extend(scan_file(target, cpp))
     if findings:
         for f in sorted(findings, key=lambda x: (x.file, x.line)):
             print(f"STUB  {f}", file=sys.stderr)
-        print(f"\n{len(findings)} stub finding(s).", file=sys.stderr)
+        print(f"\n{len(findings)} stub finding(s). A kept upstream comment "
+              "goes into ALLOWLIST in shell/tools/no_stubs.py.", file=sys.stderr)
         return 1
+    if summary:
+        print(f"no_stubs ok ({count} files)")
     return 0
 
 
 def self_test() -> int:
     here = os.path.dirname(os.path.abspath(__file__))
     fix = os.path.join(here, "no_stubs_fixtures")
-    backend = cpp_backend_name() or "NONE"
-    print(f"AST backend (C++): {backend}")
-    print(f"AST backend (Python): stdlib ast")
+    backends = ["tokens"] + (["libclang"] if cpp_backend_name() else [])
+    print(f"C++ back ends: {', '.join(backends)}")
+    print("Python back end: stdlib ast")
 
     good = [os.path.join(fix, "good.cc"), os.path.join(fix, "good.py")]
-    bad = [os.path.join(fix, "bad.cc"), os.path.join(fix, "bad.py")]
+    bad_cc = os.path.join(fix, "bad.cc")
+    bad_py = os.path.join(fix, "bad.py")
 
     ok = True
-    print("\n== GOOD fixtures (expect clean) ==")
-    rc_good = run_scan(good)
-    if rc_good != 0:
-        print("FAIL: good fixtures produced findings", file=sys.stderr)
-        ok = False
-    else:
-        print("PASS: good fixtures clean")
-
-    print("\n== BAD fixtures (expect findings) ==")
-    rc_bad = run_scan(bad)
-    if rc_bad == 0:
-        print("FAIL: bad fixtures were NOT flagged", file=sys.stderr)
-        ok = False
-    else:
-        print("PASS: bad fixtures flagged")
-
+    for cpp in backends:
+        print(f"\n== GOOD fixtures, C++ via {cpp} (expect clean) ==")
+        if run_scan(good, cpp) != 0:
+            print("FAIL: good fixtures produced findings", file=sys.stderr)
+            ok = False
+        else:
+            print("PASS: good fixtures clean")
+        print(f"\n== BAD fixtures, C++ via {cpp} (expect findings) ==")
+        # Each bad file on its own, so one flagged file cannot hide the other.
+        for bad in (bad_cc, bad_py):
+            if run_scan([bad], cpp) == 0:
+                print(f"FAIL: {os.path.basename(bad)} was NOT flagged",
+                      file=sys.stderr)
+                ok = False
+            else:
+                print(f"PASS: {os.path.basename(bad)} flagged")
     return 0 if ok else 1
 
 
@@ -379,17 +552,23 @@ def main(argv=None) -> int:
     ap.add_argument("--self-test", action="store_true",
                     help="run bundled adversarial fixtures")
     ap.add_argument("--backend", action="store_true",
-                    help="print selected C++ AST backend and exit")
+                    help="print the C++ back end --cpp auto picks and exit")
+    ap.add_argument("--cpp", choices=("auto", "libclang", "tokens"),
+                    default="auto", help="C++ back end (default auto)")
+    ap.add_argument("--exclude", action="append", default=[],
+                    help="a file or directory left out of the scan (repeatable)")
+    ap.add_argument("--summary", action="store_true",
+                    help='print "no_stubs ok (N files)" when clean')
     ns = ap.parse_args(argv)
 
     if ns.backend:
-        print(cpp_backend_name() or "NONE")
+        print(cpp_backend_name() or "tokens")
         return 0
     if ns.self_test:
         return self_test()
     if not ns.paths:
         ap.error("no paths given (use --self-test for fixtures)")
-    return run_scan(ns.paths)
+    return run_scan(ns.paths, ns.cpp, ns.exclude, ns.summary)
 
 
 if __name__ == "__main__":

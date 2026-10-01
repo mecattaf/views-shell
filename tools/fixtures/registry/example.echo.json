@@ -1,0 +1,117 @@
+{
+  "activation": [
+    "onCommand:example.echo/ping",
+    "onCommand:example.echo/set-counter",
+    "onCommand:example.echo/try-exec",
+    "onEvent:workspace",
+    "onStartup",
+    "onSurface:panel"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [
+    {
+      "args": [
+        {
+          "name": "text",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "example.echo/ping",
+      "result": "json",
+      "surface": null,
+      "title": "Echo the text back",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "value",
+          "required": true,
+          "type": "integer"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "example.echo/set-counter",
+      "result": "none",
+      "surface": null,
+      "title": "Set the counter",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "example.echo/try-exec",
+      "result": "json",
+      "surface": null,
+      "title": "Ask the broker to run a program this plugin never declared",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {
+      "greeting": {
+        "default": "hello",
+        "description": "Shown at the top of the panel.",
+        "scope": "global",
+        "type": "string"
+      }
+    },
+    "title": "Echo"
+  },
+  "dependencies": [],
+  "events": [
+    "workspace"
+  ],
+  "id": "example.echo",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "notifications"
+  ],
+  "quickSettings": [],
+  "sources": [],
+  "surfaces": [
+    {
+      "allowMultiple": false,
+      "anchor": null,
+      "defaultSection": "right",
+      "id": "button",
+      "keyboard": "none",
+      "kind": "bar-widget",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    },
+    {
+      "allowMultiple": false,
+      "anchor": "surface:button",
+      "defaultSection": "center",
+      "id": "panel",
+      "keyboard": "on-demand",
+      "kind": "panel",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    }
+  ],
+  "tier": "process"
+}

@@ -1,0 +1,17 @@
+{
+  "snapshot": {
+    "sessions": [
+      {
+        "id": "org.mpris.MediaPlayer2.mpv",
+        "title": "Night Drive",
+        "artist": "Example Artist",
+        "album": "Roads",
+        "playing": true,
+        "position": 61,
+        "length": 215,
+        "canSeek": true
+      }
+    ]
+  },
+  "sources": {}
+}

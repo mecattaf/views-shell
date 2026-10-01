@@ -1,0 +1,208 @@
+{
+  "plugin": "views-shell.qs-network",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "switch",
+        "props": {
+          "action": {
+            "args": {},
+            "close": false,
+            "command": "views-shell.network/set-wifi-enabled",
+            "confirm": null
+          },
+          "enabled": true,
+          "label": "Wi-Fi",
+          "value": true
+        },
+        "view": "views::ToggleButton"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "error": null,
+                        "layout": null,
+                        "node": "progress",
+                        "props": {
+                          "visible": false
+                        },
+                        "view": "views::ProgressBar"
+                      },
+                      {
+                        "children": [],
+                        "error": null,
+                        "layout": null,
+                        "node": "icon",
+                        "props": {
+                          "icon": "lock",
+                          "role": "subtle",
+                          "size": "small",
+                          "visible": true
+                        },
+                        "view": "views::ImageView"
+                      }
+                    ],
+                    "error": null,
+                    "layout": "box-horizontal",
+                    "node": "row",
+                    "props": {
+                      "spacing": "tight"
+                    },
+                    "view": "views::BoxLayoutView"
+                  }
+                ],
+                "error": null,
+                "layout": null,
+                "node": "listItem",
+                "props": {
+                  "action": {
+                    "args": {
+                      "network": "home-5g"
+                    },
+                    "close": false,
+                    "command": "views-shell.network/activate",
+                    "confirm": null
+                  },
+                  "icon": "network-wifi-strong",
+                  "label": "home-5g",
+                  "selected": true,
+                  "sublabel": "Connected"
+                },
+                "view": "views_shell::ListItemView"
+              },
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "error": null,
+                        "layout": null,
+                        "node": "progress",
+                        "props": {
+                          "visible": true
+                        },
+                        "view": "views::ProgressBar"
+                      },
+                      {
+                        "children": [],
+                        "error": null,
+                        "layout": null,
+                        "node": "icon",
+                        "props": {
+                          "icon": "lock",
+                          "role": "subtle",
+                          "size": "small",
+                          "visible": false
+                        },
+                        "view": "views::ImageView"
+                      }
+                    ],
+                    "error": null,
+                    "layout": "box-horizontal",
+                    "node": "row",
+                    "props": {
+                      "spacing": "tight"
+                    },
+                    "view": "views::BoxLayoutView"
+                  }
+                ],
+                "error": null,
+                "layout": null,
+                "node": "listItem",
+                "props": {
+                  "action": {
+                    "args": {
+                      "network": "cafe"
+                    },
+                    "close": false,
+                    "command": "views-shell.network/activate",
+                    "confirm": null
+                  },
+                  "icon": "network-wifi-weak",
+                  "label": "cafe",
+                  "selected": false,
+                  "sublabel": ""
+                },
+                "view": "views_shell::ListItemView"
+              }
+            ],
+            "error": null,
+            "layout": "box-vertical",
+            "node": "repeat",
+            "props": {
+              "count": 2,
+              "items": {
+                "$bind": "/networks"
+              },
+              "key": "./id",
+              "keys": [
+                "home-5g",
+                "cafe"
+              ]
+            },
+            "view": "views::BoxLayoutView"
+          }
+        ],
+        "error": null,
+        "layout": null,
+        "node": "scroll",
+        "props": {
+          "maxHeight": "large"
+        },
+        "view": "views::ScrollView"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "listItem",
+        "props": {
+          "action": {
+            "args": {},
+            "close": true,
+            "command": "views-shell.network/open-editor",
+            "confirm": null
+          },
+          "icon": "settings",
+          "label": "Other networks and VPN",
+          "sublabel": "Opens the connection editor"
+        },
+        "view": "views_shell::ListItemView"
+      }
+    ],
+    "error": null,
+    "layout": "box-vertical",
+    "node": "column",
+    "props": {
+      "spacing": "normal"
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

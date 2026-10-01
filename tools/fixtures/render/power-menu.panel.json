@@ -1,0 +1,267 @@
+{
+  "plugin": "example.power-menu",
+  "root": {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "icon",
+            "props": {
+              "icon": "power",
+              "role": "primary"
+            },
+            "view": "views::ImageView"
+          },
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "label",
+            "props": {
+              "flex": 1,
+              "text": "Power",
+              "typography": "title"
+            },
+            "view": "views::Label"
+          },
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "label",
+            "props": {
+              "role": "subtle",
+              "text": "1 d 2 h",
+              "typography": "annotation",
+              "visible": true
+            },
+            "view": "views::Label"
+          }
+        ],
+        "error": null,
+        "layout": "box-horizontal",
+        "node": "row",
+        "props": {
+          "align": "center"
+        },
+        "view": "views::BoxLayoutView"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": "Mod+Ctrl+L"
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/lock",
+                "confirm": null
+              },
+              "enabled": true,
+              "icon": "lock",
+              "label": "Lock"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": ""
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/logout",
+                "confirm": null
+              },
+              "enabled": true,
+              "icon": "logout",
+              "label": "Log out"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": ""
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/suspend",
+                "confirm": null
+              },
+              "enabled": true,
+              "icon": "suspend",
+              "label": "Suspend"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": ""
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/hibernate",
+                "confirm": null
+              },
+              "enabled": false,
+              "icon": "hibernate",
+              "label": "Hibernate"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": ""
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/reboot",
+                "confirm": null
+              },
+              "enabled": true,
+              "icon": "restart",
+              "label": "Reboot"
+            },
+            "view": "views_shell::ListItemView"
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "error": "not drawn in chapter 2",
+                "layout": null,
+                "node": "keyChips",
+                "props": {
+                  "keys": ""
+                },
+                "view": null
+              }
+            ],
+            "error": null,
+            "layout": null,
+            "node": "listItem",
+            "props": {
+              "action": {
+                "args": {},
+                "close": true,
+                "command": "example.power-menu/shutdown",
+                "confirm": null
+              },
+              "enabled": true,
+              "icon": "power",
+              "label": "Shut down"
+            },
+            "view": "views_shell::ListItemView"
+          }
+        ],
+        "error": null,
+        "layout": null,
+        "node": "repeat",
+        "props": {
+          "count": 6,
+          "items": {
+            "$bind": "/actions"
+          },
+          "key": "./id",
+          "keys": [
+            "lock",
+            "logout",
+            "suspend",
+            "hibernate",
+            "reboot",
+            "shutdown"
+          ]
+        },
+        "view": null
+      }
+    ],
+    "error": null,
+    "layout": "box-vertical",
+    "node": "column",
+    "props": {
+      "container": "rounded",
+      "spacing": "normal"
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

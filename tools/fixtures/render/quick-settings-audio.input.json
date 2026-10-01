@@ -1,0 +1,23 @@
+{
+  "plugin": "views-shell.qs-audio",
+  "root": {
+    "children": [],
+    "error": null,
+    "layout": null,
+    "node": "slider",
+    "props": {
+      "accessibleName": "Microphone gain",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.audio/set-input-gain",
+        "confirm": null
+      },
+      "icon": "mic",
+      "tooltip": "USB microphone",
+      "value": 0.8,
+      "visible": true
+    },
+    "view": "views::Slider"
+  }
+}

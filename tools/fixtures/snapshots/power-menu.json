@@ -1,0 +1,52 @@
+{
+  "snapshot": {
+    "panelOpen": false,
+    "showUptime": true,
+    "uptime": 93784,
+    "actions": [
+      {
+        "id": "lock",
+        "label": "Lock",
+        "icon": "lock",
+        "shortcut": "Mod+Ctrl+L",
+        "enabled": true
+      },
+      {
+        "id": "logout",
+        "label": "Log out",
+        "icon": "logout",
+        "shortcut": "",
+        "enabled": true
+      },
+      {
+        "id": "suspend",
+        "label": "Suspend",
+        "icon": "suspend",
+        "shortcut": "",
+        "enabled": true
+      },
+      {
+        "id": "hibernate",
+        "label": "Hibernate",
+        "icon": "hibernate",
+        "shortcut": "",
+        "enabled": false
+      },
+      {
+        "id": "reboot",
+        "label": "Reboot",
+        "icon": "restart",
+        "shortcut": "",
+        "enabled": true
+      },
+      {
+        "id": "shutdown",
+        "label": "Shut down",
+        "icon": "power",
+        "shortcut": "",
+        "enabled": true
+      }
+    ]
+  },
+  "sources": {}
+}

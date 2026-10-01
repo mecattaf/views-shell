@@ -1,0 +1,22 @@
+{
+  "plugin": "example.power-menu",
+  "root": {
+    "children": [],
+    "error": null,
+    "layout": null,
+    "node": "iconButton",
+    "props": {
+      "accessibleName": "Power menu",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "example.power-menu/toggle",
+        "confirm": null
+      },
+      "icon": "power",
+      "toggled": false,
+      "tooltip": "Power"
+    },
+    "view": "views::ImageButton"
+  }
+}

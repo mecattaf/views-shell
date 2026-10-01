@@ -1,0 +1,23 @@
+{
+  "plugin": "views-shell.qs-dnd",
+  "root": {
+    "children": [],
+    "error": "not drawn in chapter 2",
+    "layout": null,
+    "node": "tile",
+    "props": {
+      "accessibleName": "Do not disturb",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.notifications/toggle-quiet-mode",
+        "confirm": null
+      },
+      "icon": "do-not-disturb",
+      "label": "Do not disturb",
+      "toggled": false,
+      "variant": "compact"
+    },
+    "view": null
+  }
+}
