@@ -5,16 +5,21 @@
 #include "views_shell/tabs/workspace_strip_model_binding.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "base/environment.h"
 #include "base/files/file_path.h"
+#include "base/memory/discardable_memory_allocator.h"
+#include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/bind.h"
-#include "base/test/task_environment.h"
+#include "base/test/test_discardable_memory_allocator.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "mojo/core/embedder/embedder.h"
 #include "ui/accessibility/platform/ax_platform_for_test.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_paths.h"
@@ -23,6 +28,8 @@
 #include "ui/events/types/event_type.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/point_f.h"
+#include "ui/gfx/geometry/rect.h"
+#include "ui/gl/test/gl_surface_test_support.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/widget/widget.h"
 #include "views_shell/style/layout_provider.h"
@@ -94,22 +101,77 @@ std::string Describe(const WorkspaceStrip& strip) {
   return out;
 }
 
-// The tabs need a Widget (hover, focus, the colour provider), the kit's
-// LayoutProvider and fonts from the ResourceBundle, as in
-// bar/workspace_strip_unittest.cc.
-class WorkspaceStripModelBindingTest : public views::ViewsTestBase {
+bool HaveWaylandDisplay() {
+  auto env = base::Environment::Create();
+  return env->HasVar("WAYLAND_DISPLAY") || env->HasVar("WAYLAND_SOCKET");
+}
+
+// What views::ViewsTestSuite does before any Views test, done once (as in
+// notifications/shell_message_popup_collection_unittest.cc).
+void ViewsProcessSetup() {
+  static bool done = false;
+  if (done) {
+    return;
+  }
+  done = true;
+  mojo::core::Init();
+  gl::GLSurfaceTestSupport::InitializeOneOff();
+  ui::RegisterPathProvider();
+  base::FilePath ui_test_pak;
+  CHECK(base::PathService::Get(ui::UI_TEST_PAK, &ui_test_pak));
+  ui::ResourceBundle::InitSharedInstanceWithPakPath(ui_test_pak);
+  static base::NoDestructor<base::TestDiscardableMemoryAllocator> allocator;
+  base::DiscardableMemoryAllocator::SetInstance(allocator.get());
+}
+
+// views::ViewsTestBase, held rather than inherited: its destructor CHECKs
+// that SetUp ran, so a fixture that skips (no display) cannot be one.
+class ViewsHarness : public views::ViewsTestBase {
+ public:
+  ViewsHarness() = default;
+  void SetUp() override { views::ViewsTestBase::SetUp(); }
+  void TearDown() override { views::ViewsTestBase::TearDown(); }
+  std::unique_ptr<views::Widget> MakeWidget() {
+    return CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  }
+
+ private:
+  void TestBody() override {}
+};
+
+constexpr char kNoDisplay[] =
+    "no WAYLAND_DISPLAY: aura::Env needs a compositor on this Wayland-only "
+    "build; the bench runs these tests against a private headless scroll";
+
+// The tabs need a Widget (their colours and hover come from it), which on
+// this build needs a compositor: without WAYLAND_DISPLAY the widget tests
+// skip and say so. The kit's LayoutProvider and the fonts come from
+// ViewsProcessSetup, as in bar/workspace_strip_unittest.cc.
+class WorkspaceStripModelBindingTest : public testing::Test {
  protected:
   void SetUp() override {
-    views::ViewsTestBase::SetUp();
+    if (!HaveWaylandDisplay()) {
+      GTEST_SKIP() << kNoDisplay;
+    }
+    ViewsProcessSetup();
+    ax_platform_.emplace();
+    harness_ = std::make_unique<ViewsHarness>();
+    harness_->SetUp();
     layout_provider_ = std::make_unique<ShellLayoutProvider>();
-    widget_ = CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+    widget_ = harness_->MakeWidget();
     widget_->SetBounds(gfx::Rect(0, 0, 220, 400));
     widget_->Show();
   }
   void TearDown() override {
+    if (!harness_) {
+      return;
+    }
+    binding_.reset();
     widget_.reset();
     layout_provider_.reset();
-    views::ViewsTestBase::TearDown();
+    harness_->TearDown();
+    harness_.reset();
+    ax_platform_.reset();
   }
 
   // Binds, hosts the strip in the widget and lays it out.
@@ -133,7 +195,8 @@ class WorkspaceStripModelBindingTest : public views::ViewsTestBase {
     tab->OnMouseReleased(release);
   }
 
-  ui::AXPlatformForTest ax_platform_;
+  std::optional<ui::AXPlatformForTest> ax_platform_;
+  std::unique_ptr<ViewsHarness> harness_;
   std::unique_ptr<ShellLayoutProvider> layout_provider_;
   std::unique_ptr<views::Widget> widget_;
   FakeAdapter adapter_;
@@ -141,7 +204,7 @@ class WorkspaceStripModelBindingTest : public views::ViewsTestBase {
   std::unique_ptr<WorkspaceStripModelBinding> binding_;
 };
 
-TEST_F(WorkspaceStripModelBindingTest, WorkspacesFromSnapshot) {
+TEST(WorkspaceStripModelBindingPureTest, WorkspacesFromSnapshot) {
   const std::vector<Workspace> workspaces =
       WorkspaceStripModelBinding::WorkspacesFromSnapshot(
           MakeSnapshot({{"4", "1"}, {"7", "", true}, {"9", "mail"}}));

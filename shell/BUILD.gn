@@ -89,8 +89,11 @@ source_set("tabs") {
   ]
 }
 
-# Run by views_shell_unittests, filter WorkspaceStrip*: the ported strip on a
-# WmModel with a fake adapter (rule R6), and its local selection mode.
+# Run by views_shell_unittests, filter WorkspaceStripModelBinding*: the
+# ported strip on a WmModel with a fake adapter (rule R6), and its local
+# selection mode. The widget tests need a compositor (WAYLAND_DISPLAY) on this
+# Wayland-only build and skip without one; the bench runs them under
+# worker/headless.sh.
 source_set("tabs_unittests") {
   testonly = true
   sources = [ "tabs/workspace_strip_model_binding_unittest.cc" ]
@@ -100,11 +103,13 @@ source_set("tabs_unittests") {
     "wm",
     "//base",
     "//base/test:test_support",
+    "//mojo/core/embedder",
     "//testing/gtest",
     "//ui/accessibility:test_support",
     "//ui/base",
     "//ui/events",
     "//ui/gfx/geometry",
+    "//ui/gl:test_support",
     "//ui/views",
     "//ui/views:test_support",
   ]
