@@ -168,12 +168,6 @@
   ],
   "configuration": {
     "properties": {
-      "confirm": {
-        "default": true,
-        "description": "Ask before log out, reboot and shut down.",
-        "scope": "global",
-        "type": "boolean"
-      },
       "hotkey": {
         "default": "Mod+Shift+Escape",
         "format": "keybinding",
@@ -265,7 +259,7 @@
       "anchor": null,
       "defaultSection": "right",
       "id": "button",
-      "keyboard": "on-demand",
+      "keyboard": "none",
       "kind": "bar-widget",
       "prefix": null,
       "ui": null,
