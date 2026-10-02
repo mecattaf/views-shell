@@ -13,7 +13,7 @@
 namespace views_shell {
 namespace {
 
-constexpr std::array<SurfaceSpec, 3> kSurfaceSpecs = {{
+constexpr std::array<SurfaceSpec, 4> kSurfaceSpecs = {{
     // The bar (SPEC.md C4.2; open question Q2's default): top layer, the top
     // edge stretched across the output, 32 px high with an exclusive zone of
     // the same height, never taking the keyboard.
@@ -56,6 +56,21 @@ constexpr std::array<SurfaceSpec, 3> kSurfaceSpecs = {{
         .keyboard = ui::LayerShellKeyboardInteractivity::kNone,
         .layer_namespace = "views-shell-notification",
         .margins_from_layout = true,
+    },
+    // The credential modal (rule R25; for now the --demo-keyboard probe,
+    // app/keyboard_probe_view.h): overlay layer, anchored to no edge so the
+    // compositor centres it, 480x120, no zone, and exclusive keyboard
+    // interactivity, so the compositor gives it the keyboard while it is
+    // mapped and to nothing else.
+    {
+        .name = "modal",
+        .layer = ui::LayerShellLayer::kOverlay,
+        .anchor = ui::kLayerShellAnchorNone,
+        .width = 480,
+        .height = 120,
+        .exclusive_zone = 0,
+        .keyboard = ui::LayerShellKeyboardInteractivity::kExclusive,
+        .layer_namespace = "views-shell-modal",
     },
 }};
 

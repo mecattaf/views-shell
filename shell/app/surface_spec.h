@@ -14,7 +14,8 @@
 // xdg_popup children of a layer surface and need no row.
 //
 // A new surface (the launcher, the notification column, the OSD) adds a row
-// to kSurfaceSpecs in surface_spec.cc and nothing else.
+// to kSurfaceSpecs in surface_spec.cc and nothing else. The rows today: bar,
+// left-tabs, notification and modal (the credential modal's keyboard probe).
 
 #ifndef VIEWS_SHELL_APP_SURFACE_SPEC_H_
 #define VIEWS_SHELL_APP_SURFACE_SPEC_H_
