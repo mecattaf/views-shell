@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "test.wrong-protocol",
+  "name": "Wrong protocol (test only)",
+  "version": "0.1.0",
+  "description": "A T2 plugin that answers initialize with protocol 2: the host must not start it, and must not restart it.",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0", "protocol": 1 },
+  "runtime": { "mode": "process", "exec": "plugin.sh" }
+}

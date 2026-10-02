@@ -2,13 +2,97 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w3b fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w3b lands.
+# The plugin seam (docs/architecture.md §6, shell/plugins/README.md): manifest
+# validation, the registry view, the plugin registry, the permissions broker,
+# T1 declarative plugins, T2 process supervision over JSON-RPC 2.0, and the
+# host that ties them together. //views_shell links :plugins and collects
+# :unittests into views_shell_unittests; :plugin_probe is the run gate on the
+# bench. Nothing here draws: trees go to a TreeSink and a PluginHost::Delegate
+# that the ui_tree renderer binds later, so the seam never depends on Views,
+# Wayland, or //views_shell/ui_tree.
+
+plugins_no_deps = [
+  "//ash/*",
+  "//chrome/*",
+  "//chromeos/*",
+  "//content/*",
+  "//gin/*",
+  "//third_party/blink/renderer/*",
+  "//ui/views/*",
+  "//v8/*",
+  "//views_shell/ui_tree/*",
+]
 
 source_set("plugins") {
+  sources = [
+    "declarative_plugin.cc",
+    "declarative_plugin.h",
+    "json_rpc.cc",
+    "json_rpc.h",
+    "permissions_broker.cc",
+    "permissions_broker.h",
+    "plugin_host.cc",
+    "plugin_host.h",
+    "plugin_manifest.cc",
+    "plugin_manifest.h",
+    "plugin_registry.cc",
+    "plugin_registry.h",
+    "process_plugin.cc",
+    "process_plugin.h",
+    "registry_view.cc",
+    "registry_view.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//views_shell/wm",
+  ]
+  deps = [ "//third_party/re2" ]
+
+  assert_no_deps = plugins_no_deps
+}
+
+# Console program: plugin_probe --plugin <dir> [--invoke <command> --args
+# <json>]. Prints the registry view, every tree and snapshot for --seconds
+# (default 5), the invoke's answer, and whether the plugin is alive.
+executable("plugin_probe") {
+  sources = [ "plugin_probe.cc" ]
+
+  deps = [
+    ":plugins",
+    "//base",
+  ]
+
+  assert_no_deps = plugins_no_deps
 }
 
 source_set("unittests") {
   testonly = true
+
+  sources = [
+    "declarative_plugin_unittest.cc",
+    "json_rpc_unittest.cc",
+    "permissions_broker_unittest.cc",
+    "plugin_host_unittest.cc",
+    "plugin_manifest_unittest.cc",
+    "plugin_registry_unittest.cc",
+    "process_plugin_unittest.cc",
+    "registry_view_unittest.cc",
+  ]
+
+  deps = [
+    ":plugins",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+
+  # Read through base::DIR_SRC_TEST_DATA_ROOT. tools/bench/worker/wire.sh
+  # mirrors examples/ and tools/fixtures/ into //views_shell/data.
+  data = [
+    "testdata/",
+    "//views_shell/data/examples/",
+    "//views_shell/data/fixtures/invalid/",
+    "//views_shell/data/fixtures/registry/",
+  ]
 }

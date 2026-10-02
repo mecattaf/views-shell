@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "id": "test.exits-at-once",
+  "name": "Exits at once (test only)",
+  "version": "0.1.0",
+  "description": "A T2 plugin that exits with status 3 before it answers initialize: the crash-restart test's subject.",
+  "engines": { "views-shell": ">=0.1.0 <0.2.0", "protocol": 1 },
+  "runtime": { "mode": "process", "exec": "plugin.sh" }
+}

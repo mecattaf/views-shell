@@ -75,3 +75,28 @@ plugin and is the arbiter where the tables above were silent. It adds no method.
 | `event` | Delivered only for names in `contributes.events`, as `{name, data}`. | One per declared event; the plugin stays alive. |
 | Broker answers | `exec` answers `{exitCode, stdout, stderr}`; `notify`, `toast` and `compositor/command` answer `{}`. | The runner answers declared requests with these shapes and runs nothing. |
 | Shutdown and grace period | `shutdown` is answered `{}`; the host then closes the plugin's stdin. The process exits with status 0 within 1 s of the `shutdown` request, or is killed. End of input on stdin alone also means shut down. | Answer `{}`, exit status 0, within 1 s (the end-of-input path alone is not exercised). |
+
+## Settled by the C++ host (w3b, 2026-10-02)
+
+`shell/plugins/` is the host side in C++ (`ProcessPlugin`, `PermissionsBroker`,
+`PluginHost`). It keeps every row above and decides these points, which the
+tables left open. No method was added.
+
+| Question | Settled |
+|---|---|
+| Launch | `runtime.exec` (relative to the plugin directory) with `runtime.args`, working directory the plugin directory, stdin and stdout the protocol pipes, stderr logged line by line. Inside `systemd-run --user --scope --collect --unit=views-shell-plugin-<id>-<pid>-<n>` when `systemd-run` is on `PATH` and a probe scope (`-- true`) succeeds; otherwise plain `base::LaunchProcess`. The path taken is logged at every launch. Inside `runtime-test` there is no user manager, so the plain path is taken; the bench's FHS build environment reaches one, so an automatic launch there takes the scope path. |
+| `initialize.capabilities` | The running adapter's capabilities that the plugin declares (`requires.compositor.required` ∪ `optional`), sorted. |
+| `initialize.config`, `config/changed.config` | The declared defaults with the user's values merged over them. |
+| Arguments | `command/invoke` is sent only for a declared command without a `verb`, with every required argument present, every argument of its declared type (`integer` also accepts an integral number), and no undeclared argument. Anything else is answered `-32602` by the host itself; the plugin never sees it. |
+| Answer shape | An answer that does not match the command's `result` type (`text` without a string `result`, `json` without `result`, or a non-object) is reported to the caller as `-32603`; the plugin is not ended. |
+| Host-side failures | `-32000`: no answer within 2 s, the plugin exited with the request in flight, the plugin is not running, no compositor adapter, or the compositor refused (`data: {error: <not-connected\|capability-missing\|invalid-argument\|rejected\|no-echo>}`). |
+| `-32001` | Carries `data: {permission: "<the permission that was missing>"}`. |
+| `exec` | The program is looked up on `PATH` (the permission names a bare program), stdin is `/dev/null`, stdout and stderr are captured up to 1 MiB each, and the deadline is 10 s. A program that cannot start answers `exitCode: 127` with the reason on `stderr`; one killed at the deadline answers `137`. `args` that is not a list of strings is `-32602` before any permission question. |
+| `notify`, `toast` | `notify` needs a string `summary`; `urgency` is `low`, `normal` (the default) or `critical`. `toast` needs a string `text`. Otherwise `-32602`. |
+| `compositor/command` | `{capability, args}` maps to one typed command: `workspaces.focus` (`workspace` id or `name`), `windows.focus` (`window`), `workspaces.rename` (`workspace`, `name`), `windows.move-to-workspace` (`window`, and `workspace` or `name`), `scratchpad.toggle`, `session.exit`, `config.reload`. Ids may be strings or integers. Other arguments are ignored. A capability with no typed command (`scroll.lua`, for example) is `-32602`. Answered `{}` once the compositor's echo arrived. |
+| Before `initialize` | Anything the plugin sends before its `initialize` answer is dropped and logged. No answer within 2 s: the process is killed and counted as a crash. |
+| Protocol mismatch | An `initialize` answer whose `protocol` is not the integer 1: the process is killed and never restarted (state failed). |
+| Dropped notifications | `surface/setTree` for a surface the manifest does not contribute, a `snapshot` whose `data` is not an object, and `source/snapshot` for an undeclared source are dropped and logged; the plugin keeps running. |
+| Crash and restart | A plugin that exits on its own is restarted after 0.5 s, doubling per consecutive crash up to 30 s; it is restarted at most 5 times in a row, and the sixth consecutive crash leaves it failed. A run that lasted 30 s resets the count. Requests in flight fail with `-32000`; requests made while it restarts wait for the next `initialize`. The host reports `{reason, exitCode, consecutive, restartIn or never, stderr tail}` for the plugin's surfaces. |
+| Shutdown | `shutdown` with a 1 s deadline; stdin is closed on its answer (or at the deadline); the process is killed if it has not exited 1 s after the request. |
+| `event`, `source/changed` | `event` only for names in `contributes.events`; `source/changed` only for the plugin's own sources or a declared `state:read:<plugin-id>/<source>`. Both only to a running plugin: one that is still starting gets the state from its next event. |

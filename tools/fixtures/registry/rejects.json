@@ -1,0 +1,20 @@
+{
+  "bad-call-permission.json": "permissions/0: 'call:network/*' is not valid under any of the given schemas",
+  "builtin-third-party.json": "id: 'example.x' does not match '^views-shell\\\\.'",
+  "chrome-page-http.json": "chrome/pages/0/url: 'http://localhost:8080/' does not match '^https://'",
+  "declarative-entry-without-ui.json": "contributes/quickSettings/0: 'ui' is a required property",
+  "declarative-publishes-source.json": "contributes: {'sources': [{'id': 'state'}]} should not be valid under {'required': ['sources']}",
+  "handler-on-process.json": "contributes/commands/0: {'handler': {'exec': 'sh'}, 'id': 'go', 'title': 'Go'} should not be valid under {'required': ['handler']}",
+  "lock-surface-kind.json": "contributes/surfaces/0/kind: 'lock' is not one of ['bar-widget', 'bar', 'panel', 'overlay', 'menu', 'service', 'picker-provider']",
+  "lua-without-permission.json": "(root): 'permissions' is a required property",
+  "page-without-title.json": "contributes/quickSettings/0: 'title' is a required property",
+  "path-escape.json": "runtime/exec: '../../bin/sh' does not match '^(?!/)(?!.*(^|/)\\\\.\\\\.(/|$))[A-Za-z0-9._/-]+$'",
+  "process-names-ui.json": "contributes/quickSettings/0: {'id': 'tile', 'slot': 'tile', 'ui': 'ui/tile.json'} should not be valid under {'required': ['ui']}",
+  "process-without-protocol.json": "engines: 'protocol' is a required property",
+  "reserved-id-process.json": "runtime/mode: 'process' is not one of ['builtin', 'declarative']",
+  "reserved-id-qs-process.json": "runtime/mode: 'process' is not one of ['builtin', 'declarative']",
+  "slider-with-size.json": "contributes/quickSettings/0: {'id': 's', 'size': 'compact', 'slot': 'slider', 'ui': 'ui/s.json'} should not be valid under {'required': ['size']}",
+  "string-schema-version.json": "schemaVersion: 1 was expected",
+  "tile-surface-kind.json": "contributes/surfaces/0/kind: 'tile' is not one of ['bar-widget', 'bar', 'panel', 'overlay', 'menu', 'service', 'picker-provider']",
+  "wildcard-engine.json": "engines/views-shell: '*' should not be valid under {'pattern': '^\\\\s*\\\\*\\\\s*$'}"
+}

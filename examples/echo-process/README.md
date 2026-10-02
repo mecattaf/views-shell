@@ -3,8 +3,13 @@
 The reference T2 process plugin. `plugin.py` is python3 with the standard library
 only, and it exists to exercise every row of
 [`../../schemas/plugin-protocol.md`](../../schemas/plugin-protocol.md), including
-the rows settled by the conformance runner. The C++ plugin host spawns it as its
-first subject; `tools/plugin-conformance.py` checks it in `tools/validate.sh`.
+the rows settled by the conformance runner. The C++ plugin host
+([`../../shell/plugins/`](../../shell/plugins/README.md)) runs it as its first
+subject: `ProcessPluginTest.EchoReferencePluginSession` and `PluginHostTest`
+drive a whole session against it on the bench, and
+`plugin_probe --plugin <this directory> --invoke ping --args '{"text":"hi"}'` is
+the host's run gate. `tools/plugin-conformance.py` checks it in
+`tools/validate.sh`.
 
 | Part | What it does |
 |---|---|
