@@ -258,7 +258,8 @@ TEST_F(ScrollIpcClientTest, ReassemblesSplitAndCoalescedEventFrames) {
       base::test::RunUntil([&] { return observer.events.size() == 3; }));
   EXPECT_EQ(1, observer.connected);
   EXPECT_EQ(0, observer.disconnected);
-  const uint32_t types[] = {kIpcWorkspaceEvent, kIpcWindowEvent, kIpcTickEvent};
+  const std::array<uint32_t, 3> types = {kIpcWorkspaceEvent, kIpcWindowEvent,
+                                         kIpcTickEvent};
   for (size_t i = 0; i < 3; ++i) {
     EXPECT_EQ(types[i], observer.events[i].first);
     ASSERT_TRUE(observer.events[i].second.is_dict());

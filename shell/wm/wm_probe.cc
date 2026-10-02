@@ -35,6 +35,7 @@
 #include "base/functional/bind.h"
 #include "base/json/json_writer.h"
 #include "base/logging.h"
+#include "base/logging/logging_settings.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
 #include "base/strings/strcat.h"
@@ -90,14 +91,14 @@ base::DictValue SnapshotToDict(const WmSnapshot& snapshot) {
   }
   base::ListValue windows;
   for (const WmWindow& window : snapshot.windows) {
-    base::DictValue dict;
-    dict.Set("id", window.id)
-        .Set("app_id", window.app_id)
-        .Set("title", window.title)
-        .Set("workspace", window.workspace)
-        .Set("focused", window.focused)
-        .Set("fullscreen", window.fullscreen)
-        .Set("urgent", window.urgent);
+    base::DictValue dict = base::DictValue()
+                               .Set("id", window.id)
+                               .Set("app_id", window.app_id)
+                               .Set("title", window.title)
+                               .Set("workspace", window.workspace)
+                               .Set("focused", window.focused)
+                               .Set("fullscreen", window.fullscreen)
+                               .Set("urgent", window.urgent);
     if (window.column) {
       dict.Set("column", *window.column);
     }

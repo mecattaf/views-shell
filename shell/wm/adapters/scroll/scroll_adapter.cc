@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "base/check.h"
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/no_destructor.h"
@@ -20,6 +19,12 @@
 
 namespace views_shell::scroll {
 namespace {
+
+// True when `range` holds `value`.
+template <typename Range, typename T>
+bool Contains(const Range& range, const T& value) {
+  return std::ranges::find(range, value) != std::ranges::end(range);
+}
 
 // docs/compositor-adapters.md, "Capabilities": the "yes" rows per variant.
 constexpr const char* kSwayCapabilities[] = {
@@ -182,15 +187,14 @@ void CollectFocusOrder(const base::DictValue& node,
         continue;
       }
       for (const base::DictValue* child : children) {
-        if (child->FindInt("id") == id.GetInt() &&
-            !base::Contains(ordered, child)) {
+        if (child->FindInt("id") == id.GetInt() && !Contains(ordered, child)) {
           ordered.push_back(child);
         }
       }
     }
   }
   for (const base::DictValue* child : children) {
-    if (!base::Contains(ordered, child)) {
+    if (!Contains(ordered, child)) {
       ordered.push_back(child);
     }
   }
@@ -527,12 +531,12 @@ void ScrollAdapter::OnRefreshPart(uint64_t generation,
   // compositor's focus-stack order.
   std::vector<std::string> mru;
   for (const std::string& id : mru_) {
-    if (snapshot.FindWindow(id) && !base::Contains(mru, id)) {
+    if (snapshot.FindWindow(id) && !Contains(mru, id)) {
       mru.push_back(id);
     }
   }
   for (const std::string& id : snapshot.mru) {
-    if (!base::Contains(mru, id)) {
+    if (!Contains(mru, id)) {
       mru.push_back(id);
     }
   }

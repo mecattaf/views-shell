@@ -7,13 +7,13 @@
 
 #include "views_shell/wm/wm_model.h"
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/check_op.h"
-#include "base/containers/contains.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/task_environment.h"
@@ -21,6 +21,12 @@
 
 namespace views_shell {
 namespace {
+
+// True when `range` holds `value`.
+template <typename Range, typename T>
+bool Contains(const Range& range, const T& value) {
+  return std::ranges::find(range, value) != std::ranges::end(range);
+}
 
 class FakeAdapter : public CompositorAdapter {
  public:
@@ -47,14 +53,14 @@ class Mirror : public WmModel::Observer {
                     int index) override {
     std::vector<std::string>& list = tree[parent];
     CHECK_LE(static_cast<size_t>(index), list.size());
-    CHECK(!base::Contains(list, id));
+    CHECK(!Contains(list, id));
     list.insert(list.begin() + index, id);
     log.push_back(base::StrCat(
         {"add ", parent, "/", id, "@", base::NumberToString(index)}));
   }
   void OnChildRemoved(const std::string& parent,
                       const std::string& id) override {
-    CHECK(base::Contains(tree[parent], id));
+    CHECK(Contains(tree[parent], id));
     std::erase(tree[parent], id);
     log.push_back(base::StrCat({"remove ", parent, "/", id}));
   }
@@ -62,7 +68,7 @@ class Mirror : public WmModel::Observer {
                     const std::string& new_parent,
                     const std::string& id,
                     int new_index) override {
-    CHECK(base::Contains(tree[old_parent], id));
+    CHECK(Contains(tree[old_parent], id));
     std::erase(tree[old_parent], id);
     std::vector<std::string>& list = tree[new_parent];
     CHECK_LE(static_cast<size_t>(new_index), list.size());

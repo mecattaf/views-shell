@@ -90,7 +90,8 @@ Transcript ParseTranscript(std::string_view jsonl) {
   transcript.epochs.emplace_back();
   for (std::string_view line : base::SplitStringPiece(
            jsonl, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    std::optional<base::Value> value = base::JSONReader::Read(line);
+    std::optional<base::Value> value =
+        base::JSONReader::Read(line, base::JSON_PARSE_RFC);
     CHECK(value && value->is_dict()) << line;
     const base::DictValue& dict = value->GetDict();
     const bool c2s = *dict.FindString("dir") == "c2s";
@@ -343,7 +344,8 @@ class FakeCompositor {
         case kIpcSendTick:
           if (!options_.swallow_ticks) {
             base::DictValue tick;
-            tick.Set("first", false).Set("payload", frame->payload);
+            tick.Set("first", false);
+            tick.Set("payload", frame->payload);
             WriteEvent(kIpcTickEvent, base::WriteJson(tick).value());
           }
           WriteAll(fd, BuildIpcFrame(kIpcSendTick, R"({"success":true})"));
@@ -514,8 +516,8 @@ TEST_F(ScrollAdapterTest, SubscribesFirstThenPublishesTheRecordedState) {
   EXPECT_EQ(uint32_t{kIpcSubscribe}, received[0].second.type);
   EXPECT_EQ(R"(["workspace","window","output","binding","shutdown","tick"])",
             received[0].second.payload);
-  const uint32_t order[] = {kIpcGetVersion, kIpcGetOutputs, kIpcGetWorkspaces,
-                            kIpcGetTree};
+  const std::array<uint32_t, 4> order = {kIpcGetVersion, kIpcGetOutputs,
+                                         kIpcGetWorkspaces, kIpcGetTree};
   for (size_t i = 0; i < 4; ++i) {
     EXPECT_FALSE(received[i + 1].first);
     EXPECT_EQ(order[i], received[i + 1].second.type) << i;

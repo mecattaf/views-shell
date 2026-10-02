@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/check.h"
-#include "base/containers/contains.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/notreached.h"
@@ -144,6 +143,12 @@ std::string_view WmCommandErrorName(WmCommandError error) {
 
 namespace {
 
+// True when `range` holds `value`.
+template <typename Range, typename T>
+bool Contains(const Range& range, const T& value) {
+  return std::ranges::find(range, value) != std::ranges::end(range);
+}
+
 using Children = std::map<std::string, std::vector<std::string>>;
 
 std::string ParentOf(const WmWindow& window) {
@@ -223,7 +228,7 @@ void WmModel::OnSnapshot(WmSnapshot snapshot) {
         continue;
       }
       const int index = static_cast<int>(i);
-      if (base::Contains(list, id)) {
+      if (Contains(list, id)) {
         std::erase(list, id);
         list.insert(list.begin() + std::min(i, list.size()), id);
         observers_.Notify(&Observer::OnChildMoved, parent, parent, id, index);
