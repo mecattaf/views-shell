@@ -4,7 +4,7 @@
     "children": [
       {
         "children": [],
-        "error": null,
+        "error": "label not drawn in chapter 2",
         "layout": null,
         "node": "switch",
         "props": {

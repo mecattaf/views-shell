@@ -2,7 +2,7 @@
   "plugin": "example.quick-settings-brightness",
   "root": {
     "children": [],
-    "error": null,
+    "error": "icon not drawn in chapter 2",
     "layout": null,
     "node": "slider",
     "props": {

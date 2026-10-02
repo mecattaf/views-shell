@@ -2,7 +2,7 @@
   "plugin": "views-shell.qs-audio",
   "root": {
     "children": [],
-    "error": null,
+    "error": "icon not drawn in chapter 2",
     "layout": null,
     "node": "slider",
     "props": {

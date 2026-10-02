@@ -2,13 +2,102 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w3a fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w3a lands.
+# The ui-tree renderer (docs/architecture.md section 7, shell/ui_tree/README.md):
+# a T1/T2 plugin's ui tree (schemas/ui-tree.schema.json) parsed and checked
+# (ui_tree), its bindings and formats resolved (binding), drawn with stock Views
+# (ui_tree_renderer, list_item_view) and traced as the reference
+# tools/ui-tree-render.py traces it (render_trace). //views_shell lists this
+# directory; the contract is schemas/ui-tree-rendering.md.
 
 source_set("ui_tree") {
+  sources = [
+    "binding.cc",
+    "binding.h",
+    "list_item_view.cc",
+    "list_item_view.h",
+    "render_trace.cc",
+    "render_trace.h",
+    "ui_tree.cc",
+    "ui_tree.h",
+    "ui_tree_renderer.cc",
+    "ui_tree_renderer.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//ui/base",
+    "//ui/views",
+  ]
+
+  deps = [
+    # The stock icons the icon table names (vector_icons:: in
+    # schemas/ui-tree-rendering.md); ui/views' own come with //ui/views.
+    "//components/vector_icons",
+    "//skia",
+    "//ui/accessibility",
+    "//ui/color",
+    "//ui/compositor",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gfx/codec",
+    "//ui/gfx/geometry",
+
+    # The kit's LayoutProvider and TypographyProvider are what the views ask
+    # for at run time; the renderer itself names only views:: metrics.
+    "//views_shell/style",
+  ]
+
+  assert_no_deps = [
+    "//ash/*",
+    "//chrome/*",
+    "//chromeos/*",
+    "//content/*",
+  ]
 }
 
+# Run by views_shell_unittests, filter UiTree*:Binding*:RenderTrace*:ListItem*:
+#   UiTreeParseTest     the parser against examples/ and tools/fixtures/invalid
+#   BindingTest,
+#   BindingFormatTest   pointers, sources, repeat items and every format
+#   RenderTraceTest     every examples ui file against its golden; with a
+#                       Wayland display the root is shown in a Widget
+#   UiTreeRendererTest  actions, Rebind, render errors, the icon table
+#   ListItemViewTest    the composed row
 source_set("unittests") {
   testonly = true
+
+  sources = [
+    "binding_unittest.cc",
+    "ui_tree_renderer_unittest.cc",
+    "ui_tree_unittest.cc",
+  ]
+
+  deps = [
+    ":ui_tree",
+    "//base",
+    "//base/test:test_support",
+    "//mojo/core/embedder",
+    "//testing/gtest",
+    "//ui/accessibility:test_support",
+    "//ui/base",
+    "//ui/events",
+    "//ui/gfx",
+    "//ui/gl:test_support",
+    "//ui/views",
+    "//ui/views:test_support",
+    "//views_shell/style",
+  ]
+
+  # The examples, snapshots, goldens, invalid fixtures and the rendering
+  # contract (its icon table), mirrored to //views_shell/data by wire.sh.
+  data = [
+    "//views_shell/data/examples/",
+    "//views_shell/data/fixtures/invalid/",
+    "//views_shell/data/fixtures/render/",
+    "//views_shell/data/fixtures/snapshots/",
+    "//views_shell/data/schemas/ui-tree-rendering.md",
+  ]
+
+  # Fonts and strings for views::Label and the controls (debt D2).
+  data_deps = [ "//ui/resources:ui_test_pak" ]
 }
