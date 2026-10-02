@@ -26,8 +26,9 @@ as design reference (MIT).
 
 ## The interface
 
-A sketch lives in
-[`../shell/wm/compositor_adapter.h`](../shell/wm/compositor_adapter.h). Every adapter:
+The interface is
+[`../shell/wm/compositor_adapter.h`](../shell/wm/compositor_adapter.h); the scroll
+and sway adapter implements it (see "Real today" below). Every adapter:
 
 1. **Connects** on an IO thread. It finds its socket from the environment, and when
    the variable is missing (views-shell started outside the session) it scans
@@ -64,9 +65,64 @@ window id with the `ext-foreign-toplevel-list` identifier.
 Sway numbers workspaces globally. Per-monitor workspace numbering is done by views-shell's
 naming, not by the compositor.
 
-The adapter is new code. Its template is the niri client lifted from agency-mvp
-(`shell/wm/adapters/niri/`): an `FdWatcher` on the socket, a line or frame decoder,
-reconnect with backoff, and a full-vector resync on reconnect.
+The adapter is new code in `shell/wm/adapters/scroll/` (see "Real today"). Its
+shape followed the niri client once lifted from agency-mvp and deleted in chapter 2
+(`git show 93d691a:shell/wm/adapters/niri/niri_ipc_client.cc`): a watched socket, a
+frame decoder, reconnect with backoff, and a full resync on reconnect.
+
+## Real today (chapter 2, w2a)
+
+The scroll and sway adapter exists as code in the wm seam (`shell/wm/BUILD.gn`,
+target `//views_shell/wm:wm`, linked into `views_shell`). It depends on `//base`
+only (plus `gfx::Rect` for the hook-event shapes), never on Views or Wayland.
+
+| Piece | File | What it does |
+|---|---|---|
+| Transport | `adapters/scroll/scroll_ipc_client.{h,cc}` | Two AF_UNIX connections on its own IO thread (`base::IOWatcher`), 14-byte i3-ipc framing that tolerates split and coalesced frames, `SUBSCRIBE` on the events connection, any request type on the requests connection with replies in order, `base::JSONReader` on the IO thread, delivery on the caller's sequence through a `WeakPtr`. One client is one connection attempt. |
+| Socket | `ScrollIpcClient::ResolveSocketPath()` | `$SCROLLSOCK`, `scroll --get-socketpath`, `$SWAYSOCK`, `$I3SOCK`, then the newest `scroll-ipc.*.sock`, then `sway-ipc.*.sock` in `$XDG_RUNTIME_DIR`. An empty variable counts as unset. |
+| Adapter | `adapters/scroll/scroll_adapter.{h,cc}` | Subscribes to `workspace`, `window`, `output`, `binding`, `shutdown`, `tick`; then `GET_VERSION`; then one refresh (`GET_OUTPUTS`, `GET_WORKSPACES`, `GET_TREE`, pipelined) folded into a `WmSnapshot`. One refresh in flight; events meanwhile set a dirty flag. |
+| Commands | `CommandText()` in `scroll_adapter.cc` | The only place command strings are spelled: `workspace --no-auto-back-and-forth "<name>"`, `[con_id=N] focus`, `rename workspace "<a>" to "<b>"`, `[con_id=N] move container to workspace "<w>"`, `scratchpad show`, `exit`, `reload`. Names are double-quoted with `\` and `"` escaped; window ids must be digits and present in the current snapshot. `--no-auto-back-and-forth` keeps `workspace_auto_back_and_forth` in a user's config from bouncing a focus request. |
+| Barrier | `ScrollAdapter::Send()` | After a successful reply, `SEND_TICK` with `views-shell-<pid>-<serial>`. The matching `tick` event marks every event the command caused as received; the command is done when a snapshot requested after the last of them has been delivered. A refused command fails with `kRejected` at once; no tick within `command_timeout` (5 s) is `kNoEcho`; `exit` is echoed by the `shutdown` event. |
+| Bindings | `ScrollAdapter::OnEvent()` | `binding` events whose command starts with `nop views-shell ` reach `Delegate::OnBinding` with the rest of the command. |
+| Reload | | A `workspace` event with change `reload` is relayed as `OnConfigReloaded(true)`; a refused `reload` as `OnConfigReloaded(false, error)`. |
+| Reconnect | | Either connection dropping fails pending commands with `kNotConnected`, tells the delegate (when it had connected), and reconnects after a backoff (250 ms doubling to 10 s); the first snapshot after it is a full resync. |
+| Model | `wm_model.{h,cc}` | Diffs successive snapshots into `OnChildAdded`, `OnChildRemoved`, `OnChildMoved` (workspaces under the root, windows under their workspace, scratchpad windows under `@scratchpad`), then `OnItemChanged`, `OnOutputsChanged`, `OnMruChanged`, `OnFocusChanged`. Requests go to the adapter; the model changes only on the echo. |
+| Gate | `wm_probe.cc` | Console program, `//base` and `:wm` only. `--dump` prints the first snapshot as JSON; `--switch <name>` focuses through `WmModel` and prints `ECHO workspace <name>` on the echo; `--watch <s>` prints every model change. |
+
+Snapshot keys are scroll's node ids (unique across all nodes of a session), as
+`docs/architecture.md` §6 asks. Outputs are keyed by connector name. Windows are
+the tree's leaf views; their `column` is the index of the workspace's tiling child
+that holds them, which on scroll is the column. The MRU starts as the tree's focus
+stacks flattened depth first and is then kept by `window` focus events.
+`toplevel_id` stays empty: i3-ipc does not report the ext-foreign-toplevel-list
+identifier.
+
+**How capabilities are narrowed.** `ProbeCapabilities()` starts from the "yes"
+rows of the Capabilities table below for the variant: `scroll` when `GET_VERSION` carries
+`"variant": "scroll"`, `sway` otherwise. The "with ask Hn" rows (`overview.events`
+H2, `windows.geometry-events` H3, `bindings.gesture-events` H4) are kept only when
+`GET_VERSION` carries a `features` array that names them, by capability name or by
+hook id. The array is views-shell's proposed shape for H10; stock scroll sends none,
+so on the bench the hook rows are absent. A name in `features` that is not a row of
+the table is ignored: the probe never invents a capability. No command needs a
+scroll-only capability, so the sway set refuses nothing the adapter can spell.
+
+**Tests.** `views_shell_unittests` runs the transport against a scripted server on
+a real socket (split and coalesced frames, pipelined replies in order, a close
+with requests pending, a missing socket, the resolution order) and the adapter
+against a fake compositor that replays
+`shell/wm/adapters/scroll/testdata/scroll-transcript.jsonl` (recorded from headless
+stock scroll by `testdata/record_transcript.py`) by epoch, checking each command
+string byte for byte, a reconnect mid-snapshot, a missing tick, bindings, and the
+static capability and spelling tables. `WmModel` is tested on hand-written
+snapshots, including a mirror observer that must end up holding each snapshot's
+order. The bench record is
+[`bench/views-shell-154-adapter.md`](bench/views-shell-154-adapter.md).
+
+Not yet: the scroll-only requests (`GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`,
+`GET_BINDINGS`) and their events, `mode` events, the config writer, the hook
+events (H1 to H3) and the ext-foreign-toplevel join. No surface uses the model yet;
+the first is the rail.
 
 ## niri
 
@@ -192,7 +248,8 @@ Adapters are tested in two ways:
 - **Run gates** under a nested headless compositor inside `runtime-test`. The
   harness unsets `SCROLLSOCK`, `SWAYSOCK`, `I3SOCK`, `NIRI_SOCKET` and
   `HYPRLAND_INSTANCE_SIGNATURE` first, so a test can never reach the live
-  session's compositor. See [`../shell/tools/headless-eval.sh`](../shell/tools/headless-eval.sh).
+  session's compositor. The harness is `tools/bench/worker/headless.sh` (a headless
+  stock scroll under runtime-test); the gate it runs is `wm_probe` (below).
 
 The first acceptance target is a rail click that switches a workspace and is
 observed through the echo. No Views switcher has done that yet.
