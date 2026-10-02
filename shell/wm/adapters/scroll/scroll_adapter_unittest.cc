@@ -713,8 +713,8 @@ TEST_F(ScrollAdapterTest, DispatchesOnlyViewsShellBindings) {
 {"dir":"c2s","conn":"events","type":2,"payload":["workspace","window","output","binding","shutdown","tick"]}
 {"dir":"s2c","conn":"events","type":2,"payload":{"success":true}}
 {"dir":"s2c","conn":"events","type":2147483653,"payload":{"change":"run","binding":{"command":"exec foot"}}}
-{"dir":"s2c","conn":"events","type":2147483653,"payload":{"change":"run","binding":{"command":"nop views-shell launcher toggle"}}}
 {"dir":"s2c","conn":"events","type":2147483653,"payload":{"change":"run","binding":{"command":"nop views-shellx"}}}
+{"dir":"s2c","conn":"events","type":2147483653,"payload":{"change":"run","binding":{"command":"nop views-shell launcher toggle"}}}
 {"dir":"s2c","conn":"requests","type":7,"payload":{"human_readable":"1.11","major":1,"minor":11,"patch":0}}
 {"dir":"s2c","conn":"requests","type":3,"payload":[]}
 {"dir":"s2c","conn":"requests","type":1,"payload":[]}
@@ -724,8 +724,11 @@ TEST_F(ScrollAdapterTest, DispatchesOnlyViewsShellBindings) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   adapter->Start(&delegate);
-  ASSERT_TRUE(
-      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  // The matching binding is the last event: once it is in, the two before it
+  // were seen and dropped.
+  ASSERT_TRUE(base::test::RunUntil([&] {
+    return !delegate.snapshots.empty() && !delegate.bindings.empty();
+  }));
   EXPECT_EQ(std::vector<std::string>{"launcher toggle"}, delegate.bindings);
   // No `variant`: this is sway, without the scroll rows.
   EXPECT_EQ("sway", adapter->name());
