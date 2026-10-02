@@ -27,9 +27,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "base/at_exit.h"
 #include "base/command_line.h"
+#include "base/compiler_specific.h"
 #include "base/feature_list.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -66,7 +68,7 @@ void Status(std::string_view line) {
 
 // "--name value" and "--name=value" both work; base::CommandLine alone only
 // takes the second form. Returns nullopt when --name is absent.
-std::optional<std::string> Flag(const base::CommandLine::StringVector& argv,
+std::optional<std::string> Flag(const std::vector<std::string>& argv,
                                 std::string_view name) {
   const std::string bare = base::StrCat({"--", name});
   const std::string with_value = base::StrCat({bare, "="});
@@ -315,8 +317,9 @@ int Main(int argc, char** argv) {
   logging::InitLogging(settings);
   base::FeatureList::InitInstance(std::string(), std::string());
 
-  const base::CommandLine::StringVector& args =
-      base::CommandLine::ForCurrentProcess()->argv();
+  // The raw argv: base::CommandLine moves positional values after the
+  // switches, which would separate "--switch" from its "3".
+  const std::vector<std::string> args(argv, UNSAFE_BUFFERS(argv + argc));
   std::optional<Probe::Mode> mode;
   std::string target;
   int watch_seconds = 0;
