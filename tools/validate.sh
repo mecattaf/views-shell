@@ -4,7 +4,10 @@
 #   2. tools/check-identity.py the extension id derived from the manifest key
 #   3. tools/validate.py       the JSON schemas, examples and fixtures
 #                              (python3 with jsonschema, fetched from nixpkgs when
-#                              the local python lacks it)
+#                              the local python lacks it), then the reference
+#                              goldens (registry ok, render ok; see
+#                              schemas/ui-tree-rendering.md) and the no-stub
+#                              gate over shell/ (no_stubs ok)
 #   4. tools/plugin-conformance.py, once per T2 example program (echo-process,
 #      power-menu, quick-settings-brightness): each prints CONFORMANCE-OK <id>
 #

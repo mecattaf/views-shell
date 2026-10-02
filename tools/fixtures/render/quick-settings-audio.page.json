@@ -1,0 +1,178 @@
+{
+  "plugin": "views-shell.qs-audio",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "label",
+        "props": {
+          "role": "subtle",
+          "text": "Output",
+          "typography": "label"
+        },
+        "view": "views::Label"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "option",
+            "props": {
+              "checked": true,
+              "icon": "speaker",
+              "label": "Built-in speakers",
+              "value": "speakers"
+            },
+            "view": "views::RadioButton"
+          },
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "option",
+            "props": {
+              "checked": false,
+              "icon": "headset",
+              "label": "Headphones",
+              "value": "headphones"
+            },
+            "view": "views::RadioButton"
+          }
+        ],
+        "error": null,
+        "layout": "box-vertical",
+        "node": "radioGroup",
+        "props": {
+          "action": {
+            "args": {},
+            "close": false,
+            "command": "views-shell.audio/set-default-output",
+            "confirm": null
+          },
+          "options": [
+            {
+              "icon": "speaker",
+              "label": "Built-in speakers",
+              "value": "speakers"
+            },
+            {
+              "icon": "headset",
+              "label": "Headphones",
+              "value": "headphones"
+            }
+          ],
+          "value": "speakers"
+        },
+        "view": "views::BoxLayoutView"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "label",
+        "props": {
+          "role": "subtle",
+          "text": "Input",
+          "typography": "label"
+        },
+        "view": "views::Label"
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "option",
+            "props": {
+              "checked": false,
+              "label": "Internal microphone",
+              "value": "internal-mic"
+            },
+            "view": "views::RadioButton"
+          },
+          {
+            "children": [],
+            "error": null,
+            "layout": null,
+            "node": "option",
+            "props": {
+              "checked": true,
+              "label": "USB microphone",
+              "value": "usb-mic"
+            },
+            "view": "views::RadioButton"
+          }
+        ],
+        "error": null,
+        "layout": "box-vertical",
+        "node": "radioGroup",
+        "props": {
+          "action": {
+            "args": {},
+            "close": false,
+            "command": "views-shell.audio/set-default-input",
+            "confirm": null
+          },
+          "options": [
+            {
+              "label": "Internal microphone",
+              "value": "internal-mic"
+            },
+            {
+              "label": "USB microphone",
+              "value": "usb-mic"
+            }
+          ],
+          "value": "usb-mic"
+        },
+        "view": "views::BoxLayoutView"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "separator",
+        "props": {},
+        "view": "views::Separator"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "listItem",
+        "props": {
+          "action": {
+            "args": {},
+            "close": true,
+            "command": "views-shell.audio/open-mixer",
+            "confirm": null
+          },
+          "icon": "settings",
+          "label": "Per-application volume",
+          "sublabel": "Opens pavucontrol"
+        },
+        "view": "views_shell::ListItemView"
+      }
+    ],
+    "error": null,
+    "layout": "box-vertical",
+    "node": "column",
+    "props": {
+      "spacing": "normal"
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

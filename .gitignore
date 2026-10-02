@@ -4,3 +4,7 @@
 *.pyc
 __pycache__/
 node_modules/
+# tools/prove.sh's last run and tools/bench/lock.sh's holder session.
+/prove-results.tsv
+/.bench-lock.pid
+/.bench-lock.log

@@ -1,0 +1,79 @@
+{
+  "activation": [
+    "onCommand:example.music-scratchpad/toggle",
+    "onKeybinding:F9",
+    "onStartup"
+  ],
+  "capabilities": {
+    "optional": [
+      "scroll.lua"
+    ],
+    "required": [
+      "scratchpad.toggle"
+    ]
+  },
+  "cli": null,
+  "commands": [
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": {
+        "args": {
+          "match": {
+            "app_id": "music"
+          }
+        },
+        "compositor": "scratchpad.toggle"
+      },
+      "icon": "music-note",
+      "id": "example.music-scratchpad/toggle",
+      "result": "none",
+      "surface": null,
+      "title": "Toggle music scratchpad",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [],
+  "events": [],
+  "id": "example.music-scratchpad",
+  "keybindings": [
+    {
+      "args": null,
+      "command": "example.music-scratchpad/toggle",
+      "key": "F9",
+      "keyFrom": null,
+      "locked": false,
+      "mode": null,
+      "release": false,
+      "when": null
+    }
+  ],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "compositor:scratchpad.toggle",
+    "scroll.lua"
+  ],
+  "quickSettings": [],
+  "sources": [],
+  "surfaces": [
+    {
+      "allowMultiple": false,
+      "anchor": null,
+      "defaultSection": "right",
+      "id": "button",
+      "keyboard": "on-demand",
+      "kind": "bar-widget",
+      "prefix": null,
+      "ui": "ui/button.json",
+      "when": null
+    }
+  ],
+  "tier": "declarative"
+}

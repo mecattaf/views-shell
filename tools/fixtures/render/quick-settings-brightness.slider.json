@@ -1,0 +1,22 @@
+{
+  "plugin": "example.quick-settings-brightness",
+  "root": {
+    "children": [],
+    "error": null,
+    "layout": null,
+    "node": "slider",
+    "props": {
+      "accessibleName": "Display brightness",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "example.quick-settings-brightness/set",
+        "confirm": null
+      },
+      "icon": "brightness",
+      "value": 0.45,
+      "visible": true
+    },
+    "view": "views::Slider"
+  }
+}

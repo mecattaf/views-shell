@@ -1,0 +1,113 @@
+{
+  "plugin": "views-shell.qs-power-footer",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "icon",
+        "props": {
+          "icon": "battery-70",
+          "size": "small",
+          "visible": true
+        },
+        "view": "views::ImageView"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "label",
+        "props": {
+          "text": "70%",
+          "tooltip": "3 h 10 min left",
+          "typography": "annotation",
+          "visible": true
+        },
+        "view": "views::Label"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "label",
+        "props": {
+          "role": "subtle",
+          "text": "Balanced",
+          "typography": "annotation"
+        },
+        "view": "views::Label"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "spacer",
+        "props": {
+          "flex": 1
+        },
+        "view": "views::View"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "iconButton",
+        "props": {
+          "accessibleName": "Settings",
+          "action": {
+            "args": {},
+            "close": true,
+            "command": "views-shell.qs-power-footer/open-settings",
+            "confirm": null
+          },
+          "icon": "settings"
+        },
+        "view": "views::ImageButton"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "iconButton",
+        "props": {
+          "accessibleName": "Lock",
+          "action": {
+            "args": {},
+            "close": true,
+            "command": "views-shell.session/lock",
+            "confirm": null
+          },
+          "icon": "lock"
+        },
+        "view": "views::ImageButton"
+      },
+      {
+        "children": [],
+        "error": null,
+        "layout": null,
+        "node": "iconButton",
+        "props": {
+          "accessibleName": "Power menu",
+          "action": {
+            "args": {},
+            "close": false,
+            "command": "views-shell.session/power-menu",
+            "confirm": null
+          },
+          "icon": "power"
+        },
+        "view": "views::ImageButton"
+      }
+    ],
+    "error": null,
+    "layout": "box-horizontal",
+    "node": "row",
+    "props": {
+      "align": "center",
+      "spacing": "tight"
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

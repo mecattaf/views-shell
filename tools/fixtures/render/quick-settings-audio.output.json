@@ -1,0 +1,29 @@
+{
+  "plugin": "views-shell.qs-audio",
+  "root": {
+    "children": [],
+    "error": null,
+    "layout": null,
+    "node": "slider",
+    "props": {
+      "accessibleName": "Output volume",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.audio/set-output-volume",
+        "confirm": null
+      },
+      "icon": "volume-medium",
+      "iconAction": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.audio/toggle-output-mute",
+        "confirm": null
+      },
+      "toggled": false,
+      "tooltip": "Built-in speakers",
+      "value": 0.62
+    },
+    "view": "views::Slider"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "plugin": "views-shell.qs-network",
+  "root": {
+    "children": [],
+    "error": "not drawn in chapter 2",
+    "layout": null,
+    "node": "tile",
+    "props": {
+      "accessibleName": "Network",
+      "action": {
+        "args": {},
+        "close": false,
+        "command": "views-shell.network/toggle-wifi",
+        "confirm": null
+      },
+      "detail": "page",
+      "enabled": true,
+      "icon": "network-wifi-strong",
+      "label": "home-5g",
+      "sublabel": "Connected",
+      "toggled": true,
+      "variant": "primary"
+    },
+    "view": null
+  }
+}

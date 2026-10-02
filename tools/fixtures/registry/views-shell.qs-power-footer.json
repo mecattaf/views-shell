@@ -1,0 +1,61 @@
+{
+  "activation": [
+    "onCommand:views-shell.qs-power-footer/open-settings",
+    "onQuickSettings:footer"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": null,
+  "commands": [
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": {
+        "open": "settings"
+      },
+      "icon": "settings",
+      "id": "views-shell.qs-power-footer/open-settings",
+      "result": "none",
+      "surface": null,
+      "title": "Open views-shell settings",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [
+    "views-shell.power",
+    "views-shell.session"
+  ],
+  "events": [],
+  "id": "views-shell.qs-power-footer",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "call:views-shell.session/lock",
+    "call:views-shell.session/power-menu"
+  ],
+  "quickSettings": [
+    {
+      "id": "footer",
+      "order": 0,
+      "page": null,
+      "size": null,
+      "slot": "footer",
+      "state": "views-shell.power/state",
+      "title": null,
+      "ui": "ui/footer.json",
+      "when": null
+    }
+  ],
+  "sources": [],
+  "surfaces": [],
+  "tier": "declarative"
+}

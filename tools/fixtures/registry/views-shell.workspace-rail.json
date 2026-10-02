@@ -1,0 +1,302 @@
+{
+  "activation": [
+    "onCommand:views-shell.workspace-rail/focus-window",
+    "onCommand:views-shell.workspace-rail/focus-workspace",
+    "onCommand:views-shell.workspace-rail/move-window",
+    "onCommand:views-shell.workspace-rail/rename-workspace",
+    "onCommand:views-shell.workspace-rail/state",
+    "onCommand:views-shell.workspace-rail/toggle",
+    "onCommand:views-shell.workspace-rail/toggle-collapsed",
+    "onEvent:output",
+    "onEvent:window",
+    "onEvent:workspace",
+    "onKeybinding:Mod+Grave",
+    "onStartup",
+    "onSurface:flyout"
+  ],
+  "capabilities": {
+    "optional": [
+      "scroll.scroller",
+      "windows.move-to-workspace",
+      "windows.urgency",
+      "workspaces.rename"
+    ],
+    "required": [
+      "outputs.list",
+      "windows.focus",
+      "windows.list",
+      "workspaces.focus",
+      "workspaces.list"
+    ]
+  },
+  "cli": {
+    "name": "rail",
+    "verbs": [
+      {
+        "command": "views-shell.workspace-rail/toggle",
+        "confirm": false,
+        "summary": null,
+        "verb": "toggle"
+      },
+      {
+        "command": "views-shell.workspace-rail/toggle-collapsed",
+        "confirm": false,
+        "summary": null,
+        "verb": "collapse"
+      },
+      {
+        "command": "views-shell.workspace-rail/focus-workspace",
+        "confirm": false,
+        "summary": null,
+        "verb": "focus"
+      },
+      {
+        "command": "views-shell.workspace-rail/rename-workspace",
+        "confirm": false,
+        "summary": null,
+        "verb": "rename"
+      },
+      {
+        "command": "views-shell.workspace-rail/state",
+        "confirm": false,
+        "summary": null,
+        "verb": "state"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "args": [
+        {
+          "name": "workspace",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/focus-workspace",
+      "result": "none",
+      "surface": null,
+      "title": "Focus workspace",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "window",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/focus-window",
+      "result": "none",
+      "surface": null,
+      "title": "Focus window",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "workspace",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": "compositor.workspaces.rename",
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/rename-workspace",
+      "result": "none",
+      "surface": null,
+      "title": "Rename workspace",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "window",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "workspace",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": "compositor.windows.move-to-workspace",
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/move-window",
+      "result": "none",
+      "surface": null,
+      "title": "Move window to workspace",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/toggle-collapsed",
+      "result": "none",
+      "surface": "rail",
+      "title": "Collapse or expand the rail",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/toggle",
+      "result": "none",
+      "surface": "rail",
+      "title": "Show or hide the rail",
+      "verb": "toggle"
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.workspace-rail/state",
+      "result": "json",
+      "surface": null,
+      "title": "Rail model as JSON",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {
+      "collapsedWidth": {
+        "default": 56,
+        "description": "Width and exclusive zone of the collapsed rail, in DIP.",
+        "maximum": 96,
+        "minimum": 40,
+        "scope": "global",
+        "type": "integer"
+      },
+      "expandOnHover": {
+        "default": true,
+        "scope": "global",
+        "type": "boolean"
+      },
+      "expandedWidth": {
+        "default": 240,
+        "description": "Width of the hover flyout, in DIP. The flyout has no exclusive zone.",
+        "maximum": 480,
+        "minimum": 160,
+        "scope": "global",
+        "type": "integer"
+      },
+      "outputs": {
+        "default": "all",
+        "enum": [
+          "all",
+          "primary"
+        ],
+        "scope": "instance",
+        "type": "string"
+      },
+      "showScrollColumns": {
+        "default": false,
+        "description": "Decorate rows with scroll's columns (needs scroll.scroller).",
+        "scope": "global",
+        "type": "boolean"
+      },
+      "showWindowCount": {
+        "default": true,
+        "scope": "global",
+        "type": "boolean"
+      }
+    },
+    "title": "Workspace rail"
+  },
+  "dependencies": [],
+  "events": [
+    "workspace",
+    "window",
+    "output"
+  ],
+  "id": "views-shell.workspace-rail",
+  "keybindings": [
+    {
+      "args": null,
+      "command": "views-shell.workspace-rail/toggle-collapsed",
+      "key": "Mod+Grave",
+      "keyFrom": null,
+      "locked": false,
+      "mode": null,
+      "release": false,
+      "when": null
+    }
+  ],
+  "launcher": [],
+  "menus": [
+    {
+      "command": "views-shell.workspace-rail/rename-workspace",
+      "group": "edit",
+      "location": "rail/workspace",
+      "when": "compositor.workspaces.rename"
+    },
+    {
+      "command": "views-shell.workspace-rail/move-window",
+      "group": "move",
+      "location": "rail/window",
+      "when": "compositor.windows.move-to-workspace"
+    }
+  ],
+  "permissions": [],
+  "quickSettings": [],
+  "sources": [],
+  "surfaces": [
+    {
+      "allowMultiple": false,
+      "anchor": null,
+      "defaultSection": "center",
+      "id": "rail",
+      "keyboard": "none",
+      "kind": "bar",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    },
+    {
+      "allowMultiple": false,
+      "anchor": "surface:rail",
+      "defaultSection": "center",
+      "id": "flyout",
+      "keyboard": "on-demand",
+      "kind": "overlay",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    }
+  ],
+  "tier": "builtin"
+}

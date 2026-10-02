@@ -1,0 +1,48 @@
+{
+  "plugin": "views-shell.qs-media",
+  "root": {
+    "children": [
+      {
+        "children": [],
+        "error": "not drawn in chapter 2",
+        "layout": null,
+        "node": "mediaSession",
+        "props": {
+          "action": {
+            "args": {
+              "session": "org.mpris.MediaPlayer2.mpv"
+            },
+            "close": false,
+            "command": "views-shell.media/control",
+            "confirm": null
+          },
+          "session": {
+            "album": "Roads",
+            "artist": "Example Artist",
+            "canSeek": true,
+            "id": "org.mpris.MediaPlayer2.mpv",
+            "length": 215,
+            "playing": true,
+            "position": 61,
+            "title": "Night Drive"
+          }
+        },
+        "view": null
+      }
+    ],
+    "error": null,
+    "layout": "box-vertical",
+    "node": "repeat",
+    "props": {
+      "count": 1,
+      "items": {
+        "$bind": "/sessions"
+      },
+      "key": "./id",
+      "keys": [
+        "org.mpris.MediaPlayer2.mpv"
+      ]
+    },
+    "view": "views::BoxLayoutView"
+  }
+}

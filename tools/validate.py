@@ -10,7 +10,14 @@ quick-settings entry that opens a page names a declared page, every qualified
 command a manifest handler or ui tree calls belongs to the plugin or is covered
 by a call: permission, every examples/themes/*/ Omarchy theme directory holds a
 parseable colors.toml whose keys are all accounted for by style/theme-map.json,
-and every fixture under tools/fixtures/invalid/ is rejected.
+and every fixture under tools/fixtures/invalid/ is rejected. Then the reference
+goldens: tools/plugin-registry.py --check-all (every example's registry view
+equals tools/fixtures/registry/<id>.json, every invalid manifest REJECTs) and
+tools/ui-tree-render.py --check-all (every examples/*/ui/*.json renders to
+tools/fixtures/render/<dir>.<file>.json against tools/fixtures/snapshots/<dir>.json),
+both specified in schemas/ui-tree-rendering.md; and shell/tools/no_stubs.py over
+shell/ (C++ through its token back end, Python through ast; its own fixtures
+excluded, and its --self-test run).
 
 Needs the python `jsonschema` package (>= 4.18). On NixOS:
   nix shell nixpkgs#python3Packages.jsonschema -c python3 tools/validate.py
@@ -244,6 +251,25 @@ def main(argv):
             for b in bad:
                 failures.append(f"cli/testdata/{comp}/{b}: render differs from golden")
             print(f"{'FAIL' if bad else 'ok  '} render   {comp}")
+
+    # The reference goldens and the no-stub gate, each a separate program run with
+    # this interpreter; on success only its summary line is shown.
+    gates = [
+        ("registry", [str(ROOT / "tools/plugin-registry.py"), "--check-all"], "registry ok"),
+        ("render", [str(ROOT / "tools/ui-tree-render.py"), "--check-all"], "render ok"),
+        ("no_stubs", [str(ROOT / "shell/tools/no_stubs.py"), "--cpp", "tokens", "--summary",
+                      "--exclude", str(ROOT / "shell/tools/no_stubs_fixtures"),
+                      str(ROOT / "shell")], "no_stubs ok"),
+        ("no_stubs self-test", [str(ROOT / "shell/tools/no_stubs.py"), "--self-test"], None),
+    ]
+    for name, cmd, token in gates:
+        r = subprocess.run([sys.executable, *cmd], capture_output=True, text=True, cwd=ROOT)
+        lines = [l for l in r.stdout.splitlines() if token and l.startswith(token)]
+        if r.returncode != 0 or (token and not lines):
+            failures.append(f"{name}: rc {r.returncode}\n{r.stdout}{r.stderr}".rstrip())
+            print(f"FAIL {name}")
+        else:
+            print("\n".join(lines) if lines else f"{name} ok")
 
     if failures:
         print("\n".join(failures), file=sys.stderr)
