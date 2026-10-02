@@ -63,7 +63,11 @@ compositor goes in through `WmCommandSink`, which the running
 ## Threading and launch
 
 `PluginHost` and `ProcessPlugin` live on one sequence that supports
-`base::FileDescriptorWatcher` (a `MessagePumpType::IO` thread). Blocking work
+`base::FileDescriptorWatcher`: a `base::Thread` started with
+`MessagePumpType::IO`, or a `SingleThreadTaskExecutor(MessagePumpType::IO)`
+with a `base::FileDescriptorWatcher` constructed on it (an IO executor alone
+does not install one, and `WatchReadable` then crashes; `plugin_probe.cc`
+shows the setup). Blocking work
 (the launch-path probe, exec, waiting for an exit) runs on the thread pool.
 `ProcessPlugin` ignores `SIGPIPE` once per process, so a write to a plugin that
 just exited cannot end views-shell.

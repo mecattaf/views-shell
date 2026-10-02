@@ -38,6 +38,7 @@
 #include "base/compiler_specific.h"
 #include "base/environment.h"
 #include "base/feature_list.h"
+#include "base/files/file_descriptor_watcher_posix.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
@@ -189,7 +190,11 @@ int Main(int argc, char** argv) {
     capabilities.insert(std::string(capability));
   }
 
+  // An IO executor does not install a FileDescriptorWatcher by itself; the
+  // plugin host needs one on its sequence (base::Thread does this for IO
+  // threads).
   base::SingleThreadTaskExecutor executor(base::MessagePumpType::IO);
+  base::FileDescriptorWatcher fd_watcher(executor.task_runner());
   base::ThreadPoolInstance::CreateAndStartWithDefaultParams("plugin_probe");
 
   PluginRegistry registry(capabilities);
