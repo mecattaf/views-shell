@@ -19,12 +19,18 @@ A manifest that tools/validate.py rejects is never registered: the tool prints
 `REJECT <file> <reason>` on stdout and exits 1. The reason is the first schema
 error (sorted by instance path) or else the first cross-file problem that
 validate.py's manifest_problems() reports. The validator is validate.py's own,
-imported, never copied.
+imported, never copied. Where the message quotes an object, its repr lists the
+keys sorted (Python keeps the manifest's order; the C++ host's dictionaries are
+sorted), so the C++ host prints the same reason byte for byte.
 
 --check exits 0 when the view equals the fixture byte for byte and 1 with a
 unified diff on stderr otherwise. --check-all / --write-all walk every
 examples/*/views-shell-plugin.json and every tools/fixtures/invalid/*.json
-manifest (the latter must REJECT) and print "registry ok (N)" on success.
+manifest (the latter must REJECT) and print "registry ok (N)" on success. The
+reject reasons are a golden too: tools/fixtures/registry/rejects.json maps each
+invalid fixture's file name to its reason (same JSON formatting as the views);
+--check-all compares it, --write-all rewrites it. The C++ plugin host's unit
+test reads the same file.
 
 Registry view, field by field (arrays keep manifest order unless noted):
   id           the manifest id.
@@ -251,12 +257,28 @@ def evaluate(manifest, plugin_v):
     except (OSError, json.JSONDecodeError) as e:
         return None, f"not JSON: {e}"
     schema_errs, other = manifest_problems(manifest.resolve(), plugin_v)
-    problems = schema_errs + other
-    if problems:
-        # "<file>: <path>: <message>" -> drop the file prefix.
-        reason = problems[0].split(": ", 1)[1]
-        return None, "(root)" + reason if reason.startswith(": ") else reason
+    if schema_errs:
+        # manifest_problems' first schema error, recomputed here so that an
+        # object the message quotes is printed with sorted keys.
+        first = sorted(plugin_v.iter_errors(data), key=lambda e: list(e.path))[0]
+        message = first.message
+        if isinstance(first.instance, (dict, list)):
+            message = message.replace(repr(first.instance),
+                                      repr(sorted_keys(first.instance)), 1)
+        return None, f"{'/'.join(map(str, first.path)) or '(root)'}: {message}"
+    if other:
+        # "<file>: <message>" -> drop the file prefix.
+        return None, other[0].split(": ", 1)[1]
     return registry_view(data), None
+
+
+def sorted_keys(obj):
+    """obj with every object's keys in sorted order (for repr)."""
+    if isinstance(obj, dict):
+        return {k: sorted_keys(obj[k]) for k in sorted(obj)}
+    if isinstance(obj, list):
+        return [sorted_keys(v) for v in obj]
+    return obj
 
 
 def fixture_for(view):
@@ -291,6 +313,7 @@ def run_all(write):
             ok = False
         n += 1
     rejected = 0
+    reasons = {}
     for bad in sorted(ROOT.glob("tools/fixtures/invalid/*.json")):
         if bad.name.endswith(".ui.json"):
             continue
@@ -300,7 +323,14 @@ def run_all(write):
             ok = False
         else:
             print(f"REJECT {rel(bad)} {reason}")
+            reasons[bad.name] = reason
             rejected += 1
+    golden = ROOT / "tools/fixtures/registry/rejects.json"
+    if write:
+        golden.write_text(dumps(reasons))
+    elif not check(dumps(reasons), golden):
+        print(f"FAIL registry reject reasons differ from {rel(golden)}", file=sys.stderr)
+        ok = False
     if ok:
         print(f"registry ok ({n})")
         print(f"registry rejects ({rejected})")
