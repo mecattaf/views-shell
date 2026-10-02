@@ -1,7 +1,9 @@
 # The workspace strip
 
 `views_shell --left-tabs` shows the compositor's workspaces as a column of
-Chrome tabs on the left of a window, with a black content area to the right.
+Chrome tabs on a rail at the left edge of the output, a layer surface 220 px
+wide with an exclusive zone of its width (the "left-tabs" row of
+`shell/app/surface_spec.cc`).
 The tabs are Chrome's own Views code, copied into `shell/tabs/` and never
 linked (rules R1 and R5). Every copied file is a row in
 [`CHROME-PORT-LEDGER.md`](../CHROME-PORT-LEDGER.md).
@@ -56,24 +58,39 @@ paints the frame colour behind the tabs. It holds one container with the
 ported layout, and it is the `TabSlotController` for its tabs.
 
 One tab per workspace. The active workspace is the selected tab. A click, tap,
-Return or Space on another tab selects it and runs the strip's callback. For
-now the callback only logs the workspace, and it does not ask the compositor to
-switch. The close button is ported but stays hidden: workspaces are not closed
-from the strip.
+Return or Space on another tab selects it and runs the strip's callback. What
+that does to the strip is its `SelectionMode`: `kLocal` moves the active tab at
+once (the one-shot sources), `kRequest` changes nothing and leaves the move to
+the next `SetWorkspaces` (the compositor model, rule R6). The close button is
+ported but stays hidden: workspaces are not closed from the strip.
 
 ## Where the workspaces come from
 
-`shell/tabs/workspace_source.h` takes one snapshot per fetch:
+`--workspace-source=scroll|static|niri` picks one. Without the flag, the strip
+uses scroll when `SCROLLSOCK`, `SWAYSOCK` or `I3SOCK` is set, else niri when
+`NIRI_SOCKET` is set, else the static list.
+
+`scroll` is the compositor adapter (`shell/wm/adapters/scroll`, i3-ipc) and
+its `WmModel`, the same model the bar's workspace strip follows.
+`shell/tabs/workspace_strip_model_binding.h` observes the model: every applied
+snapshot rebuilds the strip (the workspace id, its name or else its id as the
+title, the session's focused workspace as the active tab), and a selected tab
+is a `WmModel::FocusWorkspace` request. The strip changes nothing on the click;
+it moves when the compositor's echo arrives as the next snapshot (rule R6).
+Without a socket the strip is empty and the program says so once.
+
+`shell/tabs/workspace_source.h` is the other kind: one snapshot per fetch, no
+change events.
 
 - `static`: four demo workspaces, the first active.
 - `niri`: `niri msg -j workspaces`, run on the thread pool and parsed with
   `base::JSONReader`. Workspaces are ordered by output, then index. A tab shows
   the workspace name, or else its index, and the focused workspace is active.
+  A click moves the strip and logs the workspace; niri is not asked.
 
-`--workspace-source=static|niri` picks one. Without it, the strip uses niri
-when `NIRI_SOCKET` is set and the static list otherwise. Neither source follows
-change events yet: that belongs to the compositor adapter. scroll is left for
-later. Its i3-ipc client exists only on an unmerged branch.
+On the bench, `tools/bench/worker/left-tabs-click.sh` clicks a tab through the
+headless scroll's seat (`scrollmsg seat - cursor set|press|release`) and
+reports the request and the echo.
 
 ## How colours map
 
