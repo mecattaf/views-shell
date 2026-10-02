@@ -222,8 +222,8 @@ void PermissionsBroker::HandleRequest(const PluginManifest& plugin,
     }
     RunProgramAsync(*program, argv,
                     base::BindOnce(
-                        [](Reply reply, ExecOutcome outcome) {
-                          std::move(reply).Run(base::Value(outcome.ToDict()));
+                        [](Reply answer, ExecOutcome outcome) {
+                          std::move(answer).Run(base::Value(outcome.ToDict()));
                         },
                         std::move(reply)));
     return;
@@ -276,8 +276,9 @@ void PermissionsBroker::HandleRequest(const PluginManifest& plugin,
 
   // compositor/command
   const base::DictValue* args = params.FindDict("args");
-  base::expected<WmCommand, std::string> command = ToWmCommand(
-      OptionalText(params, "capability"), args ? *args : base::DictValue());
+  const base::DictValue no_args;
+  base::expected<WmCommand, std::string> command =
+      ToWmCommand(OptionalText(params, "capability"), args ? *args : no_args);
   if (!command.has_value()) {
     std::move(reply).Run(base::unexpected(InvalidParams(command.error())));
     return;
@@ -289,13 +290,13 @@ void PermissionsBroker::HandleRequest(const PluginManifest& plugin,
   }
   wm_->Send(*command,
             base::BindOnce(
-                [](Reply reply, base::expected<void, WmCommandError> done) {
+                [](Reply answer, base::expected<void, WmCommandError> done) {
                   if (done.has_value()) {
-                    std::move(reply).Run(base::Value(base::DictValue()));
+                    std::move(answer).Run(base::Value(base::DictValue()));
                     return;
                   }
                   const std::string name(WmCommandErrorName(done.error()));
-                  std::move(reply).Run(base::unexpected(JsonRpcError(
+                  std::move(answer).Run(base::unexpected(JsonRpcError(
                       kJsonRpcRequestFailed,
                       base::StrCat({"compositor command failed: ", name}),
                       base::Value(base::DictValue().Set("error", name)))));

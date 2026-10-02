@@ -330,9 +330,9 @@ base::DictValue BuildRegistryView(const PluginManifest& manifest) {
     activation_list.Append(event);
   }
 
-  const base::DictValue* requires = m.FindDict("requires");
+  const base::DictValue* reqs = m.FindDict("requires");
   const base::DictValue* comp =
-      requires ? requires->FindDict("compositor") : nullptr;
+      reqs ? reqs->FindDict("compositor") : nullptr;
 
   base::ListValue menus;
   for (const base::Value& item : ListOrEmpty(c, "menus")) {
@@ -381,7 +381,7 @@ base::DictValue BuildRegistryView(const PluginManifest& manifest) {
                .Set("required", SortedStrings(ListOrEmpty(comp, "required")))
                .Set("optional", SortedStrings(ListOrEmpty(comp, "optional"))));
   view.Set("permissions", SortedStrings(ListOrEmpty(&m, "permissions")));
-  view.Set("dependencies", SortedStrings(ListOrEmpty(requires, "plugins")));
+  view.Set("dependencies", SortedStrings(ListOrEmpty(reqs, "plugins")));
   view.Set("keybindings", std::move(keybindings));
   view.Set("menus", std::move(menus));
   view.Set("launcher", std::move(launcher));

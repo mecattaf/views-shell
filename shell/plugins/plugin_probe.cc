@@ -222,15 +222,15 @@ int Main(int argc, char** argv) {
     host.Invoke(
         qualified, std::move(parsed_args->GetDict()), "cli",
         base::BindOnce(
-            [](bool* ok, std::string command, std::string args,
+            [](bool* ok, std::string command, std::string args_json,
                JsonRpcResult result) {
               if (result.has_value()) {
                 *ok = true;
-                Print(base::StrCat({"invoke ", command, " ", args,
+                Print(base::StrCat({"invoke ", command, " ", args_json,
                                     " -> result ", Json(*result)}));
               } else {
                 Print(base::StrCat(
-                    {"invoke ", command, " ", args, " -> error ",
+                    {"invoke ", command, " ", args_json, " -> error ",
                      base::NumberToString(result.error().code), " ",
                      result.error().message}));
               }

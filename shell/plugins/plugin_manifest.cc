@@ -1238,7 +1238,7 @@ void SchemaChecker::CheckRootAllOf(const Path& p, const base::Value& root) {
   const base::Value* engines = Member(root, "engines");
   const base::Value* contributes = Member(root, "contributes");
   const base::Value* permissions = Member(root, "permissions");
-  const base::Value* requires = Member(root, "requires");
+  const base::Value* reqs = Member(root, "requires");
 
   // 0. views-shell.* ids are first-party: builtin or declarative.
   if (!id || !id->is_string() ||
@@ -1282,9 +1282,9 @@ void SchemaChecker::CheckRootAllOf(const Path& p, const base::Value& root) {
            base::StrCat({PyRepr(*permissions),
                          " does not contain items matching the given schema"}));
     }
-    if (requires) {
-      Required(Sub(p, "requires"), *requires, {"compositor"});
-      if (const base::Value* compositor = Member(*requires, "compositor");
+    if (reqs) {
+      Required(Sub(p, "requires"), *reqs, {"compositor"});
+      if (const base::Value* compositor = Member(*reqs, "compositor");
           compositor && compositor->is_dict()) {
         auto lists_lua = [compositor](std::string_view key) {
           const base::Value* list = Member(*compositor, key);
@@ -1607,16 +1607,16 @@ PluginManifest BuildPluginManifest(base::DictValue manifest,
   for (const base::Value& permission : ListOrEmpty(&manifest, "permissions")) {
     m.permissions.insert(permission.GetString());
   }
-  const base::DictValue* requires = manifest.FindDict("requires");
+  const base::DictValue* reqs = manifest.FindDict("requires");
   const base::DictValue* compositor =
-      requires ? requires->FindDict("compositor") : nullptr;
+      reqs ? reqs->FindDict("compositor") : nullptr;
   for (const base::Value& cap : ListOrEmpty(compositor, "required")) {
     m.required_capabilities.insert(cap.GetString());
   }
   for (const base::Value& cap : ListOrEmpty(compositor, "optional")) {
     m.optional_capabilities.insert(cap.GetString());
   }
-  for (const base::Value& plugin : ListOrEmpty(requires, "plugins")) {
+  for (const base::Value& plugin : ListOrEmpty(reqs, "plugins")) {
     m.dependencies.push_back(plugin.GetString());
   }
 
@@ -1685,9 +1685,10 @@ PluginManifest BuildPluginManifest(base::DictValue manifest,
       const std::string name = from->substr(from->find('.') + 1);
       const base::DictValue* prop =
           properties ? properties->FindDict(name) : nullptr;
-      const std::string* key = prop ? prop->FindString("default") : nullptr;
-      if (key) {
-        m.keybinding_keys.push_back(*key);
+      const std::string* fallback =
+          prop ? prop->FindString("default") : nullptr;
+      if (fallback) {
+        m.keybinding_keys.push_back(*fallback);
       }
     }
   }

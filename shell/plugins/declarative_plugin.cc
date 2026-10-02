@@ -155,22 +155,22 @@ void DeclarativePlugin::Invoke(std::string_view command,
         *manifest_, "exec",
         base::DictValue().Set("program", *program).Set("args", std::move(argv)),
         base::BindOnce(
-            [](ResultCallback callback, JsonRpcResult result) {
+            [](ResultCallback done, JsonRpcResult result) {
               // A T1 command answers like result none; a failed program is
               // an error.
               if (result.has_value()) {
                 const std::optional<int> code =
                     result->GetDict().FindInt("exitCode");
                 if (code.value_or(1) != 0) {
-                  std::move(callback).Run(base::unexpected(JsonRpcError(
+                  std::move(done).Run(base::unexpected(JsonRpcError(
                       kJsonRpcRequestFailed, "the handler's program failed",
                       std::move(result).value())));
                   return;
                 }
-                std::move(callback).Run(base::Value(base::DictValue()));
+                std::move(done).Run(base::Value(base::DictValue()));
                 return;
               }
-              std::move(callback).Run(std::move(result));
+              std::move(done).Run(std::move(result));
             },
             std::move(callback)));
     return;

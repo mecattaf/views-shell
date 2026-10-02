@@ -42,7 +42,7 @@ std::vector<base::FilePath> ExampleDirs() {
   return dirs;
 }
 
-void WriteFile(const base::FilePath& path, std::string_view text) {
+void WriteText(const base::FilePath& path, std::string_view text) {
   ASSERT_TRUE(base::CreateDirectory(path.DirName()));
   ASSERT_TRUE(base::WriteFile(path, text));
 }
@@ -124,7 +124,7 @@ TEST(PluginManifestTest, CrossFileChecksMatchValidatePy) {
   base::ScopedTempDir temp;
   ASSERT_TRUE(temp.CreateUniqueTempDir());
   const base::FilePath dir = temp.GetPath().AppendASCII("p");
-  WriteFile(dir.AppendASCII(kPluginManifestFileName), R"({
+  WriteText(dir.AppendASCII(kPluginManifestFileName), R"({
     "schemaVersion": 1, "id": "test.cross", "name": "x", "version": "0.1.0",
     "engines": {"views-shell": ">=0.1.0"}, "runtime": {"mode": "declarative"},
     "contributes": {
@@ -137,14 +137,14 @@ TEST(PluginManifestTest, CrossFileChecksMatchValidatePy) {
   ASSERT_FALSE(manifest.has_value());
   EXPECT_EQ(manifest.error(), "names missing file ui/panel.json");
 
-  WriteFile(dir.AppendASCII("ui/panel.json"), R"({"schemaVersion": 1,
+  WriteText(dir.AppendASCII("ui/panel.json"), R"({"schemaVersion": 1,
     "root": {"type": "button", "label": "x",
              "action": {"command": "other.plugin/run"}}})");
   manifest = LoadPluginManifest(dir);
   ASSERT_FALSE(manifest.has_value());
   EXPECT_EQ(manifest.error(), "references undeclared command missing");
 
-  WriteFile(dir.AppendASCII(kPluginManifestFileName), R"({
+  WriteText(dir.AppendASCII(kPluginManifestFileName), R"({
     "schemaVersion": 1, "id": "test.cross", "name": "x", "version": "0.1.0",
     "engines": {"views-shell": ">=0.1.0"}, "runtime": {"mode": "declarative"},
     "contributes": {

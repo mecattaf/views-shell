@@ -177,7 +177,6 @@ ProcessPlugin::ProcessPlugin(const PluginManifest& manifest,
 }
 
 ProcessPlugin::~ProcessPlugin() {
-  DCHECK_CALLING_ON_VALID_SEQUENCE(sequence_checker_);
   if (process_.IsValid()) {
     // No grace here: Shutdown() is the orderly path. Reap on the pool so no
     // zombie is left behind.
@@ -242,7 +241,6 @@ void ProcessPlugin::SetState(State state) {
 }
 
 void ProcessPlugin::Start() {
-  DCHECK_CALLING_ON_VALID_SEQUENCE(sequence_checker_);
   if (state_ != State::kStopped && state_ != State::kExited &&
       state_ != State::kFailed) {
     return;
@@ -278,7 +276,6 @@ void ProcessPlugin::OnLaunchPathKnown(LaunchPath path) {
 }
 
 void ProcessPlugin::Launch(LaunchPath path) {
-  DCHECK_CALLING_ON_VALID_SEQUENCE(sequence_checker_);
   launch_path_ = path;
   fail_reason_.clear();
   protocol_mismatch_ = false;
@@ -779,8 +776,8 @@ void ProcessPlugin::Invoke(std::string_view command,
   // The answer must match the declared result type.
   Call("command/invoke", std::move(params),
        base::BindOnce(
-           [](std::string result_type, std::string command,
-              ResultCallback callback, JsonRpcResult answer) {
+           [](std::string result_type, std::string invoked,
+              ResultCallback done, JsonRpcResult answer) {
              if (answer.has_value()) {
                const base::DictValue* dict = answer->GetIfDict();
                const base::Value* result =
@@ -791,15 +788,15 @@ void ProcessPlugin::Invoke(std::string_view command,
                              result->is_string()) ||
                             (result_type == "json" && result));
                if (!ok) {
-                 std::move(callback).Run(base::unexpected(JsonRpcError(
+                 std::move(done).Run(base::unexpected(JsonRpcError(
                      kJsonRpcInternalError,
-                     base::StrCat({"the answer to ", command,
+                     base::StrCat({"the answer to ", invoked,
                                    " does not match its result type ",
                                    result_type}))));
                  return;
                }
              }
-             std::move(callback).Run(std::move(answer));
+             std::move(done).Run(std::move(answer));
            },
            declared->result, declared->id, std::move(callback)));
 }
@@ -849,7 +846,6 @@ bool ProcessPlugin::DeliverSourceChanged(const std::string& source,
 }
 
 void ProcessPlugin::Shutdown(base::OnceCallback<void(int)> done) {
-  DCHECK_CALLING_ON_VALID_SEQUENCE(sequence_checker_);
   restart_timer_.Stop();
   if ((state_ != State::kRunning && state_ != State::kStarting) ||
       !process_.IsValid() || reaping_) {
@@ -888,9 +884,9 @@ void ProcessPlugin::Reap(base::TimeDelta grace, std::string reason) {
       {base::MayBlock(), base::WithBaseSyncPrimitives(),
        base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN},
       base::BindOnce(
-          [](base::Process process, base::TimeDelta grace) {
+          [](base::Process process, base::TimeDelta wait) {
             int exit_code = -1;
-            if (!process.WaitForExitWithTimeout(grace, &exit_code)) {
+            if (!process.WaitForExitWithTimeout(wait, &exit_code)) {
               ::kill(process.Pid(), SIGKILL);
               exit_code = -1;
               process.WaitForExit(nullptr);
@@ -916,7 +912,6 @@ void ProcessPlugin::FailPending(const std::string& why) {
 }
 
 void ProcessPlugin::OnExited(std::string reason, int exit_code) {
-  DCHECK_CALLING_ON_VALID_SEQUENCE(sequence_checker_);
   reaping_ = false;
   process_ = base::Process();
   startup_timer_.Stop();

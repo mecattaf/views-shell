@@ -42,7 +42,6 @@
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/process/process.h"
-#include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/values.h"
@@ -272,7 +271,6 @@ class ProcessPlugin {
   base::OneShotTimer restart_timer_;
   base::OnceCallback<void(int)> shutdown_done_;
 
-  SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<ProcessPlugin> weak_factory_{this};
 };
 

@@ -202,9 +202,9 @@ void PluginHost::Shutdown(base::OnceClosure done) {
       base::BarrierClosure(running.size(), std::move(done));
   for (ProcessPlugin* process : running) {
     process->Shutdown(base::BindOnce(
-        [](base::RepeatingClosure barrier, std::string id, int exit_code) {
+        [](base::RepeatingClosure one_done, std::string id, int exit_code) {
           VLOG(1) << "plugin " << id << " shut down with " << exit_code;
-          barrier.Run();
+          one_done.Run();
         },
         barrier, process->manifest().id));
   }
