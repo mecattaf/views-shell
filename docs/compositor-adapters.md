@@ -119,10 +119,18 @@ snapshots, including a mirror observer that must end up holding each snapshot's
 order. The bench record is
 [`bench/views-shell-154-adapter.md`](bench/views-shell-154-adapter.md).
 
+The first consumer of the model is the bar's workspace strip (chapter 2, w3c,
+`shell/bar/workspace_strip.{h,cc}`): one button per workspace, redrawn only from
+`WmModel::Observer::OnSnapshotApplied`, a click calling `WmModel::FocusWorkspace`
+and changing nothing until the echo. On the bench `--demo-workspace-switch`
+sent `workspace --no-auto-back-and-forth "3"`, the compositor echoed it and the
+strip followed (`docs/bench/views-shell-154-assembled.md`). The rail
+(`--left-tabs`) still reads a static list or niri.
+
 Not yet: the scroll-only requests (`GET_SCROLLER`, `GET_TRAILS`, `GET_SPACES`,
 `GET_BINDINGS`) and their events, `mode` events, the config writer, the hook
-events (H1 to H3) and the ext-foreign-toplevel join. No surface uses the model yet;
-the first is the rail.
+events (H1 to H3), the ext-foreign-toplevel join, scroll-only data in the strip
+(columns, trails) and multi-output placement.
 
 ## niri
 
@@ -251,5 +259,6 @@ Adapters are tested in two ways:
   session's compositor. The harness is `tools/bench/worker/headless.sh` (a headless
   stock scroll under runtime-test); the gate it runs is `wm_probe` (below).
 
-The first acceptance target is a rail click that switches a workspace and is
-observed through the echo. No Views switcher has done that yet.
+The first acceptance target was a strip click that switches a workspace and is
+observed through the echo; the bar's strip does that in chapter 2 (C21.1,
+`ECHO workspace 3`). The rail on the Chrome tab strip is next.

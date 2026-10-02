@@ -75,7 +75,7 @@ live niri state but had no click path; the workspace strip in `tabs/` replaces i
 | `shell/wm/adapters/niri/BUILD.gn` | agency-mvp `src/agency/signal/niri/BUILD.gn` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `d9f5eeed85c476f9` | deleted in chapter 2 (`0d30e89`); recover with `git show 93d691a:shell/wm/adapters/niri/BUILD.gn` |
 | `shell/wm/adapters/niri/proof/niri_proto_probe.py` | agency-mvp `src/agency/signal/niri/proof/niri_proto_probe.py` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `e9f54684567d020c` | deleted in chapter 2 (`0d30e89`); recover with `git show 93d691a:shell/wm/adapters/niri/proof/niri_proto_probe.py` |
 | `shell/tools/headless-eval.sh` | agency-mvp `tools/headless-eval.sh` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `5e1853a2be9fdd66` | deleted in chapter 2 (`0d30e89`); recover with `git show 93d691a:shell/tools/headless-eval.sh` |
-| `shell/tools/no_stubs.py` | agency-mvp `tools/no_stubs.py` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `b19b34156fbad9c8` | kept (not yet wired into `tools/validate.sh`) |
+| `shell/tools/no_stubs.py` | agency-mvp `tools/no_stubs.py` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `b19b34156fbad9c8` | kept; wired into `tools/validate.py` in chapter 2 (w2d), with a lexical back end and an allowlist |
 | `shell/tools/no_stubs_fixtures/bad.cc` | agency-mvp `tools/no_stubs_fixtures/bad.cc` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `13e4451968aa0f4b` | kept |
 | `shell/tools/no_stubs_fixtures/bad.py` | agency-mvp `tools/no_stubs_fixtures/bad.py` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `0af1125fb3942ff7` | kept |
 | `shell/tools/no_stubs_fixtures/good.cc` | agency-mvp `tools/no_stubs_fixtures/good.cc` @ `cd7cef3` (branch rail/v1-readonly-mirror) | `33529e224a0464bc` | kept |
@@ -121,7 +121,7 @@ The hashes are of the lifted originals. `shell/tools/headless-eval.sh` gained a
 | `tools/headless-eval.sh` | Superseded by `tools/bench/worker/headless.sh`. Deleted. |
 | `build/args.gn`, `wire-agency.sh`, `wire-and-gen.sh`, `verify-compilation.sh`, `LINK-GATE.md` | Superseded by `tools/bench/args.views.gn`, `tools/bench/worker/wire.sh` and `build.sh`, and the `assert_no_deps` guards in `BUILD.gn`. Deleted. |
 | `build/CHROMIUM_VERSION` | Kept; pins the bench's tag. |
-| `tools/no_stubs.py` and fixtures | Kept, to be wired into `tools/validate.sh`. |
+| `tools/no_stubs.py` and fixtures | Kept; wired into `tools/validate.py` (chapter 2, w2d). |
 | `docs/upgrade/*` | Kept as the lineage's upgrade record. |
 
 ## Never lifted

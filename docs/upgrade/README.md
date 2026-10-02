@@ -13,3 +13,9 @@ process documents.
 
 Their links to `UPGRADE-LEDGER-149.md` and to `evidence/*.png` point at files that
 were not lifted; those stay in agency-mvp.
+
+These three files are a historical record. They name `agency-*.patch`,
+`wire-agency.sh`, `bar_view.cc`, `clock_controller.cc` and the 150 tag, all of
+which were deleted or re-cut in chapters 1 and 2 (`../../shell/PROVENANCE.md`);
+the live series is `../../shell/patches/series` and the live procedure is
+`../../tools/bench/`. Nothing here is edited to match the tree.

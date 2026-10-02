@@ -17,25 +17,25 @@ Tom's reasoned list, with a recommendation for each, is in the private scoping n
 | P14 | The product name | **Closed** (Tom, 2026-10-01): views-shell. See [`naming.md`](naming.md). |
 | P15 | A scroll hook patch queue | **Closed** (Tom, 2026-10-01): stock scroll, no patches, no fork. Hooks are upstream wishes only. |
 | P17 | Lua in a fork | **Closed** with P15: there is no fork. |
+| P4 | Retired lineage identifiers in lifted code | **Moot** (2026-10-02): the lifted code was deleted in chapter 2 (w1e, commit `0d30e89`); the live series is re-cut under the `views-shell-*` names and `shell/` carries no lineage identifier. |
+| P11 | Whether the lifted agency-mvp and June-embedder code may become public | **Moot** (2026-10-02): none of it is in the tree any more; `shell/PROVENANCE.md` keeps the lift table as a record, with recovery commands into this repository's own history. |
+| P23 | A GPU-fair footprint measurement | **Answered** (w1c and w3c, 2026-10-02): `tools/bench/worker/runtime-test-gpu --allow-dri` (bench-only) binds `/dev/dri`; on a gles2 compositor the bar draws with the default client GL over linux-dmabuf and no `--use-gl` switch. Component build: 125.2 MB (pixman + SwiftShader), 152.9 MB (gles2 + SwiftShader), 158.7 MB (gles2 + hardware GL); the assembled bar 108.7 MB software against 128.4 MB GPU-fair; the release build 59.7 MB in software (`docs/bench/views-shell-154-gpu.md`, `views-shell-154-assembled.md`). The GPU path costs memory on this build. Still to run: a GPU-fair row on `out/release`, and N >= 3 repeats. |
 | P13 | Which Chromium branch to track (every Stable or every Extended milestone) | **Superseded** by the release policy (Tom, 2026-10-01): no releases and no tracking promise before v1; v1 is the Chromium tag of the Chrome release Tom names. See [`chromium-hop.md`](chromium-hop.md) and P24. |
 
 ## Open
 | # | Decision | What the repository does meanwhile |
 |---|---|---|
-| P4 | Retired lineage identifiers in lifted code (the old layer-shell build flag and connection accessor, the `agency-*` namespaces, the original copyright-holder lines) | Lifted byte for byte. A rename is planned as its own commit after the lift, so the lift diffs cleanly against provenance. |
 | P5 | Producer source of truth | agency-mvp's compiled producers are treated as primary; views-shell drafts and aurade patches are design reference. Producers are now source plugins (P25); their snapshot schemas are new either way. |
 | P6 | Lock screen | Not a views-shell surface (rule R4). Whether the seats bind a locker at all is P31. |
 | P8 | Slot-file location | `~/.config/scroll/views-shell.d/*.conf` for scroll and sway. The alternative is `$XDG_STATE_HOME/views-shell/<compositor>.d/`, included by absolute path, because `~/.config/scroll` is a symlink into the dotfiles checkout. |
 | P9 | The `ui` tree node set | The first set plus `mediaSession` ([`../schemas/ui-tree.schema.json`](../schemas/ui-tree.schema.json)). To reconcile with the 33 component atoms in the theming notes and with upstream's `ui/views/examples/json_view_builder_schema.md` (Views Canvas), and to decide whether views-shell follows, copies or links `JsonViewBuilder`. |
 | P10 | The extension's suggested in-Chrome key | `Ctrl+Shift+K`, with `Ctrl+Shift+Y` as the alternate. |
-| P11 | Whether the lifted agency-mvp and June-embedder code may become public | In the local repository only. Both sources are Tom's own private repositories. |
 | P16 | Send the upstream wishes to dawsers (outward-facing) | Nothing sent. See [`scroll-fork-hooks.md`](scroll-fork-hooks.md). |
 | P18 | Theme paths and extra key names | views-shell reads `$XDG_CONFIG_HOME/views-shell/themes/` and `~/.config/omarchy/themes/` (PROPOSED). Tom's extra keys (`brand`, `terminal_color7`, `nvim_catppuccin_flavour`, …) keep bare names. |
 | P19 | The Chrome policy writer | Not in this repository. Recommended: a system `.path` unit and a root writer that accepts six hex digits, in the dotfiles. Alternative: Omarchy's narrow sudoers helper. |
 | P20 | Adapter order | scroll and sway, niri, then the generic ext-workspace adapter (PROPOSED) before Hyprland. |
 | P21 | MacTahoe on scroll without blur | Translucent MacTahoe GTK4 surfaces draw unfrosted. Alternatives: MacTahoe's solid variant, or blur in the fork (H13). |
 | P22 | Google Drive `appDataFolder` | Not in v1. `chrome.storage.sync` carries light references only. |
-| P23 | A GPU-fair footprint measurement | Run (w1c, `docs/bench/views-shell-154-gpu.md`) with `tools/bench/worker/runtime-test-gpu --allow-dri`, a bench-only copy of `runtime-test` that binds `/dev/dri`. `views_shell --bar` draws the same frame on a gles2 compositor with the SwiftShader client (PSS 152.9 MB, the fair row against chapter 1) and with the default client GL over linux-dmabuf (158.7 MB), against 125.2 MB on pixman. Open: the same rows on the non-component `out/release` build. |
 | P24 | How views-shell moves after v1 | Left for v1. |
 | P25 | Producers as built-in source plugins | Done as a proposal in the schema and `examples/network-source/`. The alternative keeps producers inside the core framework. |
 | P26 | The two ported quick-settings faces (FeatureTile, QuickSettingsSlider) | Ported (ledger A032, A033) for the look. The alternative is a pure-stock tile and `views::Slider`, which takes the ledger to three rows. |
@@ -44,4 +44,9 @@ Tom's reasoned list, with a recommendation for each, is in the private scoping n
 | P29 | Quick-settings shape: one host with a grid (as now), or independent per-domain bubbles anchored to bar indicators (Agency D12 FR-046) | One host. Every item is a plugin either way. |
 | P30 | Per-plugin memory ceiling and crash budget for T2 processes (after noctalia's Luau limits) | Not in the manifest yet. |
 | P31 | Whether the seats bind a screen locker | None bound. swayidle turns the monitors off. |
+| P33 | Rule R8 and the clipboard: `ui/base/clipboard:clipboard_util_linux` opens a second session-bus connection (the XDG FileTransfer portal) in every Linux Wayland Views program (w2c) | Accepted as a second owner for now; nothing in `shell/` uses it. The alternative is a patch that cuts the edge. SPEC Q6. |
+| P34 | Whether `ui::NativeTheme`'s OS-settings observer (the portal's colour scheme) may overwrite a theme directory's mode on a seat (w2b) | Untested until a seat runs it; the theme directory is meant to win. SPEC Q7. |
+| P35 | Whether T1 `source` bindings and `quickSettings` `state` need `state:read:` permissions (w3d) | Not required for T1; `schemas/plugin-protocol.md` ties `state:read` to T2 `source/changed` only. SPEC Q8. |
+| P36 | Theme-following colours for the `positive` and `warning` roles, which have no `kColorSys` id at 154 (w3a) | Mapped to `kColorAlertLowSeverity` and `kColorAlertMediumSeverity*` (Google palette). SPEC Q9. |
+| P37 | `tools/validate.py` against Omarchy's 22 themes: uppercase hex, `rgba()` gradients in `hyprland_*` keys, three unaccounted keys, and whether `gtk.theme` stays mandatory when no Omarchy theme ships one (w3e, unmerged) | Lowercase hex only, gradients rejected, `gtk.theme` required. SPEC Q10. |
 | P32 | Adopt the lift inventory's composition: `JsonViewBuilder` copied as the `ui`-tree engine (closing P9 as "copy"), schema additions S1 to S18, and the build order bar, rail, quick settings ([`shell-composition.md`](shell-composition.md), [`chrome-lift-inventory.md`](chrome-lift-inventory.md)) | PROPOSED in both documents; the schema is unchanged until Tom rules. |

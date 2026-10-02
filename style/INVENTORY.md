@@ -23,6 +23,28 @@ Status key: **link** = builds on Linux, linked from `//ui` or `//components` as 
 and re-exported; **port** = copy the BSD-3 file into `views-shell/style`, keep the header,
 replace Ash seams (ledgered); **new** = written for views-shell; **out** = not taken.
 
+## Real today (chapter 2)
+
+Built and proven on the bench (`docs/bench/views-shell-154-theme.md`,
+`views-shell-154-assembled.md`): the theming layer of section 2 marked **built**
+(the reader, the Omarchy cascade port, the pin mixer with its compiled binding,
+the seed, the two providers), used by `shell/bar` (`BarView`, `ClockView`,
+`WorkspaceStrip`: `FlexLayout`, `LabelButton`, `Label`, `kColorSys*` roles only),
+by `shell/ui_tree` (the stock controls of section 1 that the `ui` tree names:
+labels, `MdTextButton`, `ImageButton`, `ToggleButton`, `Checkbox`, `RadioButton`,
+`Textfield`, `Combobox`, `Slider`, `ProgressBar`, `Badge`, `DotIndicator`,
+`ImageView`, `Separator`, `ScrollView`, the box and table layouts, a composed
+`ListItemView`), by `shell/notifications` (the `message_center` views as popups
+on layer surfaces) and by the demo menu (`MenuRunner`, `MenuItemView`, which
+pick up the pins with no code change). `views-shell/style/views.h`, the single
+include root, is not written: T0 code includes `ui/views` directly.
+
+Not ported yet: all five rows of section 3. The examples already name icons
+that only A040 ships (`power`, `logout`, `suspend`, `hibernate`, `music-note`,
+`brightness`, `network-wifi-*`, `battery-70`), so those nodes are render errors
+until it lands; `tile`, `tabSlider` and `keyChips` wait on A032, A033 and A027.
+The gallery of section 5 does not exist.
+
 ## 1. Stock `ui/views` controls (the kit)
 
 Linked as is. `views-shell/style/views.h` re-exports them so that T0 code has one include
