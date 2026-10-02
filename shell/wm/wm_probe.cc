@@ -59,6 +59,31 @@ void Print(std::string_view line) {
   base::WriteFileDescriptor(STDOUT_FILENO, base::StrCat({line, "\n"}));
 }
 
+// Status lines go to stderr, so `--dump` leaves nothing but JSON on stdout.
+void Status(std::string_view line) {
+  base::WriteFileDescriptor(STDERR_FILENO, base::StrCat({line, "\n"}));
+}
+
+// "--name value" and "--name=value" both work; base::CommandLine alone only
+// takes the second form. Returns nullopt when --name is absent.
+std::optional<std::string> Flag(const base::CommandLine::StringVector& argv,
+                                std::string_view name) {
+  const std::string bare = base::StrCat({"--", name});
+  const std::string with_value = base::StrCat({bare, "="});
+  for (size_t i = 1; i < argv.size(); ++i) {
+    if (argv[i] == bare) {
+      if (i + 1 < argv.size() && !argv[i + 1].starts_with("--")) {
+        return argv[i + 1];
+      }
+      return std::string();
+    }
+    if (argv[i].starts_with(with_value)) {
+      return argv[i].substr(with_value.size());
+    }
+  }
+  return std::nullopt;
+}
+
 base::ListValue CapabilityList(const CapabilitySet& capabilities) {
   base::ListValue list;
   for (const Capability& capability : capabilities) {
@@ -148,13 +173,13 @@ class Probe : public WmModel::Observer {
       connected_printed_ = true;
       const std::string* version =
           adapter_->version().FindString("human_readable");
-      Print(base::StrCat({"CONNECTED ", adapter_->name(), " ",
-                          version ? *version : std::string("unknown")}));
+      Status(base::StrCat({"CONNECTED ", adapter_->name(), " ",
+                           version ? *version : std::string("unknown")}));
       std::string capabilities;
       for (const Capability& capability : adapter_->capabilities()) {
         base::StrAppend(&capabilities, {" ", capability});
       }
-      Print(base::StrCat({"CAPABILITIES", capabilities}));
+      Status(base::StrCat({"CAPABILITIES", capabilities}));
       Start();
       return;
     }
@@ -290,29 +315,26 @@ int Main(int argc, char** argv) {
   logging::InitLogging(settings);
   base::FeatureList::InitInstance(std::string(), std::string());
 
-  const base::CommandLine& command_line =
-      *base::CommandLine::ForCurrentProcess();
+  const base::CommandLine::StringVector& argv =
+      base::CommandLine::ForCurrentProcess()->argv();
   std::optional<Probe::Mode> mode;
   std::string target;
   int watch_seconds = 0;
-  if (command_line.HasSwitch("dump")) {
+  if (Flag(argv, "dump")) {
     mode = Probe::Mode::kDump;
-  } else if (command_line.HasSwitch("switch")) {
+  } else if (std::optional<std::string> name = Flag(argv, "switch")) {
     mode = Probe::Mode::kSwitch;
-    target = command_line.GetSwitchValueASCII("switch");
-  } else if (command_line.HasSwitch("watch")) {
+    target = *name;
+  } else if (std::optional<std::string> seconds = Flag(argv, "watch")) {
     mode = Probe::Mode::kWatch;
-    if (!base::StringToInt(command_line.GetSwitchValueASCII("watch"),
-                           &watch_seconds) ||
-        watch_seconds <= 0) {
+    if (!base::StringToInt(*seconds, &watch_seconds) || watch_seconds <= 0) {
       mode.reset();
     }
   }
   int timeout_seconds = 20;
-  if (command_line.HasSwitch("timeout-seconds") &&
-      (!base::StringToInt(command_line.GetSwitchValueASCII("timeout-seconds"),
-                          &timeout_seconds) ||
-       timeout_seconds <= 0)) {
+  if (std::optional<std::string> timeout = Flag(argv, "timeout-seconds");
+      timeout && (!base::StringToInt(*timeout, &timeout_seconds) ||
+                  timeout_seconds <= 0)) {
     mode.reset();
   }
   if (!mode || (*mode == Probe::Mode::kSwitch && target.empty())) {
@@ -324,7 +346,7 @@ int Main(int argc, char** argv) {
   base::RunLoop run_loop;
 
   scroll::ScrollAdapter::Options options;
-  options.socket_path = command_line.GetSwitchValueASCII("socket");
+  options.socket_path = Flag(argv, "socket").value_or(std::string());
   scroll::ScrollAdapter adapter(options);
   WmModel model(&adapter);
   Probe probe(*mode, target, &adapter, &model, run_loop.QuitClosure());
