@@ -31,12 +31,13 @@
 #include "ui/display/screen.h"
 #include "ui/gfx/font_util.h"
 #include "ui/ozone/public/ozone_platform.h"
-#include "ui/views/layout/layout_provider.h"
 #include "ui/views/views_delegate.h"
 #include "ui/views/widget/desktop_aura/desktop_native_widget_aura.h"
 #include "ui/views/widget/desktop_aura/desktop_screen.h"
 #include "ui/views/widget/widget.h"
 #include "ui/wm/core/wm_state.h"
+#include "views_shell/app/surface_spec.h"
+#include "views_shell/style/layout_provider.h"
 
 namespace views_shell {
 
@@ -67,8 +68,11 @@ class ShellAXPlatformDelegate : public ui::AXPlatform::Delegate {
   ui::AXPlatform ax_platform_{*this};
 };
 
-// Every top-level Widget is a desktop widget: one Wayland surface each. Owns
-// the LayoutProvider that Label and the other controls read their metrics from.
+// Every top-level Widget is a desktop widget: one Wayland surface each, and a
+// layer surface of a registered SurfaceSpec (rule R1, app/surface_spec.h:
+// anything else is a CHECK failure). Owns the kit's LayoutProvider
+// (style/layout_provider.h) that Label and the other controls read their
+// metrics and fonts from.
 class ShellViewsDelegate : public views::ViewsDelegate {
  public:
   ShellViewsDelegate() = default;
@@ -79,6 +83,7 @@ class ShellViewsDelegate : public views::ViewsDelegate {
   void OnBeforeWidgetInit(
       views::Widget::InitParams* params,
       views::internal::NativeWidgetDelegate* delegate) override {
+    CheckSurfaceSpec(*params);
     if (params->opacity ==
         views::Widget::InitParams::WindowOpacity::kInferred) {
       params->opacity = views::Widget::InitParams::WindowOpacity::kOpaque;
@@ -89,7 +94,7 @@ class ShellViewsDelegate : public views::ViewsDelegate {
   }
 
  private:
-  views::LayoutProvider layout_provider_;
+  ShellLayoutProvider layout_provider_;
 };
 
 ShellBootstrap::ShellBootstrap(const ShellBootstrapParams& params)

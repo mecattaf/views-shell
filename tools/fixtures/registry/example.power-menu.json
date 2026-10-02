@@ -1,0 +1,287 @@
+{
+  "activation": [
+    "onCommand:example.power-menu/hibernate",
+    "onCommand:example.power-menu/lock",
+    "onCommand:example.power-menu/logout",
+    "onCommand:example.power-menu/reboot",
+    "onCommand:example.power-menu/shutdown",
+    "onCommand:example.power-menu/status",
+    "onCommand:example.power-menu/suspend",
+    "onCommand:example.power-menu/toggle",
+    "onKeybinding:Mod+Ctrl+L",
+    "onKeybinding:Mod+Shift+Escape",
+    "onStartup",
+    "onSurface:panel"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": [
+      "session.exit"
+    ]
+  },
+  "cli": {
+    "name": "power-menu",
+    "verbs": [
+      {
+        "command": "example.power-menu/toggle",
+        "confirm": false,
+        "summary": "Open or close the panel",
+        "verb": "toggle"
+      },
+      {
+        "command": "example.power-menu/lock",
+        "confirm": false,
+        "summary": null,
+        "verb": "lock"
+      },
+      {
+        "command": "example.power-menu/suspend",
+        "confirm": false,
+        "summary": null,
+        "verb": "suspend"
+      },
+      {
+        "command": "example.power-menu/reboot",
+        "confirm": true,
+        "summary": null,
+        "verb": "reboot"
+      },
+      {
+        "command": "example.power-menu/shutdown",
+        "confirm": true,
+        "summary": null,
+        "verb": "shutdown"
+      },
+      {
+        "command": "example.power-menu/status",
+        "confirm": false,
+        "summary": null,
+        "verb": "status"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": "power",
+      "id": "example.power-menu/toggle",
+      "result": "none",
+      "surface": "panel",
+      "title": "Toggle power menu",
+      "verb": "toggle"
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": "lock",
+      "id": "example.power-menu/lock",
+      "result": "none",
+      "surface": null,
+      "title": "Lock",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": true,
+      "enablement": null,
+      "handler": null,
+      "icon": "logout",
+      "id": "example.power-menu/logout",
+      "result": "none",
+      "surface": null,
+      "title": "Log out",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": "suspend",
+      "id": "example.power-menu/suspend",
+      "result": "none",
+      "surface": null,
+      "title": "Suspend",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": "session.canHibernate",
+      "handler": null,
+      "icon": "hibernate",
+      "id": "example.power-menu/hibernate",
+      "result": "none",
+      "surface": null,
+      "title": "Hibernate",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": true,
+      "enablement": null,
+      "handler": null,
+      "icon": "restart",
+      "id": "example.power-menu/reboot",
+      "result": "none",
+      "surface": null,
+      "title": "Reboot",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": true,
+      "enablement": null,
+      "handler": null,
+      "icon": "power",
+      "id": "example.power-menu/shutdown",
+      "result": "none",
+      "surface": null,
+      "title": "Shut down",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "example.power-menu/status",
+      "result": "json",
+      "surface": null,
+      "title": "Power menu status",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {
+      "confirm": {
+        "default": true,
+        "description": "Ask before log out, reboot and shut down.",
+        "scope": "global",
+        "type": "boolean"
+      },
+      "hotkey": {
+        "default": "Mod+Shift+Escape",
+        "format": "keybinding",
+        "scope": "global",
+        "type": "string"
+      },
+      "showUptime": {
+        "default": true,
+        "description": "Show uptime in the panel header.",
+        "scope": "global",
+        "type": "boolean"
+      }
+    },
+    "title": "Power menu"
+  },
+  "dependencies": [],
+  "events": [],
+  "id": "example.power-menu",
+  "keybindings": [
+    {
+      "args": null,
+      "command": "example.power-menu/toggle",
+      "key": "Mod+Shift+Escape",
+      "keyFrom": "config.hotkey",
+      "locked": false,
+      "mode": null,
+      "release": false,
+      "when": null
+    },
+    {
+      "args": null,
+      "command": "example.power-menu/lock",
+      "key": "Mod+Ctrl+L",
+      "keyFrom": null,
+      "locked": false,
+      "mode": null,
+      "release": false,
+      "when": null
+    }
+  ],
+  "launcher": [
+    {
+      "command": "example.power-menu/suspend",
+      "desktopEntry": false,
+      "icon": null,
+      "keywords": [
+        "sleep"
+      ],
+      "title": "Suspend"
+    },
+    {
+      "command": "example.power-menu/reboot",
+      "desktopEntry": false,
+      "icon": null,
+      "keywords": [
+        "restart"
+      ],
+      "title": "Reboot"
+    },
+    {
+      "command": "example.power-menu/shutdown",
+      "desktopEntry": false,
+      "icon": null,
+      "keywords": [
+        "power off",
+        "halt"
+      ],
+      "title": "Shut down"
+    }
+  ],
+  "menus": [
+    {
+      "command": "example.power-menu/toggle",
+      "group": "session",
+      "location": "views-shell.menu/system",
+      "when": null
+    }
+  ],
+  "permissions": [
+    "compositor:session.exit",
+    "exec:loginctl",
+    "exec:systemctl"
+  ],
+  "quickSettings": [],
+  "sources": [],
+  "surfaces": [
+    {
+      "allowMultiple": false,
+      "anchor": null,
+      "defaultSection": "right",
+      "id": "button",
+      "keyboard": "on-demand",
+      "kind": "bar-widget",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    },
+    {
+      "allowMultiple": false,
+      "anchor": "surface:button",
+      "defaultSection": "center",
+      "id": "panel",
+      "keyboard": "on-demand",
+      "kind": "panel",
+      "prefix": null,
+      "ui": null,
+      "when": null
+    }
+  ],
+  "tier": "process"
+}

@@ -1,0 +1,191 @@
+{
+  "activation": [
+    "onCommand:views-shell.network/activate",
+    "onCommand:views-shell.network/deactivate",
+    "onCommand:views-shell.network/forget",
+    "onCommand:views-shell.network/open-editor",
+    "onCommand:views-shell.network/set-wifi-enabled",
+    "onCommand:views-shell.network/state",
+    "onCommand:views-shell.network/toggle-wifi",
+    "onSource:views-shell.network/state"
+  ],
+  "capabilities": {
+    "optional": [],
+    "required": []
+  },
+  "cli": {
+    "name": "network",
+    "verbs": [
+      {
+        "command": "views-shell.network/set-wifi-enabled",
+        "confirm": false,
+        "summary": "Turn Wi-Fi on or off",
+        "verb": "wifi"
+      },
+      {
+        "command": "views-shell.network/activate",
+        "confirm": false,
+        "summary": null,
+        "verb": "connect"
+      },
+      {
+        "command": "views-shell.network/deactivate",
+        "confirm": false,
+        "summary": null,
+        "verb": "disconnect"
+      },
+      {
+        "command": "views-shell.network/forget",
+        "confirm": true,
+        "summary": null,
+        "verb": "forget"
+      },
+      {
+        "command": "views-shell.network/state",
+        "confirm": false,
+        "summary": null,
+        "verb": "state"
+      }
+    ]
+  },
+  "commands": [
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": "network-wifi",
+      "id": "views-shell.network/toggle-wifi",
+      "result": "none",
+      "surface": null,
+      "title": "Turn Wi-Fi on or off",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "value",
+          "required": true,
+          "type": "boolean"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/set-wifi-enabled",
+      "result": "none",
+      "surface": null,
+      "title": "Set Wi-Fi",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "network",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/activate",
+      "result": "none",
+      "surface": null,
+      "title": "Connect to a network",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "network",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/deactivate",
+      "result": "none",
+      "surface": null,
+      "title": "Disconnect",
+      "verb": null
+    },
+    {
+      "args": [
+        {
+          "name": "network",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "category": null,
+      "confirm": true,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/forget",
+      "result": "none",
+      "surface": null,
+      "title": "Forget a network",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/open-editor",
+      "result": "none",
+      "surface": null,
+      "title": "Open the connection editor",
+      "verb": null
+    },
+    {
+      "args": [],
+      "category": null,
+      "confirm": false,
+      "enablement": null,
+      "handler": null,
+      "icon": null,
+      "id": "views-shell.network/state",
+      "result": "json",
+      "surface": null,
+      "title": "Network state as JSON",
+      "verb": null
+    }
+  ],
+  "configuration": {
+    "properties": {},
+    "title": null
+  },
+  "dependencies": [],
+  "events": [],
+  "id": "views-shell.network",
+  "keybindings": [],
+  "launcher": [],
+  "menus": [],
+  "permissions": [
+    "dbus:system:org.freedesktop.NetworkManager",
+    "exec:nm-connection-editor"
+  ],
+  "quickSettings": [],
+  "sources": [
+    {
+      "id": "views-shell.network/state",
+      "schema": null
+    }
+  ],
+  "surfaces": [],
+  "tier": "builtin"
+}

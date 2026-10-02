@@ -1,0 +1,34 @@
+{
+  "snapshot": {
+    "wifi": {
+      "enabled": true,
+      "available": true
+    },
+    "primary": {
+      "icon": "network-wifi-strong",
+      "label": "home-5g",
+      "sublabel": "Connected"
+    },
+    "networks": [
+      {
+        "id": "home-5g",
+        "name": "home-5g",
+        "icon": "network-wifi-strong",
+        "status": "Connected",
+        "connected": true,
+        "connecting": false,
+        "secure": true
+      },
+      {
+        "id": "cafe",
+        "name": "cafe",
+        "icon": "network-wifi-weak",
+        "status": "",
+        "connected": false,
+        "connecting": true,
+        "secure": false
+      }
+    ]
+  },
+  "sources": {}
+}

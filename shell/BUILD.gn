@@ -123,6 +123,8 @@ executable("views_shell") {
   sources = [
     "app/shell_bootstrap.cc",
     "app/shell_bootstrap.h",
+    "app/surface_spec.cc",
+    "app/surface_spec.h",
     "app/views_shell_context_factory.cc",
     "app/views_shell_context_factory.h",
     "app/views_shell_main.cc",

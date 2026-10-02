@@ -53,6 +53,69 @@ rebuilt. That mirrors Omarchy's `shell applyTheme` IPC.
 
 **No blur.** No views-shell panel asks for blur. Panels take the theme's background.
 
+## Real today
+
+Layers 1 and 2 are code in [`../../shell/style/`](../../shell/style/), and
+`views_shell --bar --theme <dir>` wears them (`docs/bench/views-shell-154-theme.md`).
+
+- **The reader** (`theme_directory.{h,cc}`). Chromium has no TOML parser, and
+  `colors.toml` is not general TOML, so views-shell parses exactly this subset
+  and refuses anything else with the line number:
+  - lines split on `\n`, a trailing `\r` dropped, a last line without a newline
+    still read;
+  - blank lines and lines whose first non-blank character is `#` skipped;
+  - every other line `key = value`, split at the first `=`, blanks trimmed;
+  - `key` is `[A-Za-z0-9_-]+`, optionally in one pair of matching quotes;
+  - `value` is quoted (`"..."` or `'...'`, ending at the next quote of either
+    kind, as Omarchy reads it; only blanks or a `#` comment may follow) or one
+    bare word; its text must be in Omarchy's charset `[A-Za-z0-9#(),._+/% -]*`;
+  - a key appears once.
+
+  Tables, arrays, inline tables, escapes, multi-line strings, duplicate keys and
+  characters outside the charsets are errors. On every file Omarchy accepts and
+  this subset admits (all 22 Omarchy themes at `c05d9019` and the four examples),
+  the result equals `omarchy-theme-color --raw`. Unknown keys are kept. Beside
+  `colors.toml` the reader takes the optional `light.mode` marker, `chromium.theme`
+  (`r,g,b`, the seed Omarchy hands Chrome) and keeps `gtk.theme` and
+  `icons.theme` as strings for the gsettings writer (rule R26).
+- **The cascade** (`omarchy_cascade.{h,cc}`, MIT notice kept): a step-for-step
+  port of `resolve_theme_colors` and `resolve_theme_mode`, including the legacy
+  short names, `color0`..`color15`, `cursor`, the selection keys, `orange` and
+  `brown`, the 25 % and 50 % darker backgrounds, the +20 %-white `bright_*` hues,
+  and the mode order (`mode`, `theme_type`, `light.mode`, background luminance).
+  `mix_color` reproduces GNU awk exactly, so even an absent hue derives what
+  Omarchy derives (`bright_cyan = #333333`).
+- **The byte fixtures** ([`fixtures/`](fixtures/)). `tools/theme-goldens.sh`
+  runs Omarchy's own resolver, vendored unmodified as `tools/omarchy-theme-color`,
+  on every example theme and writes `<theme>.resolved.json` (every key `--all`
+  prints) and `<theme>.mixer.json` (each pinned id and its `#rrggbb`);
+  `--check` fails on drift. `views_shell_unittests` enumerates the directory and
+  requires the C++ cascade and mixer to reproduce every fixture as canonical JSON.
+- **The mixer** (`theme_mixer.{h,cc}`). Layer 1: the native theme's preferred
+  colour scheme is the resolved mode and its user colour the neutralised seed
+  (`chromium.theme` when present, else `background`); the key's
+  `user_color_source` is the native theme's default `kAccent` and the variant
+  the ref mixer's default `kTonalSpot`. Layer 2: one `ColorMixer`, appended last,
+  pins the 29 `kColorSys*` ids of `theme-map.json` `layer2_pins`, `on_accent`
+  included. The binding is compiled in: a GN action turns
+  `//views_shell/data/style/theme-map.json` into a table of `ui::` enumerators, so
+  a name that is not a real `ui::ColorId` fails the build.
+- **`--theme <dir>`** reads and resolves the directory before the process comes
+  up (a bad directory exits 2 without touching the compositor) and applies it
+  before the first widget. Without `--theme` the shell draws in stock `ui/color`.
+- **Live re-apply.** A second `ThemeController::Apply()` swaps the pins, resets
+  the provider cache and notifies the native theme's observers; a unit test
+  re-themes from `all-black` to `claude-light` and reads the new colours from a
+  fresh provider. Nothing in the program triggers it yet: `views-shell theme
+  apply` (the IPC) is not written.
+- **The kit's providers** (`layout_provider`, `typography_provider`): subclasses
+  that carry the `[spacing] scale` and `[font] base-size` knobs, at stock values
+  until layer 3 is read.
+
+Not yet: `shell.toml` (layer 3), the theme search path and staging (open decision
+P18), the `theme apply` command, and following a portal colour-scheme change
+(the native theme's OS-settings observer could overwrite the mode on a seat).
+
 ## All Black
 
 Tom's Chrome wears the Web Store theme **All Black**,
