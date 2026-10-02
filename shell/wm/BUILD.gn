@@ -2,13 +2,72 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w2a fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w2a lands.
+# The window-manager seam (docs/compositor-adapters.md): the compositor-neutral
+# WmModel, the CompositorAdapter interface, and the scroll/sway adapter over
+# i3-ipc. //views_shell links :wm and collects :unittests into
+# views_shell_unittests; :wm_probe is the adapters' run gate on the bench.
+# Nothing here draws: the seam depends on //base (and gfx::Rect for the hook
+# event shapes), never on Views, Wayland or a browser.
+
+wm_no_deps = [
+  "//ash/*",
+  "//chrome/*",
+  "//chromeos/*",
+  "//content/*",
+  "//gin/*",
+  "//third_party/blink/renderer/*",
+  "//ui/views/*",
+  "//v8/*",
+]
 
 source_set("wm") {
+  sources = [
+    "adapters/scroll/scroll_adapter.cc",
+    "adapters/scroll/scroll_adapter.h",
+    "adapters/scroll/scroll_ipc_client.cc",
+    "adapters/scroll/scroll_ipc_client.h",
+    "compositor_adapter.h",
+    "wm_model.cc",
+    "wm_model.h",
+    "wm_snapshot.h",
+  ]
+
+  public_deps = [
+    "//base",
+    "//ui/gfx/geometry",
+  ]
+
+  assert_no_deps = wm_no_deps
+}
+
+# Console program: wm_probe --dump | --switch <name> | --watch <seconds>.
+executable("wm_probe") {
+  sources = [ "wm_probe.cc" ]
+
+  deps = [
+    ":wm",
+    "//base",
+  ]
+
+  assert_no_deps = wm_no_deps
 }
 
 source_set("unittests") {
   testonly = true
+
+  sources = [
+    "adapters/scroll/scroll_adapter_unittest.cc",
+    "adapters/scroll/scroll_ipc_client_unittest.cc",
+    "wm_model_unittest.cc",
+  ]
+
+  deps = [
+    ":wm",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+
+  # Read through base::DIR_SRC_TEST_DATA_ROOT.
+  data = [ "adapters/scroll/testdata/scroll-transcript.jsonl" ]
 }
