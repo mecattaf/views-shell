@@ -12,6 +12,8 @@
 #            Declarative*:Permissions*:JsonRpc* (the C20.1 filter)
 #   probes   plugin_probe against echo-process (ping, try-exec) and against
 #            music-scratchpad (a T1 plugin, with and without its capability)
+#   isolated the ping probe inside ~/.local/bin/runtime-test (private /run/user,
+#            so no user manager): the plain launch path, logged as such
 #   claims   the C20.1-C20.3 commands verbatim, each log kept in
 #            ~/views-bench/results/w3b-c20.<n>.log: out/views is relinked by
 #            whichever item holds the lock next, so the PROVE rows read these
@@ -26,7 +28,7 @@ B="$HOME/views-bench"
 FHS="$B/build-env"
 SRC="$HOME/chromium/src"
 RES="$B/results"
-STAGES="${*:-wire build tests probes claims}"
+STAGES="${*:-wire build tests probes isolated claims}"
 FILTER='Plugin*:ProcessPlugin*:Declarative*:Permissions*:JsonRpc*'
 fail=0
 has() { case " $STAGES " in *" $1 "*) return 0;; esac; return 1; }
@@ -78,6 +80,14 @@ if has probes; then
   probe try-exec 0 "--plugin views_shell/data/examples/echo-process --invoke try-exec --seconds 3"
   probe t1-gated 1 "--plugin views_shell/data/examples/music-scratchpad --seconds 1"
   probe t1 0 "--plugin views_shell/data/examples/music-scratchpad --capabilities scratchpad.toggle --seconds 1"
+fi
+
+if has isolated; then
+  ~/.local/bin/runtime-test -- "$FHS" -c "cd $SRC && out/views/plugin_probe --plugin views_shell/data/examples/echo-process --invoke ping --args '{\"text\":\"hi\"}'" > "$RES/w3b-isolated.log" 2> "$RES/w3b-isolated.err"
+  rc=$?
+  grep -E '^(invoke|plugin alive|launch path|shutdown)' "$RES/w3b-isolated.log"
+  grep -E 'launched pid|no systemd user scope' "$RES/w3b-isolated.err" | sed -E 's#/home/[^ ]*#~/...#g'
+  [ "$rc" = 0 ] && grep -q '^launch path: plain' "$RES/w3b-isolated.log"; step "isolated (rc $rc, plain path)" $?
 fi
 
 if has claims; then

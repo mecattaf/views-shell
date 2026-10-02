@@ -16,9 +16,11 @@
 // launch runs inside its own transient scope unit
 // (views-shell-plugin-<id>-<pid>-<n>.scope), so a failure is visible to the
 // unit-failure tripwire. Otherwise the process is started with plain
-// base::LaunchProcess. Inside runtime-test (and the bench's FHS build
-// environment) there is no reachable user manager, so tests take the plain
-// path; the path taken is logged at every launch and readable through
+// base::LaunchProcess. Inside runtime-test (a private /run/user) there is no
+// reachable user manager, so the plain path is taken; the bench's FHS build
+// environment does reach the user manager, so a kAuto launch there takes the
+// scope path. Tests that need one path force it with Options::launch_path.
+// The path taken is logged at every launch and readable through
 // launch_path().
 //
 // Threading. A ProcessPlugin lives on one sequence that supports

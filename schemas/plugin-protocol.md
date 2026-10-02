@@ -84,7 +84,7 @@ tables left open. No method was added.
 
 | Question | Settled |
 |---|---|
-| Launch | `runtime.exec` (relative to the plugin directory) with `runtime.args`, working directory the plugin directory, stdin and stdout the protocol pipes, stderr logged line by line. Inside `systemd-run --user --scope --collect --unit=views-shell-plugin-<id>-<pid>-<n>` when `systemd-run` is on `PATH` and a probe scope (`-- true`) succeeds; otherwise plain `base::LaunchProcess`. The path taken is logged at every launch. Inside `runtime-test` there is no user manager, so tests take the plain path. |
+| Launch | `runtime.exec` (relative to the plugin directory) with `runtime.args`, working directory the plugin directory, stdin and stdout the protocol pipes, stderr logged line by line. Inside `systemd-run --user --scope --collect --unit=views-shell-plugin-<id>-<pid>-<n>` when `systemd-run` is on `PATH` and a probe scope (`-- true`) succeeds; otherwise plain `base::LaunchProcess`. The path taken is logged at every launch. Inside `runtime-test` there is no user manager, so the plain path is taken; the bench's FHS build environment reaches one, so an automatic launch there takes the scope path. |
 | `initialize.capabilities` | The running adapter's capabilities that the plugin declares (`requires.compositor.required` ∪ `optional`), sorted. |
 | `initialize.config`, `config/changed.config` | The declared defaults with the user's values merged over them. |
 | Arguments | `command/invoke` is sent only for a declared command without a `verb`, with every required argument present, every argument of its declared type (`integer` also accepts an integral number), and no undeclared argument. Anything else is answered `-32602` by the host itself; the plugin never sees it. |

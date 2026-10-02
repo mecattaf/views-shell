@@ -75,10 +75,15 @@ just exited cannot end views-shell.
 A T2 plugin runs in its own `systemd-run --user --scope` unit
 (`views-shell-plugin-<id>-<pid>-<n>.scope`) when `systemd-run` is on `PATH` and
 `systemd-run --user --scope --quiet --collect -- true` succeeds; otherwise it is
-started with plain `base::LaunchProcess`. Inside `runtime-test` and the bench's
-FHS build environment there is no reachable user manager, so tests take the
-plain path. Every launch logs the path it took (`launched pid N via ...`), and
-`ProcessPlugin::launch_path()` reports it.
+started with plain `base::LaunchProcess`. Inside `runtime-test` (a private
+`/run/user`) there is no reachable user manager, so the plain path is taken. The
+bench's FHS build environment does reach the user manager, so there an
+automatic launch takes the scope path: `ProcessPluginTest.EchoReferencePluginSession`
+and `plugin_probe` ran the reference plugin in a scope, every other test forces
+the plain path, and `tools/bench/seq/w3b.sh`'s `isolated` stage runs the probe
+inside `runtime-test` to show the plain path. Every launch logs the path it
+took (`launched pid N via ...`), and `ProcessPlugin::launch_path()` reports it.
+Scopes are transient and `--collect`ed: none is left after a run.
 
 ## What the host settles beyond the protocol table
 
