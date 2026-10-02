@@ -320,7 +320,7 @@ TEST_P(RenderTraceTest, MatchesGolden) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Examples,
+INSTANTIATE_TEST_SUITE_P(,
                          RenderTraceTest,
                          testing::ValuesIn(kExampleUiFiles),
                          [](const testing::TestParamInfo<const char*>& info) {
@@ -369,7 +369,6 @@ constexpr char kActions[] = R"({"schemaVersion":1,"root":{"type":"column",
      "action":{"command":"pick"}},
     {"type":"select","options":{"$bind":"/opts"},"value":"a",
      "accessibleName":"Choose","action":{"command":"choose"}},
-    {"type":"textfield","value":"typed","action":{"command":"submit"}},
     {"type":"repeat","items":{"$bind":"/rows"},"key":"./id",
      "template":{"type":"listItem","label":{"$bind":"./label"},
        "action":{"command":{"$bind":"./id"},"args":{"row":{"$bind":"./id"}}}}}
@@ -386,13 +385,43 @@ void Press(views::Button* button) {
   views::test::ButtonTestApi(button).NotifyClick(e);
 }
 
+// A button press, with no platform needed: the action reaches the delegate
+// resolved and qualified.
+TEST_F(UiTreeRendererTest, ButtonPressFiresResolvedAction) {
+  RenderOptions options;
+  options.plugin_id = "example.power-menu";
+  RenderedTree* rendered = Render(
+      R"({"schemaVersion":1,"root":{"type":"column","children":[
+        {"type":"button","label":{"$bind":"/label"},"variant":"primary",
+         "action":{"command":"lock","args":{"who":{"$bind":"/user"},
+                   "n":2},"confirm":{"$bind":"/ask"}}}]}})",
+      SnapshotOf(
+          R"({"snapshot":{"label":"Lock","user":"tom","ask":"Lock now?"}})"),
+      options);
+  const RenderNode& button = *rendered->root().children[0];
+  EXPECT_EQ(button.view_class, "views::MdTextButton");
+  Press(static_cast<views::Button*>(button.view.get()));
+  ASSERT_EQ(delegate_.actions.size(), 1u);
+  EXPECT_EQ(delegate_.actions[0].command, "example.power-menu/lock");
+  EXPECT_EQ(delegate_.actions[0].args,
+            base::DictValue().Set("n", 2).Set("who", "tom"));
+  EXPECT_EQ(delegate_.actions[0].confirm, "Lock now?");
+  EXPECT_FALSE(delegate_.actions[0].close);
+}
+
+// Every input kind. A ToggleButton's or Checkbox's click ripple reads the
+// widget's colour provider, so this needs a Widget (a display).
 TEST_F(UiTreeRendererTest, InputsFireResolvedActions) {
+  if (!has_display()) {
+    GTEST_SKIP() << "stock toggle and checkbox clicks need a Widget (no "
+                    "WAYLAND_DISPLAY)";
+  }
   RenderOptions options;
   options.plugin_id = "example.test";
   RenderedTree* rendered =
       Render(kActions, SnapshotOf(kActionsSnapshot), options);
   const RenderNode& root = rendered->root();
-  ASSERT_EQ(root.children.size(), 7u);
+  ASSERT_EQ(root.children.size(), 6u);
   EXPECT_TRUE(rendered->errors().empty());
 
   Press(static_cast<views::Button*>(root.children[0]->view.get()));
@@ -430,17 +459,8 @@ TEST_F(UiTreeRendererTest, InputsFireResolvedActions) {
   EXPECT_EQ(delegate_.actions.back().command, "example.test/choose");
   EXPECT_EQ(delegate_.actions.back().args, base::DictValue().Set("value", "b"));
 
-  auto* textfield =
-      static_cast<views::Textfield*>(root.children[5]->view.get());
-  EXPECT_EQ(textfield->GetText(), u"typed");
-  ui::KeyEvent enter(ui::EventType::kKeyPressed, ui::VKEY_RETURN, ui::EF_NONE);
-  static_cast<views::View*>(textfield)->OnKeyPressed(enter);
-  EXPECT_EQ(delegate_.actions.back().command, "example.test/submit");
-  EXPECT_EQ(delegate_.actions.back().args,
-            base::DictValue().Set("value", "typed"));
-
   // The repeat's copies sit in the column; a bound command is qualified.
-  const RenderNode& repeat = *root.children[6];
+  const RenderNode& repeat = *root.children[5];
   EXPECT_EQ(repeat.view, nullptr);
   ASSERT_EQ(repeat.children.size(), 2u);
   EXPECT_EQ(repeat.children[1]->view->parent(), root.view);
@@ -448,7 +468,29 @@ TEST_F(UiTreeRendererTest, InputsFireResolvedActions) {
   EXPECT_EQ(delegate_.actions.back().command, "example.test/second");
   EXPECT_EQ(delegate_.actions.back().args,
             base::DictValue().Set("row", "second"));
-  EXPECT_EQ(delegate_.actions.size(), 7u);
+  EXPECT_EQ(delegate_.actions.size(), 6u);
+}
+
+// views::Textfield asks Ozone for the clipboard at construction, so it needs
+// the platform a display brings up.
+TEST_F(UiTreeRendererTest, TextfieldFiresOnEnter) {
+  if (!has_display()) {
+    GTEST_SKIP() << "views::Textfield needs the Ozone platform (no "
+                    "WAYLAND_DISPLAY)";
+  }
+  RenderOptions options;
+  options.plugin_id = "example.test";
+  RenderedTree* rendered = Render(
+      R"({"schemaVersion":1,"root":{"type":"textfield","value":"typed",
+          "placeholder":"Search","action":{"command":"submit"}}})",
+      Snapshot(), options);
+  auto* textfield = static_cast<views::Textfield*>(rendered->root().view.get());
+  EXPECT_EQ(textfield->GetText(), u"typed");
+  ui::KeyEvent enter(ui::EventType::kKeyPressed, ui::VKEY_RETURN, ui::EF_NONE);
+  static_cast<views::View*>(textfield)->OnKeyPressed(enter);
+  EXPECT_EQ(delegate_.actions.back().command, "example.test/submit");
+  EXPECT_EQ(delegate_.actions.back().args,
+            base::DictValue().Set("value", "typed"));
 }
 
 TEST_F(UiTreeRendererTest, SliderFiresOnceAtTheEndOfADrag) {

@@ -95,7 +95,7 @@ std::string PartNotDrawn(std::string_view part) {
 struct IconEntry {
   std::string_view name;
   std::string_view symbol;
-  const gfx::VectorIcon* icon;
+  raw_ptr<const gfx::VectorIcon> icon;
 };
 
 #define VIEWS_SHELL_ICON(name, ns, symbol) {name, #ns "::" #symbol, &ns::symbol}
