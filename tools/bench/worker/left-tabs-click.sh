@@ -12,7 +12,12 @@
 #      workspaces from the compositor model");
 #   3. moves the seat's cursor onto tab <index> (the rail is at x 0, the tabs
 #      are 30 px rows with a 2 px gap under 12 px of padding, docs/tabs.md) and
-#      presses and releases button 1 through `scrollmsg seat - cursor ...`;
+#      clicks button 1 through wlrctl's virtual pointer
+#      (zwlr_virtual_pointer_v1). The headless seat has no pointer device, so
+#      wl_seat.capabilities is 0 and `scrollmsg seat - cursor press` reaches
+#      no client; a virtual pointer gives the seat one for the command's
+#      duration, and the client binds wl_pointer and gets enter, then the
+#      button. $WLRCTL names the binary (default: wlrctl on PATH);
 #   4. waits for the request ("left-tabs: FocusWorkspace") and the echo (the
 #      next "left-tabs: ... active" line), and prints which workspace the
 #      compositor reports focused ("left-tabs-click: focused <name>");
@@ -21,7 +26,7 @@
 set -uo pipefail
 [ "$#" -ge 2 ] || { echo 'usage: left-tabs-click.sh <index> <views_shell> <flags...>' >&2; exit 2; }
 index="$1"; shift
-SCROLLMSG="${SCROLLMSG:-$HOME/views-bench/scroll/bin/scrollmsg}"
+WLRCTL="${WLRCTL:-wlrctl}"
 
 LOG="$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/left-tabs-click.XXXXXX")"
 SHELL_PID=""
@@ -54,10 +59,11 @@ fi
 sleep 1
 
 x=60; y=$(( 12 + index * 32 + 15 ))
-"$SCROLLMSG" "seat - cursor set $x $y" >/dev/null && echo "left-tabs-click: cursor at $x,$y (tab $index)"
-"$SCROLLMSG" "seat - cursor press button1" >/dev/null
-sleep 0.1
-"$SCROLLMSG" "seat - cursor release button1" >/dev/null && echo "left-tabs-click: button1 pressed and released"
+# Relative moves: first into the top-left corner, then onto the tab.
+"$WLRCTL" pointer move -8000 -8000 && "$WLRCTL" pointer move "$x" "$y" &&
+  echo "left-tabs-click: cursor at $x,$y (tab $index)"
+sleep 0.3
+"$WLRCTL" pointer click left && echo "left-tabs-click: button1 clicked"
 
 if wait_for 'left-tabs: FocusWorkspace ' 5; then
   echo "left-tabs-click: request $(grep -oE 'left-tabs: FocusWorkspace .*' "$LOG" | tail -1 | sed 's/left-tabs: //')"
