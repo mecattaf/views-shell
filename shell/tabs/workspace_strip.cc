@@ -51,6 +51,7 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
 
   workspaces_ = std::move(workspaces);
   active_index_ = -1;
+  requested_index_ = -1;
   for (size_t i = 0; i < workspaces_.size(); ++i) {
     if (workspaces_[i].active && active_index_ < 0) {
       active_index_ = static_cast<int>(i);
@@ -120,7 +121,12 @@ void WorkspaceStrip::SelectTab(Tab* tab, const ui::Event& event) {
   }
   if (mode_ == SelectionMode::kRequest) {
     // Rule R6: ask, and wait for the echo. The strip redraws from
-    // SetWorkspaces, never from here.
+    // SetWorkspaces, never from here. Tab asks on the press and on the
+    // release: one request.
+    if (index == requested_index_) {
+      return;
+    }
+    requested_index_ = index;
     if (on_select_) {
       on_select_.Run(workspaces_[index]);
     }

@@ -72,14 +72,22 @@ void WorkspaceStripModelBinding::Focus(const Workspace& workspace) {
             << base::UTF16ToUTF8(workspace.title) << ")";
   model_->FocusWorkspace(
       workspace.id,
-      base::BindOnce(
-          [](const std::string& workspace,
-             base::expected<void, WmCommandError> result) {
-            LOG_IF(WARNING, !result.has_value())
-                << "left-tabs: focusing workspace " << workspace
-                << " failed: " << WmCommandErrorName(result.error());
-          },
-          workspace.id));
+      base::BindOnce(&WorkspaceStripModelBinding::OnFocusDone,
+                     weak_ptr_factory_.GetWeakPtr(), workspace.id));
+}
+
+void WorkspaceStripModelBinding::OnFocusDone(
+    const std::string& workspace,
+    base::expected<void, WmCommandError> result) {
+  if (result.has_value()) {
+    return;
+  }
+  LOG(WARNING) << "left-tabs: focusing workspace " << workspace
+               << " failed: " << WmCommandErrorName(result.error());
+  // No echo will come: the tab may be asked for again.
+  if (strip_) {
+    strip_->ClearPendingRequest();
+  }
 }
 
 void WorkspaceStripModelBinding::Apply() {

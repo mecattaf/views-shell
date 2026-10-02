@@ -254,12 +254,39 @@ TEST_F(WorkspaceStripModelBindingTest, ClickIsARequestAndTheEchoRedraws) {
   EXPECT_EQ(binding_->apply_count(), applied);
   EXPECT_FALSE(strip->IsActiveTab(third));
 
+  // Tab asks on the press and on the release: still one request, and a
+  // second click on the same tab before the echo asks nothing more.
+  Click(third);
+  EXPECT_EQ(adapter_.sent.size(), 1u);
+  EXPECT_EQ(strip->requested_index_for_testing(), 2);
+
   // The echo.
+  std::move(adapter_.pending[0]).Run(base::ok());
   model_.OnSnapshot(MakeSnapshot({{"4", "1"}, {"7", "2"}, {"8", "3", true}}));
   EXPECT_EQ(Describe(*strip), "1 2 3*");
   EXPECT_EQ(binding_->apply_count(), applied + 1);
   EXPECT_TRUE(strip->IsActiveTab(strip->GetTabAt(2)));
-  std::move(adapter_.pending[0]).Run(base::ok());
+  EXPECT_EQ(strip->requested_index_for_testing(), -1);
+}
+
+// A refused request brings no echo: the same tab may be asked for again.
+TEST_F(WorkspaceStripModelBindingTest, ARefusalAllowsTheNextClick) {
+  WorkspaceStrip* strip = Bind();
+  model_.OnSnapshot(MakeSnapshot({{"4", "1", true}, {"7", "2"}}));
+  widget_->LayoutRootViewIfNecessary();
+
+  Click(strip->GetTabAt(1));
+  ASSERT_EQ(adapter_.sent.size(), 1u);
+  Click(strip->GetTabAt(1));
+  EXPECT_EQ(adapter_.sent.size(), 1u);
+
+  std::move(adapter_.pending[0]).Run(
+      base::unexpected(WmCommandError::kRejected));
+  EXPECT_EQ(strip->requested_index_for_testing(), -1);
+  EXPECT_EQ(Describe(*strip), "1* 2");
+  Click(strip->GetTabAt(1));
+  EXPECT_EQ(adapter_.sent.size(), 2u);
+  EXPECT_EQ(adapter_.sent[1].workspace, "7");
 }
 
 // Without a model (static, niri) the strip moves at once and tells its

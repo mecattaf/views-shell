@@ -46,7 +46,9 @@ class WorkspaceStrip : public views::View, public TabSlotController {
     kLocal,
     // Rule R6: a selection is a request. The strip runs the callback and
     // changes nothing; it moves when SetWorkspaces brings the compositor's
-    // echo (tabs/workspace_strip_model_binding.h).
+    // echo (tabs/workspace_strip_model_binding.h). One request per tab until
+    // that echo, or until ClearPendingRequest(): Chrome's Tab selects on the
+    // press and again on the release.
     kRequest,
   };
 
@@ -63,6 +65,10 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   int active_index() const { return active_index_; }
   // The tab at `index`, or null when out of range.
   Tab* GetTabAt(int index);
+  // SelectionMode::kRequest: the request was refused, so the same tab may be
+  // asked for again before any echo.
+  void ClearPendingRequest() { requested_index_ = -1; }
+  int requested_index_for_testing() const { return requested_index_; }
   const std::vector<Workspace>& workspaces() const { return workspaces_; }
 
   // views::View:
@@ -105,6 +111,8 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   std::vector<Workspace> workspaces_;
   std::vector<raw_ptr<Tab>> tabs_;
   int active_index_ = -1;
+  // SelectionMode::kRequest: the index of the outstanding request, or -1.
+  int requested_index_ = -1;
 
   float hover_opacity_min_ = 1.0f;
   float hover_opacity_max_ = 1.0f;

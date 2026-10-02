@@ -15,11 +15,14 @@
 #define VIEWS_SHELL_TABS_WORKSPACE_STRIP_MODEL_BINDING_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/types/expected.h"
+#include "views_shell/wm/compositor_adapter.h"
 #include "views_shell/tabs/workspace_source.h"
 #include "views_shell/wm/wm_model.h"
 
@@ -59,6 +62,9 @@ class WorkspaceStripModelBinding : public WmModel::Observer {
  private:
   // The strip's SelectCallback: the request.
   void Focus(const Workspace& workspace);
+  // The adapter's answer. A refusal clears the strip's pending request.
+  void OnFocusDone(const std::string& workspace,
+                   base::expected<void, WmCommandError> result);
   void Apply();
 
   const raw_ptr<WmModel> model_;
