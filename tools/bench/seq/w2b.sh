@@ -13,6 +13,8 @@
 #           theme, --bar --demo-popup with claude-light, --left-tabs with noir
 #   prove   the claims' checks on those runs (bar ground colour, the R1 exit
 #           code), against the binary built in this same lock hold
+#   claims  the PR's prove commands for C15.1 to C15.4, literally, in the same
+#           lock hold (run with "wire build claims" to re-prove after others built)
 # Every step echoes its rc; the script exits non-zero if any step failed.
 set -uo pipefail
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -21,7 +23,7 @@ FHS="$B/build-env"
 SRC="$HOME/chromium/src"
 RES="$B/results"
 RT="$HOME/.local/bin/runtime-test"
-STAGES="${*:-wire build tests runs prove}"
+STAGES="${*:-wire build tests runs prove claims}"
 GL="--ozone-platform=wayland --use-gl=angle --use-angle=swiftshader"
 THEMES="$WT/examples/themes"
 fail=0
@@ -116,6 +118,35 @@ if has prove; then
   "$RT" -- "$FHS" -c "~/chromium/src/out/views/views_shell $GL --bar --theme /nonexistent" > "$RES/w2b-bad-theme.log" 2>&1
   rc=$?; echo "bad-theme rc=$rc"; grep -o -- '--theme: .*' "$RES/w2b-bad-theme.log"
   [ $rc = 2 ]; step prove-bad-theme-exit-2 $?
+fi
+
+# The PR's prove commands for C15.1 to C15.4, as written in PROVE.md, with
+# R = this worktree. They run here, in the lock hold that built the binary,
+# because out/views is relinked by whichever item holds the lock next.
+if has claims; then
+  R="$WT"
+  "$FHS" -c "cd ~/chromium/src && out/views/views_shell_unittests --gtest_filter=Theme*:Bar*:Clock*" > "$RES/w2b-claim-15.1.log" 2>&1
+  rc=$?; grep -E 'OK \] ThemeFixtureTest|tests passed|tests? (failed|crashed)' "$RES/w2b-claim-15.1.log"; step claim-C15.1 $rc
+  for theme in claude-dark all-black; do
+    bash "$R/tools/bench/worker/headless.sh" "$RES/w2b-$theme" "$FHS" -c "~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --bar --theme $R/examples/themes/$theme" > /dev/null &&
+    python3 - "$R" "$theme" <<'PY'
+import os, sys
+R, theme = sys.argv[1], sys.argv[2]
+d = open(os.path.expanduser(f'~/views-bench/results/w2b-{theme}/shot.ppm'), 'rb').read()
+parts = d.split(b'\n', 3); w, h = map(int, parts[1].split()); px = parts[3]
+bg = bytes.fromhex(open(f'{R}/examples/themes/{theme}/colors.toml').read().split('background')[1].split('#')[1][:6])
+n = sum(1 for y in range(32) for x in range(0, w, 7) if px[3 * (y * w + x):3 * (y * w + x) + 3] == bg)
+total = 32 * len(range(0, w, 7)); print('bar-bg-fraction', theme, bg.hex(), n / total); sys.exit(0 if n / total > 0.9 else 1)
+PY
+    rc=$?; grep -E 'alive|attaches|colours' "$RES/w2b-$theme/summary.txt" | sort -u | tr '\n' ';'; echo
+    step "claim-ground-$theme" $rc
+  done
+  bash "$R/tools/bench/worker/headless.sh" "$RES/w2b-plain" "$FHS" -c "~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --bar" > /dev/null &&
+    grep -qE "attaches: [1-9]" "$RES/w2b-plain/summary.txt" && grep -qE "colours: ([2-9]|[1-9][0-9]+)" "$RES/w2b-plain/summary.txt"
+  rc=$?; grep -E 'alive|attaches|colours' "$RES/w2b-plain/summary.txt" | sort -u | tr '\n' ';'; echo
+  step claim-plain-draws $rc
+  "$RT" -- "$FHS" -c '~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --run-for-seconds=2'
+  rc=$?; echo "rc=$rc"; [ $rc = 2 ]; step claim-C15.4 $?
 fi
 
 echo "w2b-seq: done, fail=$fail"
