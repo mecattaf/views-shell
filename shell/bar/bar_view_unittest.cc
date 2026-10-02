@@ -10,6 +10,7 @@
 #include "base/path_service.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/accessibility/platform/ax_platform_for_test.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_paths.h"
 #include "ui/views/background.h"
@@ -39,6 +40,8 @@ class BarTestBase : public testing::Test {
     ui::ResourceBundle::CleanupSharedInstance();
   }
 
+  // views::Label asks the accessibility platform for its mode.
+  ui::AXPlatformForTest ax_platform_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<ShellLayoutProvider> layout_provider_;

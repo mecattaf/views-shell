@@ -27,7 +27,7 @@
 // the left edge. --workspace-source=static|niri picks the workspaces; without
 // it, niri when NIRI_SOCKET is set, else a static list.
 //
-// --theme <dir> wears an Omarchy theme directory (rule R17, style/): it is
+// --theme <dir> (or --theme=<dir>) wears an Omarchy theme directory (rule R17, style/): it is
 // read and resolved before anything else and applied before the first widget.
 // Without --theme the colours are stock ui/color.
 
@@ -293,8 +293,18 @@ int ShellMain() {
   // The theme is read and resolved before the process comes up, so a bad
   // theme directory costs no compositor connection.
   std::optional<ResolvedTheme> theme;
+  base::FilePath theme_dir;
   if (command_line->HasSwitch(kTheme)) {
-    const base::FilePath theme_dir = command_line->GetSwitchValuePath(kTheme);
+    // --theme=<dir>, or --theme <dir> (base::CommandLine leaves a value after
+    // a space as the first positional argument).
+    theme_dir = command_line->GetSwitchValuePath(kTheme);
+    if (theme_dir.empty() && !command_line->GetArgs().empty()) {
+      theme_dir = base::FilePath(command_line->GetArgs().front());
+    }
+    if (theme_dir.empty()) {
+      LOG(ERROR) << "--" << kTheme << " wants a theme directory";
+      return 2;
+    }
     base::expected<ResolvedTheme, std::string> resolved =
         LoadAndResolveTheme(theme_dir);
     if (!resolved.has_value()) {
@@ -328,7 +338,7 @@ int ShellMain() {
   // (style/theme_mixer.h), before the first widget.
   ThemeController theme_controller;
   if (theme) {
-    LOG(INFO) << "theme: " << command_line->GetSwitchValuePath(kTheme).value()
+    LOG(INFO) << "theme: " << theme_dir.value()
               << " mode "
               << (theme->color_mode == ui::ColorProviderKey::ColorMode::kDark
                       ? "dark"

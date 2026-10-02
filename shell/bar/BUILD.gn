@@ -29,6 +29,7 @@ source_set("unittests") {
     "//base",
     "//base/test:test_support",
     "//testing/gtest",
+    "//ui/accessibility:test_support",
     "//ui/base",
     "//ui/color",
     "//ui/views",

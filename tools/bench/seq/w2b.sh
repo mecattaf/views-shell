@@ -76,9 +76,13 @@ if has runs; then
   run left-tabs --left-tabs --theme "$THEMES/noir"
 fi
 
-# bar_ground <run> <theme>: the fraction of sampled pixels in the top 32 rows
-# that are exactly the theme's resolved background; > 0.9 passes.
+# bar_ground <run> <theme>: the run drew (client alive, an attach, the theme
+# logged), and the fraction of sampled pixels in the top 32 rows that are
+# exactly the theme's resolved background is > 0.9.
 bar_ground() {
+  grep -q "client alive at capture: 1" "$RES/w2b-$1/summary.txt" &&
+    grep -qE "attaches: [1-9]" "$RES/w2b-$1/summary.txt" &&
+    grep -q "theme: " "$RES/w2b-$1/client.log" || { echo "bar_ground: $1 did not draw a themed bar"; return 1; }
   python3 - "$RES/w2b-$1/shot.ppm" "$THEMES/$2/colors.toml" <<'PY'
 import re, sys
 d = open(sys.argv[1], 'rb').read()
