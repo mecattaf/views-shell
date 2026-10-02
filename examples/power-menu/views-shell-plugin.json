@@ -19,7 +19,7 @@
   },
   "contributes": {
     "surfaces": [
-      { "id": "button", "kind": "bar-widget", "defaultSection": "right" },
+      { "id": "button", "kind": "bar-widget", "defaultSection": "right", "keyboard": "none" },
       { "id": "panel", "kind": "panel", "anchor": "surface:button", "keyboard": "on-demand" }
     ],
     "commands": [
@@ -35,7 +35,6 @@
     "configuration": {
       "title": "Power menu",
       "properties": {
-        "confirm": { "type": "boolean", "default": true, "description": "Ask before log out, reboot and shut down." },
         "showUptime": { "type": "boolean", "default": true, "description": "Show uptime in the panel header." },
         "hotkey": { "type": "string", "format": "keybinding", "default": "Mod+Shift+Escape" }
       }

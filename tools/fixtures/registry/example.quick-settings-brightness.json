@@ -67,7 +67,7 @@
       "state": null,
       "title": null,
       "ui": null,
-      "when": "!config.views-shell.qs-brightness.enabled"
+      "when": null
     }
   ],
   "sources": [],

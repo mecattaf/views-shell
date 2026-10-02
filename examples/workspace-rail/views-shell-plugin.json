@@ -7,7 +7,7 @@
   "description": "The hero surface: workspaces as groups, windows as rows, click to focus, rename in place, collapse to free the screen. Built in (T0), after Chrome's vertical tabs. Its manifest still declares everything, so the CLI, the extension and the slots see it like any other plugin.",
   "license": "BSD-3-Clause",
   "engines": { "views-shell": ">=0.1.0 <0.2.0" },
-  "runtime": { "mode": "builtin", "target": "//views_shell/shell/rail:rail" },
+  "runtime": { "mode": "builtin", "target": "//views_shell/rail:rail" },
   "requires": {
     "compositor": {
       "required": ["outputs.list", "workspaces.list", "workspaces.focus", "windows.list", "windows.focus"],
