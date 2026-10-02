@@ -4,7 +4,7 @@
     "children": [
       {
         "children": [],
-        "error": null,
+        "error": "label not drawn in chapter 2",
         "layout": null,
         "node": "switch",
         "props": {
@@ -69,7 +69,7 @@
                     "view": "views::BoxLayoutView"
                   }
                 ],
-                "error": null,
+                "error": "unknown icon: network-wifi-strong",
                 "layout": null,
                 "node": "listItem",
                 "props": {
@@ -125,7 +125,7 @@
                     "view": "views::BoxLayoutView"
                   }
                 ],
-                "error": null,
+                "error": "unknown icon: network-wifi-weak",
                 "layout": null,
                 "node": "listItem",
                 "props": {

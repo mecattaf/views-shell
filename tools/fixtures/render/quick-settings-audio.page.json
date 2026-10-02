@@ -18,7 +18,7 @@
         "children": [
           {
             "children": [],
-            "error": null,
+            "error": "icon not drawn in chapter 2",
             "layout": null,
             "node": "option",
             "props": {
@@ -31,7 +31,7 @@
           },
           {
             "children": [],
-            "error": null,
+            "error": "icon not drawn in chapter 2",
             "layout": null,
             "node": "option",
             "props": {

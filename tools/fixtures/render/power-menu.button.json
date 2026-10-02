@@ -2,7 +2,7 @@
   "plugin": "example.power-menu",
   "root": {
     "children": [],
-    "error": null,
+    "error": "unknown icon: power",
     "layout": null,
     "node": "iconButton",
     "props": {
@@ -17,6 +17,6 @@
       "toggled": false,
       "tooltip": "Power"
     },
-    "view": "views::ImageButton"
+    "view": null
   }
 }
