@@ -18,3 +18,22 @@ for it.
 - **Credentials** never pass through here. Activating a secured network makes
   NetworkManager ask its registered secret agent, which is the core credential
   modal (rule R25).
+
+## Tier, contributions, capabilities, permissions
+
+- **Tier:** T1 declarative. No commands of its own: every action is a qualified
+  `views-shell.network/*` command.
+- **Contributes:** `quickSettings` entries `tile` (slot `tile`, size `primary`,
+  order -100, opens `page`) and `page` (slot `page`, title "Network"), both with
+  `state: views-shell.network/state`; trees [`ui/tile.json`](ui/tile.json) and
+  [`ui/page.json`](ui/page.json).
+- **Capabilities:** none. **Permissions:** `call:views-shell.network/*`.
+  **Depends on:** `views-shell.network`.
+- The tile is a `tile` node, which is not drawn in chapter 2 (it waits on the
+  FeatureTile port); the page's switch, list items and progress are drawn.
+
+## Registry fixture
+
+[`tools/fixtures/registry/views-shell.qs-network.json`](../../tools/fixtures/registry/views-shell.qs-network.json)
+(activation `onQuickSettings:page`, `onQuickSettings:tile`). Render traces:
+`tools/fixtures/render/quick-settings-network.{tile,page}.json`.

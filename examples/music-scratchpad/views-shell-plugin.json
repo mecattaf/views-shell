@@ -22,7 +22,7 @@
       }
     ],
     "surfaces": [
-      { "id": "button", "kind": "bar-widget", "defaultSection": "right", "ui": "ui/button.json" }
+      { "id": "button", "kind": "bar-widget", "defaultSection": "right", "keyboard": "none", "ui": "ui/button.json" }
     ],
     "keybindings": [
       { "command": "toggle", "key": "F9" }

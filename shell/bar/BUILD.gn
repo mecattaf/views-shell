@@ -2,8 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# The bar: BarView (a FlexLayout row in the theme's colours) and its ClockView.
-# The surface it lives on is the "bar" row of app/surface_spec.cc.
+# The bar: BarView (a FlexLayout row in the theme's colours: the left section,
+# the centred title of the focused window, the ClockView) and the
+# WorkspaceStrip that fills its left section from the WmModel
+# (//views_shell/wm). The surface it lives on is the "bar" row of
+# app/surface_spec.cc.
 
 source_set("bar") {
   sources = [
@@ -11,19 +14,28 @@ source_set("bar") {
     "bar_view.h",
     "clock_view.cc",
     "clock_view.h",
+    "workspace_strip.cc",
+    "workspace_strip.h",
   ]
   public_deps = [
     "//base",
     "//ui/base",
     "//ui/color",
     "//ui/views",
+    "//views_shell/wm",
   ]
-  deps = [ "//ui/gfx/geometry" ]
+  deps = [
+    "//ui/gfx",
+    "//ui/gfx/geometry",
+  ]
 }
 
 source_set("unittests") {
   testonly = true
-  sources = [ "bar_view_unittest.cc" ]
+  sources = [
+    "bar_view_unittest.cc",
+    "workspace_strip_unittest.cc",
+  ]
   deps = [
     ":bar",
     "//base",
@@ -32,8 +44,11 @@ source_set("unittests") {
     "//ui/accessibility:test_support",
     "//ui/base",
     "//ui/color",
+    "//ui/gfx/geometry",
     "//ui/views",
+    "//ui/views:test_support",
     "//views_shell/style",
+    "//views_shell/wm",
   ]
 
   # views::Label resolves fonts through the ResourceBundle; the tests load the
