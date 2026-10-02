@@ -130,11 +130,12 @@ if has claims; then
   for theme in claude-dark all-black; do
     bash "$R/tools/bench/worker/headless.sh" "$RES/w2b-$theme" "$FHS" -c "~/chromium/src/out/views/views_shell --ozone-platform=wayland --use-gl=angle --use-angle=swiftshader --bar --theme $R/examples/themes/$theme" > /dev/null &&
     python3 - "$R" "$theme" <<'PY'
-import os, sys
+import os, re, sys
 R, theme = sys.argv[1], sys.argv[2]
 d = open(os.path.expanduser(f'~/views-bench/results/w2b-{theme}/shot.ppm'), 'rb').read()
 parts = d.split(b'\n', 3); w, h = map(int, parts[1].split()); px = parts[3]
-bg = bytes.fromhex(open(f'{R}/examples/themes/{theme}/colors.toml').read().split('background')[1].split('#')[1][:6])
+# The background key itself: all-black's header comment says "background" first.
+bg = bytes.fromhex(re.search(r'^background\s*=\s*"#([0-9A-Fa-f]{6})"', open(f'{R}/examples/themes/{theme}/colors.toml').read(), re.M).group(1))
 n = sum(1 for y in range(32) for x in range(0, w, 7) if px[3 * (y * w + x):3 * (y * w + x) + 3] == bg)
 total = 32 * len(range(0, w, 7)); print('bar-bg-fraction', theme, bg.hex(), n / total); sys.exit(0 if n / total > 0.9 else 1)
 PY
