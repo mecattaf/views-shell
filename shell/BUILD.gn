@@ -6,11 +6,13 @@
 # (tools/bench/worker/wire.sh copies shell/ to src/views_shell/, and
 # patches/views-shell-build-gate.patch puts this target in the root gn_all).
 #
-# views-shell is a Views program, not a content embedder (rule R24). The lifted
-# sources under app/cowl_*, host/, rail/, bar/*.cc and wm/ are provenance only
-# and are not built; app/ holds the program: views_shell_main.cc (flags and
-# widgets), shell_bootstrap.{h,cc} (process bring-up) and
-# views_shell_context_factory.{h,cc} (the in-process viz host).
+# views-shell is a Views program, not a content embedder (rule R24). app/ holds
+# the program: views_shell_main.cc (flags), shell_bootstrap.{h,cc} (process
+# bring-up), views_shell_context_factory.{h,cc} (the in-process viz host),
+# shell_content.{h,cc} (everything above the bootstrap: theme, the compositor
+# adapter and WmModel, notifications, surfaces), surface_spec.{h,cc} (the
+# registered layer surfaces, rule R1) and keyboard_probe_view.{h,cc} (the
+# credential modal's keyboard probe, --demo-keyboard).
 
 import("//build/config/ozone.gni")
 import("//build/config/ui.gni")
@@ -121,8 +123,12 @@ executable("views_shell") {
   testonly = false
 
   sources = [
+    "app/keyboard_probe_view.cc",
+    "app/keyboard_probe_view.h",
     "app/shell_bootstrap.cc",
     "app/shell_bootstrap.h",
+    "app/shell_content.cc",
+    "app/shell_content.h",
     "app/surface_spec.cc",
     "app/surface_spec.h",
     "app/views_shell_context_factory.cc",
@@ -165,6 +171,8 @@ executable("views_shell") {
     "//ui/color:mixers",
     "//ui/compositor",
     "//ui/display",
+    "//ui/events",
+    "//ui/events:dom_keycode_converter",
     "//ui/gfx",
     "//ui/gl",
     "//ui/menus",
