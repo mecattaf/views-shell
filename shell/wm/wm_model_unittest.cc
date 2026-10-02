@@ -49,8 +49,8 @@ class Mirror : public WmModel::Observer {
     CHECK_LE(static_cast<size_t>(index), list.size());
     CHECK(!base::Contains(list, id));
     list.insert(list.begin() + index, id);
-    log.push_back(base::StrCat({"add ", parent, "/", id, "@",
-                                base::NumberToString(index)}));
+    log.push_back(base::StrCat(
+        {"add ", parent, "/", id, "@", base::NumberToString(index)}));
   }
   void OnChildRemoved(const std::string& parent,
                       const std::string& id) override {
@@ -159,36 +159,31 @@ class WmModelTest : public ::testing::Test {
 
 TEST_F(WmModelTest, FirstSnapshotAddsEverythingInOrder) {
   model_.OnSnapshot(Make({"4:1", "7:web"}, {"5@4", "6@4", "8@7"}, "5"));
-  EXPECT_EQ((std::vector<std::string>{
-                "add /4@0", "add /7@1", "add 4/5@0", "add 4/6@1", "add 7/8@0",
-                "outputs", "mru", "focus 4/5"}),
+  EXPECT_EQ((std::vector<std::string>{"add /4@0", "add /7@1", "add 4/5@0",
+                                      "add 4/6@1", "add 7/8@0", "outputs",
+                                      "mru", "focus 4/5"}),
             mirror_.log);
   EXPECT_EQ(1, mirror_.applied);
   EXPECT_TRUE(model_.has_snapshot());
 }
 
 TEST_F(WmModelTest, DiffsRemovalsMovesAndAdditions) {
-  model_.OnSnapshot(Make({"4:1", "7:web", "9:mail"},
-                         {"5@4", "6@4", "8@7", "10@9"}, "5"));
+  model_.OnSnapshot(
+      Make({"4:1", "7:web", "9:mail"}, {"5@4", "6@4", "8@7", "10@9"}, "5"));
   mirror_.log.clear();
   // Workspace 9 goes away with window 10 moving to 4; window 6 closes; a new
   // workspace 11 arrives first; window 8 goes to the scratchpad; 12 opens.
-  const WmSnapshot next = Make({"11:new", "4:1", "7:web"},
-                               {"10@4", "5@4", "12@7", "8@"}, "5");
+  const WmSnapshot next =
+      Make({"11:new", "4:1", "7:web"}, {"10@4", "5@4", "12@7", "8@"}, "5");
   model_.OnSnapshot(next);
-  EXPECT_EQ((std::vector<std::string>{
-                "remove 4/6",
-                "add /11@0",
-                "move 9>4/10@1",
-                "move 7>@scratchpad/8@0",
-                "move 4>4/10@0",
-                "add 7/12@0",
-                "remove /9",
-                "changed 4",  // index and focus moved
-                "changed 7",  // index
-                "mru",
-                "focus 11/5"}),
-            mirror_.log);
+  EXPECT_EQ(
+      (std::vector<std::string>{"remove 4/6", "add /11@0", "move 9>4/10@1",
+                                "move 7>@scratchpad/8@0", "move 4>4/10@0",
+                                "add 7/12@0", "remove /9",
+                                "changed 4",  // index and focus moved
+                                "changed 7",  // index
+                                "mru", "focus 11/5"}),
+      mirror_.log);
   EXPECT_EQ(Expected(next), mirror_.Tree());
 }
 
@@ -232,9 +227,9 @@ TEST_F(WmModelTest, ReportsItemFocusOutputAndMruChanges) {
   focused.windows[1].focused = true;
   focused.mru = {"8", "5"};
   model_.OnSnapshot(focused);
-  EXPECT_EQ((std::vector<std::string>{"changed 5", "changed 8", "mru",
-                                      "focus 4/8"}),
-            mirror_.log);
+  EXPECT_EQ(
+      (std::vector<std::string>{"changed 5", "changed 8", "mru", "focus 4/8"}),
+      mirror_.log);
   mirror_.log.clear();
 
   // The same snapshot again: nothing but the applied tick.

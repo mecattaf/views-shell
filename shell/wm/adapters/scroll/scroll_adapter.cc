@@ -13,9 +13,9 @@
 #include "base/logging.h"
 #include "base/no_destructor.h"
 #include "base/process/process_handle.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
-#include "base/strings/strcat.h"
 #include "base/task/sequenced_task_runner.h"
 
 namespace views_shell::scroll {
@@ -23,18 +23,17 @@ namespace {
 
 // docs/compositor-adapters.md, "Capabilities": the "yes" rows per variant.
 constexpr const char* kSwayCapabilities[] = {
-    "config.include-slot",       "config.reload",
-    "bindings.events",           "outputs.list",
-    "scratchpad.toggle",         "session.exit",
-    "windows.focus",             "windows.fullscreen-state",
-    "windows.list",              "windows.move-to-workspace",
-    "windows.urgency",           "workspaces.focus",
-    "workspaces.list",           "workspaces.rename",
+    "config.include-slot", "config.reload",
+    "bindings.events",     "outputs.list",
+    "scratchpad.toggle",   "session.exit",
+    "windows.focus",       "windows.fullscreen-state",
+    "windows.list",        "windows.move-to-workspace",
+    "windows.urgency",     "workspaces.focus",
+    "workspaces.list",     "workspaces.rename",
 };
 constexpr const char* kScrollOnlyCapabilities[] = {
-    "bindings.list",   "overview.toggle", "scroll.jump",
-    "scroll.lua",      "scroll.overview", "scroll.scroller",
-    "scroll.spaces",   "scroll.trails",
+    "bindings.list",   "overview.toggle", "scroll.jump",   "scroll.lua",
+    "scroll.overview", "scroll.scroller", "scroll.spaces", "scroll.trails",
 };
 
 // The "with ask Hn" rows: declared only when GET_VERSION's `features` names
@@ -64,9 +63,8 @@ std::string StringOr(const base::DictValue& dict, std::string_view key) {
 }
 
 bool IsDigits(std::string_view s) {
-  return !s.empty() && std::ranges::all_of(s, [](char c) {
-    return c >= '0' && c <= '9';
-  });
+  return !s.empty() &&
+         std::ranges::all_of(s, [](char c) { return c >= '0' && c <= '9'; });
 }
 
 // A double-quoted command argument; the compositor strips the quotes and the
@@ -98,8 +96,9 @@ bool IsView(const base::DictValue& node) {
 }
 
 struct WalkContext {
-  std::string workspace;      // id; empty in the scratchpad or above workspaces
-  bool in_workspace = false;  // below a workspace node (the scratchpad included)
+  std::string workspace;  // id; empty in the scratchpad or above workspaces
+  bool in_workspace =
+      false;  // below a workspace node (the scratchpad included)
   std::optional<int> column;
 };
 
@@ -207,7 +206,8 @@ bool ReplySucceeded(const base::Value& reply, std::string* error) {
   }
   bool ok = true;
   for (const base::Value& item : reply.GetList()) {
-    if (!item.is_dict() || !item.GetDict().FindBool("success").value_or(false)) {
+    if (!item.is_dict() ||
+        !item.GetDict().FindBool("success").value_or(false)) {
       ok = false;
       if (item.is_dict() && error->empty()) {
         *error = StringOr(item.GetDict(), "error");
@@ -348,7 +348,8 @@ std::optional<std::string> CommandText(const WmCommand& command,
       }
       // --no-auto-back-and-forth: with workspace_auto_back_and_forth in the
       // user's config, focusing the focused workspace would bounce away.
-      return base::StrCat({"workspace --no-auto-back-and-forth ", Quote(*name)});
+      return base::StrCat(
+          {"workspace --no-auto-back-and-forth ", Quote(*name)});
     }
     case WmCommand::Kind::kFocusWindow: {
       std::optional<std::string> criteria = window_criteria();
@@ -489,10 +490,10 @@ void ScrollAdapter::SendRefresh() {
   refresh_outputs_.reset();
   refresh_workspaces_.reset();
   for (uint32_t type : {kIpcGetOutputs, kIpcGetWorkspaces, kIpcGetTree}) {
-    client_->Request(type, std::string(),
-                     base::BindOnce(&ScrollAdapter::OnRefreshPart,
-                                    weak_factory_.GetWeakPtr(), generation_,
-                                    type));
+    client_->Request(
+        type, std::string(),
+        base::BindOnce(&ScrollAdapter::OnRefreshPart,
+                       weak_factory_.GetWeakPtr(), generation_, type));
   }
 }
 
@@ -592,8 +593,8 @@ void ScrollAdapter::OnEvent(uint32_t type, base::Value payload) {
       const std::string command =
           binding ? StringOr(*binding, "command") : std::string();
       if (base::StartsWith(command, kBindingPrefix)) {
-        delegate_->OnBinding(std::string_view(command).substr(
-            kBindingPrefix.size()));
+        delegate_->OnBinding(
+            std::string_view(command).substr(kBindingPrefix.size()));
       }
       return;
     }
@@ -653,9 +654,9 @@ void ScrollAdapter::OnDisconnected() {
   FailAllCommands(WmCommandError::kNotConnected);
   ResetConnectionState();
   // The client is destroyed by the reconnect, not here: this call came from it.
-  reconnect_timer_.Start(FROM_HERE, backoff_,
-                         base::BindOnce(&ScrollAdapter::Connect,
-                                        base::Unretained(this)));
+  reconnect_timer_.Start(
+      FROM_HERE, backoff_,
+      base::BindOnce(&ScrollAdapter::Connect, base::Unretained(this)));
   backoff_ = std::min(backoff_ * 2, options_.max_backoff);
   if (was_up) {
     delegate_->OnDisconnected();
@@ -666,8 +667,7 @@ void ScrollAdapter::Send(const WmCommand& command, CommandDone done) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto fail = [&](WmCommandError error) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(done), base::unexpected(error)));
+        FROM_HERE, base::BindOnce(std::move(done), base::unexpected(error)));
   };
   if (!client_ || !has_snapshot_) {
     fail(WmCommandError::kNotConnected);
@@ -685,16 +685,16 @@ void ScrollAdapter::Send(const WmCommand& command, CommandDone done) {
   const uint64_t serial = next_serial_++;
   PendingCommand pending;
   pending.kind = command.kind;
-  pending.tick = base::StrCat(
-      {"views-shell-", base::NumberToString(base::GetCurrentProcId()), "-",
-       base::NumberToString(serial)});
+  pending.tick = base::StrCat({"views-shell-",
+                               base::NumberToString(base::GetCurrentProcId()),
+                               "-", base::NumberToString(serial)});
   pending.done = std::move(done);
   pending_.emplace(serial, std::move(pending));
   VLOG(1) << "scroll adapter: RUN_COMMAND " << *text;
-  client_->Request(kIpcRunCommand, *text,
-                   base::BindOnce(&ScrollAdapter::OnCommandReply,
-                                  weak_factory_.GetWeakPtr(), generation_,
-                                  serial));
+  client_->Request(
+      kIpcRunCommand, *text,
+      base::BindOnce(&ScrollAdapter::OnCommandReply, weak_factory_.GetWeakPtr(),
+                     generation_, serial));
   base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&ScrollAdapter::OnCommandTimeout,
@@ -753,10 +753,9 @@ void ScrollAdapter::FailAllCommands(WmCommandError error) {
     serials.push_back(serial);
   }
   for (uint64_t serial : serials) {
-    const bool exited = pending_[serial].kind ==
-                            WmCommand::Kind::kSessionExit &&
-                        pending_[serial].state ==
-                            PendingCommand::State::kAwaitSnapshot;
+    const bool exited =
+        pending_[serial].kind == WmCommand::Kind::kSessionExit &&
+        pending_[serial].state == PendingCommand::State::kAwaitSnapshot;
     Finish(serial, exited ? base::expected<void, WmCommandError>(base::ok())
                           : base::unexpected(error));
   }

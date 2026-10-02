@@ -136,7 +136,8 @@ std::string LoadRecordedTranscript() {
   return content;
 }
 
-// --- The fake compositor ------------------------------------------------------
+// --- The fake compositor
+// ------------------------------------------------------
 
 struct Frame {
   uint32_t type = 0;
@@ -408,7 +409,8 @@ class FakeCompositor {
   std::vector<std::string> mismatches_;
 };
 
-// --- The delegate under test --------------------------------------------------
+// --- The delegate under test
+// --------------------------------------------------
 
 class TestDelegate : public CompositorAdapter::Delegate {
  public:
@@ -448,16 +450,15 @@ Outcome SendAndWait(ScrollAdapter& adapter,
                     TestDelegate& delegate,
                     const WmCommand& command) {
   base::test::TestFuture<Outcome> future;
-  adapter.Send(command,
-               base::BindOnce(
-                   [](TestDelegate* delegate,
-                      base::OnceCallback<void(Outcome)> callback,
-                      Result result) {
-                     std::move(callback).Run(
-                         Outcome{result, delegate->snapshots.size(),
-                                 delegate->FocusedName()});
-                   },
-                   &delegate, future.GetCallback()));
+  adapter.Send(
+      command,
+      base::BindOnce(
+          [](TestDelegate* delegate, base::OnceCallback<void(Outcome)> callback,
+             Result result) {
+            std::move(callback).Run(Outcome{result, delegate->snapshots.size(),
+                                            delegate->FocusedName()});
+          },
+          &delegate, future.GetCallback()));
   return future.Take();
 }
 
@@ -503,7 +504,8 @@ TEST_F(ScrollAdapterTest, SubscribesFirstThenPublishesTheRecordedState) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   adapter->Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
 
   // Subscribe on the events connection, then GET_VERSION, then one refresh.
   const auto received = fake.received();
@@ -522,9 +524,9 @@ TEST_F(ScrollAdapterTest, SubscribesFirstThenPublishesTheRecordedState) {
   EXPECT_EQ("scroll", adapter->name());
   EXPECT_TRUE(adapter->connected());
   const CapabilitySet& capabilities = adapter->capabilities();
-  for (const char* yes : {"workspaces.focus", "windows.move-to-workspace",
-                          "bindings.events", "scroll.scroller",
-                          "session.exit"}) {
+  for (const char* yes :
+       {"workspaces.focus", "windows.move-to-workspace", "bindings.events",
+        "scroll.scroller", "session.exit"}) {
     EXPECT_TRUE(capabilities.contains(yes)) << yes;
   }
   // Stock scroll has no GET_VERSION features array: no hook rows.
@@ -559,23 +561,24 @@ TEST_F(ScrollAdapterTest, EveryCommandLandsAfterItsEcho) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   adapter->Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
   const std::string window = delegate.last().windows.at(0).id;
   const std::string first_workspace = delegate.last().workspaces.at(0).id;
 
   // 1. Focus "3" by name: it does not exist yet, scroll creates it.
-  Outcome focus = SendAndWait(*adapter, delegate,
-                              Command(WmCommand::Kind::kFocusWorkspace, "", "",
-                                      "3"));
+  Outcome focus =
+      SendAndWait(*adapter, delegate,
+                  Command(WmCommand::Kind::kFocusWorkspace, "", "", "3"));
   ASSERT_TRUE(focus.result.has_value());
   EXPECT_EQ("3", focus.focused_at_done);  // the echo came before `done`
   const std::string three = delegate.last().FocusedWorkspace()->id;
   EXPECT_NE(first_workspace, three);
 
   // 2. Rename it by id.
-  Outcome rename = SendAndWait(
-      *adapter, delegate,
-      Command(WmCommand::Kind::kRenameWorkspace, three, "", "web"));
+  Outcome rename =
+      SendAndWait(*adapter, delegate,
+                  Command(WmCommand::Kind::kRenameWorkspace, three, "", "web"));
   ASSERT_TRUE(rename.result.has_value());
   EXPECT_EQ("web", rename.focused_at_done);
 
@@ -596,8 +599,8 @@ TEST_F(ScrollAdapterTest, EveryCommandLandsAfterItsEcho) {
 
   // 5. scratchpad show on an empty scratchpad: refused, no echo wait.
   const size_t before = delegate.snapshots.size();
-  Outcome scratchpad = SendAndWait(
-      *adapter, delegate, Command(WmCommand::Kind::kToggleScratchpad));
+  Outcome scratchpad = SendAndWait(*adapter, delegate,
+                                   Command(WmCommand::Kind::kToggleScratchpad));
   ASSERT_FALSE(scratchpad.result.has_value());
   EXPECT_EQ(WmCommandError::kRejected, scratchpad.result.error());
   EXPECT_EQ(before, scratchpad.snapshots_at_done);
@@ -609,10 +612,10 @@ TEST_F(ScrollAdapterTest, EveryCommandLandsAfterItsEcho) {
       one = &workspace;
     }
   }
-  Outcome back = SendAndWait(
-      *adapter, delegate,
-      one ? Command(WmCommand::Kind::kFocusWorkspace, one->id)
-          : Command(WmCommand::Kind::kFocusWorkspace, "", "", "1"));
+  Outcome back =
+      SendAndWait(*adapter, delegate,
+                  one ? Command(WmCommand::Kind::kFocusWorkspace, one->id)
+                      : Command(WmCommand::Kind::kFocusWorkspace, "", "", "1"));
   ASSERT_TRUE(back.result.has_value());
   EXPECT_EQ("1", back.focused_at_done);
 
@@ -656,7 +659,8 @@ TEST_F(ScrollAdapterTest, ReconnectsMidSnapshotAndResyncs) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   adapter->Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
 
   // The first pair was dropped before GET_TREE was answered; the second
   // delivered the whole state.
@@ -672,9 +676,9 @@ TEST_F(ScrollAdapterTest, ReconnectsMidSnapshotAndResyncs) {
   EXPECT_EQ(2, subscribes);
 
   // Commands work on the new connection.
-  Outcome focus = SendAndWait(
-      *adapter, delegate,
-      Command(WmCommand::Kind::kFocusWorkspace, "", "", "3"));
+  Outcome focus =
+      SendAndWait(*adapter, delegate,
+                  Command(WmCommand::Kind::kFocusWorkspace, "", "", "3"));
   ASSERT_TRUE(focus.result.has_value());
   EXPECT_EQ("3", focus.focused_at_done);
 }
@@ -690,10 +694,12 @@ TEST_F(ScrollAdapterTest, FailsWithNoEchoWhenTheTickNeverComes) {
   adapter_options.command_timeout = base::Milliseconds(300);
   ScrollAdapter adapter(adapter_options);
   adapter.Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
 
-  Outcome focus = SendAndWait(
-      adapter, delegate, Command(WmCommand::Kind::kFocusWorkspace, "", "", "3"));
+  Outcome focus =
+      SendAndWait(adapter, delegate,
+                  Command(WmCommand::Kind::kFocusWorkspace, "", "", "3"));
   ASSERT_FALSE(focus.result.has_value());
   EXPECT_EQ(WmCommandError::kNoEcho, focus.result.error());
   // The events still arrived and were folded; only the barrier is missing.
@@ -716,7 +722,8 @@ TEST_F(ScrollAdapterTest, DispatchesOnlyViewsShellBindings) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   adapter->Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
   EXPECT_EQ(std::vector<std::string>{"launcher toggle"}, delegate.bindings);
   // No `variant`: this is sway, without the scroll rows.
   EXPECT_EQ("sway", adapter->name());
@@ -728,15 +735,16 @@ TEST_F(ScrollAdapterTest, RefusesWhatItCannotSpell) {
   TestDelegate delegate;
   std::unique_ptr<ScrollAdapter> adapter = MakeAdapter();
   // Not started: not connected.
-  Outcome early = SendAndWait(*adapter, delegate,
-                              Command(WmCommand::Kind::kReloadConfig));
+  Outcome early =
+      SendAndWait(*adapter, delegate, Command(WmCommand::Kind::kReloadConfig));
   ASSERT_FALSE(early.result.has_value());
   EXPECT_EQ(WmCommandError::kNotConnected, early.result.error());
 
   FakeCompositor fake(socket_path_, ParseTranscript(LoadRecordedTranscript()),
                       {});
   adapter->Start(&delegate);
-  ASSERT_TRUE(base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return !delegate.snapshots.empty(); }));
   for (const WmCommand& command :
        {Command(WmCommand::Kind::kFocusWindow, "", "999"),
         Command(WmCommand::Kind::kFocusWindow, "", "5; exit"),
@@ -810,9 +818,9 @@ TEST(ScrollAdapterStaticTest, SpellsCommandsAndQuotesNames) {
             text(Command(WmCommand::Kind::kFocusWindow, "", "5")));
   EXPECT_EQ(R"(rename workspace "we\"b\\1" to "mail")",
             text(Command(WmCommand::Kind::kRenameWorkspace, "7", "", "mail")));
-  EXPECT_EQ(R"([con_id=5] move container to workspace "9")",
-            text(Command(WmCommand::Kind::kMoveWindowToWorkspace, "", "5",
-                         "9")));
+  EXPECT_EQ(
+      R"([con_id=5] move container to workspace "9")",
+      text(Command(WmCommand::Kind::kMoveWindowToWorkspace, "", "5", "9")));
   EXPECT_EQ("scratchpad show",
             text(Command(WmCommand::Kind::kToggleScratchpad)));
   EXPECT_EQ("exit", text(Command(WmCommand::Kind::kSessionExit)));

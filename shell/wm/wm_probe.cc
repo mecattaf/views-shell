@@ -14,7 +14,8 @@
 //                                "ECHO workspace <name>" and exit 0
 //   wm_probe --watch <seconds>   print every change the model reports for
 //                                that long, then exit 0
-//   --timeout-seconds <n>        give up after n seconds (default 20) and exit 1
+//   --timeout-seconds <n>        give up after n seconds (default 20) and exit
+//   1
 //   --socket <path>              use this socket instead of resolving one
 //
 // Every mode first prints "CONNECTED <compositor> <version>" and the
@@ -198,9 +199,7 @@ class Probe : public WmModel::Observer {
   void OnConfigReloaded(bool ok, std::string_view error) override {
     Watch({"RELOAD ", ok ? "ok" : "failed ", error});
   }
-  void OnDisconnected() override {
-    Print("DISCONNECTED");
-  }
+  void OnDisconnected() override { Print("DISCONNECTED"); }
 
  private:
   static std::string Show(const std::string& id) {
@@ -229,7 +228,8 @@ class Probe : public WmModel::Observer {
         return;
       }
       case Mode::kSwitch: {
-        auto done = base::BindOnce(&Probe::OnSwitchDone, base::Unretained(this));
+        auto done =
+            base::BindOnce(&Probe::OnSwitchDone, base::Unretained(this));
         const WmWorkspace* existing = nullptr;
         for (const WmWorkspace& workspace : model_->snapshot().workspaces) {
           if (workspace.name == target_) {
@@ -337,8 +337,8 @@ int Main(int argc, char** argv) {
           [](Probe* probe, bool watching, int seconds) {
             const bool ok = watching && probe->connected();
             if (!ok) {
-              Print(base::StrCat({"TIMEOUT after ",
-                                  base::NumberToString(seconds), " s"}));
+              Print(base::StrCat(
+                  {"TIMEOUT after ", base::NumberToString(seconds), " s"}));
             }
             probe->Finish(ok ? 0 : 1);
           },

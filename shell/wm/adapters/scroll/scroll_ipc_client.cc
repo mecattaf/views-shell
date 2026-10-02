@@ -43,8 +43,9 @@ constexpr uint32_t kMaxPayloadLength = 64u << 20;
 std::string RunGetSocketPath() {
   std::string output;
   int exit_code = -1;
-  if (!base::GetAppOutputWithExitCode(std::vector<std::string>{"scroll", "--get-socketpath"}, &output,
-                                      &exit_code) ||
+  if (!base::GetAppOutputWithExitCode(
+          std::vector<std::string>{"scroll", "--get-socketpath"}, &output,
+          &exit_code) ||
       exit_code != 0) {
     return std::string();
   }
@@ -57,8 +58,7 @@ std::string NewestMatch(const base::FilePath& dir, const std::string& pattern) {
                              base::FileEnumerator::FILES, pattern);
   base::FilePath best;
   base::Time best_time;
-  for (base::FilePath path = files.Next(); !path.empty();
-       path = files.Next()) {
+  for (base::FilePath path = files.Next(); !path.empty(); path = files.Next()) {
     const base::Time modified = files.GetInfo().GetLastModifiedTime();
     if (best.empty() || modified > best_time) {
       best = path;
@@ -144,8 +144,7 @@ class ScrollIpcClient::Connection : public base::IOWatcher::FdWatcher {
   bool is_events() const { return is_events_; }
 
   void Connect() {
-    fd_.reset(
-        ::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
+    fd_.reset(::socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0));
     if (!fd_.is_valid()) {
       PLOG(ERROR) << "scroll ipc: socket()";
       Fail();
@@ -198,8 +197,8 @@ class ScrollIpcClient::Connection : public base::IOWatcher::FdWatcher {
     for (;;) {
       const ssize_t n = ::read(fd, buf.data(), buf.size());
       if (n > 0) {
-        read_buf_.append(
-            base::as_string_view(base::span(buf).first(static_cast<size_t>(n))));
+        read_buf_.append(base::as_string_view(
+            base::span(buf).first(static_cast<size_t>(n))));
         continue;
       }
       if (n == 0) {
@@ -246,8 +245,8 @@ class ScrollIpcClient::Connection : public base::IOWatcher::FdWatcher {
       return;
     }
     while (!write_buf_.empty()) {
-      const ssize_t n = ::send(fd_.get(), write_buf_.data(), write_buf_.size(),
-                               MSG_NOSIGNAL);
+      const ssize_t n =
+          ::send(fd_.get(), write_buf_.data(), write_buf_.size(), MSG_NOSIGNAL);
       if (n > 0) {
         write_buf_.erase(0, static_cast<size_t>(n));
         continue;
@@ -363,7 +362,8 @@ void ScrollIpcClient::Core::Init() {
     socket_path_ = ResolveSocketPath();
   }
   VLOG(1) << "scroll ipc: connecting to " << socket_path_;
-  events_ = std::make_unique<Connection>(socket_path_, this, /*is_events=*/true);
+  events_ =
+      std::make_unique<Connection>(socket_path_, this, /*is_events=*/true);
   requests_ =
       std::make_unique<Connection>(socket_path_, this, /*is_events=*/false);
   events_->Connect();
@@ -398,7 +398,8 @@ void ScrollIpcClient::Core::Fail() {
     PostReply(std::move(reply), std::nullopt);
   }
   ui_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&ScrollIpcClient::DeliverDisconnected, client_));
+      FROM_HERE,
+      base::BindOnce(&ScrollIpcClient::DeliverDisconnected, client_));
 }
 
 void ScrollIpcClient::Core::OnFrame(Connection* connection,
@@ -428,7 +429,8 @@ void ScrollIpcClient::Core::OnFrame(Connection* connection,
       }
       subscribed_ = true;
       ui_task_runner_->PostTask(
-          FROM_HERE, base::BindOnce(&ScrollIpcClient::DeliverConnected, client_));
+          FROM_HERE,
+          base::BindOnce(&ScrollIpcClient::DeliverConnected, client_));
       return;
     }
     if (!(type & kIpcEventBit) || !value) {
@@ -437,8 +439,8 @@ void ScrollIpcClient::Core::OnFrame(Connection* connection,
       return;
     }
     ui_task_runner_->PostTask(
-        FROM_HERE, base::BindOnce(&ScrollIpcClient::DeliverEvent, client_,
-                                  type, std::move(*value)));
+        FROM_HERE, base::BindOnce(&ScrollIpcClient::DeliverEvent, client_, type,
+                                  std::move(*value)));
     return;
   }
 
@@ -554,9 +556,8 @@ void ScrollIpcClient::Request(uint32_t type,
   // core_ is deleted on the IO thread only after this object is gone, and
   // tasks on the IO thread run in order, so Unretained is safe here.
   io_thread_.task_runner()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Core::Request, base::Unretained(core_.get()), type,
-                     std::move(payload), std::move(reply)));
+      FROM_HERE, base::BindOnce(&Core::Request, base::Unretained(core_.get()),
+                                type, std::move(payload), std::move(reply)));
 }
 
 void ScrollIpcClient::DeliverConnected() {

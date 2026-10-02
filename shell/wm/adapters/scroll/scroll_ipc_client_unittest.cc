@@ -80,7 +80,8 @@ bool ReadExactly(int fd, std::string& out, size_t n) {
 
 uint32_t U32At(const std::string& bytes, size_t offset) {
   std::array<uint8_t, 4> raw;
-  base::span(raw).copy_from(base::as_byte_span(bytes).subspan(offset).first<4>());
+  base::span(raw).copy_from(
+      base::as_byte_span(bytes).subspan(offset).first<4>());
   return base::U32FromNativeEndian(raw);
 }
 
@@ -164,7 +165,8 @@ class ScriptedServer {
       if (::poll(&pfd, 1, 50) <= 0) {
         continue;
       }
-      const int fd = ::accept4(listen_fd_.get(), nullptr, nullptr, SOCK_CLOEXEC);
+      const int fd =
+          ::accept4(listen_fd_.get(), nullptr, nullptr, SOCK_CLOEXEC);
       if (fd < 0) {
         continue;
       }
@@ -252,7 +254,8 @@ TEST_F(ScrollIpcClientTest, ReassemblesSplitAndCoalescedEventFrames) {
   RecordingObserver observer;
   ScrollIpcClient client(socket_path_.value(), {"workspace", "window", "tick"});
   client.Start(&observer);
-  ASSERT_TRUE(base::test::RunUntil([&] { return observer.events.size() == 3; }));
+  ASSERT_TRUE(
+      base::test::RunUntil([&] { return observer.events.size() == 3; }));
   EXPECT_EQ(1, observer.connected);
   EXPECT_EQ(0, observer.disconnected);
   const uint32_t types[] = {kIpcWorkspaceEvent, kIpcWindowEvent, kIpcTickEvent};
@@ -331,7 +334,8 @@ TEST_F(ScrollIpcClientTest, AnswersPipelinedRequestsInOrder) {
   EXPECT_EQ(1u, workspaces.Get()->GetList().size());
   ASSERT_TRUE(command.Wait());
   ASSERT_TRUE(command.Get().has_value());
-  EXPECT_TRUE(command.Get()->GetList()[0].GetDict().FindBool("success").value());
+  EXPECT_TRUE(
+      command.Get()->GetList()[0].GetDict().FindBool("success").value());
   // A reply that is not JSON answers nullopt, and the stream goes on.
   ASSERT_TRUE(garbage.Wait());
   EXPECT_FALSE(garbage.Get().has_value());
@@ -349,8 +353,9 @@ TEST_F(ScrollIpcClientTest, AnswersPipelinedRequestsInOrder) {
             requests[0]);
   EXPECT_EQ(std::make_pair(uint32_t{kIpcGetWorkspaces}, std::string()),
             requests[1]);
-  EXPECT_EQ(std::make_pair(uint32_t{kIpcRunCommand}, std::string("workspace 3")),
-            requests[2]);
+  EXPECT_EQ(
+      std::make_pair(uint32_t{kIpcRunCommand}, std::string("workspace 3")),
+      requests[2]);
 }
 
 TEST_F(ScrollIpcClientTest, AnswersPendingRequestsWhenTheServerCloses) {
@@ -411,14 +416,15 @@ class FakeEnvironment : public base::Environment {
 TEST_F(ScrollIpcClientTest, ResolvesTheSocketInScrollOrder) {
   FakeEnvironment env;
   std::string socketpath_output;
-  auto get_socketpath = base::BindLambdaForTesting(
-      [&]() { return socketpath_output; });
+  auto get_socketpath =
+      base::BindLambdaForTesting([&]() { return socketpath_output; });
 
   EXPECT_EQ("", ScrollIpcClient::ResolveSocketPathFrom(env, get_socketpath));
 
   // The $XDG_RUNTIME_DIR scan, scroll before sway.
   env.vars["XDG_RUNTIME_DIR"] = temp_dir_.GetPath().value();
-  const base::FilePath sway = temp_dir_.GetPath().AppendASCII("sway-ipc.1000.7.sock");
+  const base::FilePath sway =
+      temp_dir_.GetPath().AppendASCII("sway-ipc.1000.7.sock");
   ASSERT_TRUE(base::WriteFile(sway, ""));
   EXPECT_EQ(sway.value(),
             ScrollIpcClient::ResolveSocketPathFrom(env, get_socketpath));

@@ -35,9 +35,9 @@ using CapabilitySet = base::flat_set<Capability>;
 // from plugins, the CLI or Chrome; only adapters spell them.
 struct WmCommand {
   enum class Kind {
-    kFocusWorkspace,         // workspace (an id), or name when workspace is empty
-    kFocusWindow,            // window
-    kRenameWorkspace,        // workspace, name (the new name)
+    kFocusWorkspace,   // workspace (an id), or name when workspace is empty
+    kFocusWindow,      // window
+    kRenameWorkspace,  // workspace, name (the new name)
     kMoveWindowToWorkspace,  // window, and workspace or (when empty) name
     kToggleScratchpad,       // no arguments
     kSessionExit,            // no arguments
@@ -64,7 +64,8 @@ Capability RequiredCapability(WmCommand::Kind kind);
 enum class WmCommandError {
   kNotConnected,
   kCapabilityMissing,
-  kInvalidArgument,  // an id the current snapshot does not know, or a missing name
+  kInvalidArgument,  // an id the current snapshot does not know, or a missing
+                     // name
   kRejected,         // the compositor answered with an error
   kNoEcho,           // the command was accepted but the barrier never arrived
 };
@@ -76,8 +77,8 @@ class CompositorAdapter {
   class Delegate {
    public:
     virtual ~Delegate() = default;
-    // A full snapshot: outputs, workspaces, windows, focus, fullscreen, urgency.
-    // Also sent first on every (re)connect.
+    // A full snapshot: outputs, workspaces, windows, focus, fullscreen,
+    // urgency. Also sent first on every (re)connect.
     virtual void OnSnapshot(WmSnapshot snapshot) = 0;
     // scroll and sway only: a `nop views-shell <payload>` binding fired.
     virtual void OnBinding(std::string_view payload) = 0;
@@ -104,7 +105,8 @@ class CompositorAdapter {
       std::string label;
       gfx::Rect rect;
     };
-    // scroll.jump with hook H1: scroll owns the keyboard between kBegin and kEnd.
+    // scroll.jump with hook H1: scroll owns the keyboard between kBegin and
+    // kEnd.
     virtual void OnJump(JumpPhase phase, std::vector<JumpLabel> labels) {}
     // overview.events (hook H2 on scroll; niri without geometry).
     virtual void OnOverview(
