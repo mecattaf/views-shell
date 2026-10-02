@@ -315,24 +315,24 @@ int Main(int argc, char** argv) {
   logging::InitLogging(settings);
   base::FeatureList::InitInstance(std::string(), std::string());
 
-  const base::CommandLine::StringVector& argv =
+  const base::CommandLine::StringVector& args =
       base::CommandLine::ForCurrentProcess()->argv();
   std::optional<Probe::Mode> mode;
   std::string target;
   int watch_seconds = 0;
-  if (Flag(argv, "dump")) {
+  if (Flag(args, "dump")) {
     mode = Probe::Mode::kDump;
-  } else if (std::optional<std::string> name = Flag(argv, "switch")) {
+  } else if (std::optional<std::string> name = Flag(args, "switch")) {
     mode = Probe::Mode::kSwitch;
     target = *name;
-  } else if (std::optional<std::string> seconds = Flag(argv, "watch")) {
+  } else if (std::optional<std::string> seconds = Flag(args, "watch")) {
     mode = Probe::Mode::kWatch;
     if (!base::StringToInt(*seconds, &watch_seconds) || watch_seconds <= 0) {
       mode.reset();
     }
   }
   int timeout_seconds = 20;
-  if (std::optional<std::string> timeout = Flag(argv, "timeout-seconds");
+  if (std::optional<std::string> timeout = Flag(args, "timeout-seconds");
       timeout && (!base::StringToInt(*timeout, &timeout_seconds) ||
                   timeout_seconds <= 0)) {
     mode.reset();
@@ -346,7 +346,7 @@ int Main(int argc, char** argv) {
   base::RunLoop run_loop;
 
   scroll::ScrollAdapter::Options options;
-  options.socket_path = Flag(argv, "socket").value_or(std::string());
+  options.socket_path = Flag(args, "socket").value_or(std::string());
   scroll::ScrollAdapter adapter(options);
   WmModel model(&adapter);
   Probe probe(*mode, target, &adapter, &model, run_loop.QuitClosure());
