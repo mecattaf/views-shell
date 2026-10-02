@@ -59,10 +59,13 @@ source_set("tabs") {
     "tabs/workspace_source.h",
     "tabs/workspace_strip.cc",
     "tabs/workspace_strip.h",
+    "tabs/workspace_strip_model_binding.cc",
+    "tabs/workspace_strip_model_binding.h",
   ]
 
   deps = [
     "tabs/vector_icons",
+    "wm",
     "//base",
     "//cc/paint",
     "//skia",
@@ -84,6 +87,33 @@ source_set("tabs") {
     "//chromeos/*",
     "//content/*",
   ]
+}
+
+# Run by views_shell_unittests, filter WorkspaceStripModelBinding*: the
+# ported strip on a WmModel with a fake adapter (rule R6), and its local
+# selection mode. The widget tests need a compositor (WAYLAND_DISPLAY) on this
+# Wayland-only build and skip without one; the bench runs them under
+# worker/headless.sh.
+source_set("tabs_unittests") {
+  testonly = true
+  sources = [ "tabs/workspace_strip_model_binding_unittest.cc" ]
+  deps = [
+    ":tabs",
+    "style",
+    "wm",
+    "//base",
+    "//base/test:test_support",
+    "//mojo/core/embedder",
+    "//testing/gtest",
+    "//ui/accessibility:test_support",
+    "//ui/base",
+    "//ui/events",
+    "//ui/gfx/geometry",
+    "//ui/gl:test_support",
+    "//ui/views",
+    "//ui/views:test_support",
+  ]
+  data_deps = [ "//ui/resources:ui_test_pak" ]
 }
 
 # The registered chapter-2 seams. GN only generates targets in BUILD.gn files
@@ -195,6 +225,7 @@ executable("views_shell") {
 # with none filled yet it builds and runs zero tests.
 test("views_shell_unittests") {
   deps = [
+    ":tabs_unittests",
     "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",

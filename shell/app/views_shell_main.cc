@@ -35,9 +35,13 @@
 //                             logs "TYPED <text>" (app/keyboard_probe_view.h).
 //
 // --left-tabs puts the workspace strip (Chrome's tab, ported under tabs/; one
-// tab per workspace) and a content area on the "left-tabs" surface, a panel on
-// the left edge. --workspace-source=static|niri picks the workspaces; without
-// it, niri when NIRI_SOCKET is set, else a static list.
+// tab per workspace) on the "left-tabs" surface, a rail on the left edge with
+// an exclusive zone. --workspace-source=scroll|static|niri picks the
+// workspaces: scroll is the compositor adapter over i3-ipc (the strip follows
+// its snapshots and a click asks it to focus the workspace, rule R6); static
+// and niri answer once. Without the flag: scroll when $SCROLLSOCK, $SWAYSOCK
+// or $I3SOCK is set, else niri when $NIRI_SOCKET is set, else static.
+// --demo-workspace-switch works here as on the bar.
 //
 // --theme <dir> (or --theme=<dir>) wears an Omarchy theme directory (rule R17,
 // style/): it is read and resolved before anything else and applied before the
@@ -53,6 +57,7 @@
 #include "base/at_exit.h"
 #include "base/command_line.h"
 #include "base/debug/stack_trace.h"
+#include "base/environment.h"
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
@@ -106,13 +111,14 @@ int ShellMain() {
   // The demos run from the bar; without --bar there is none (SPEC.md C4.3).
   content_params.demo_popup =
       content_params.bar && command_line->HasSwitch(kDemoPopup);
-  content_params.demo_workspace_switch =
-      content_params.bar && command_line->HasSwitch(kDemoWorkspaceSwitch);
   content_params.demo_keyboard =
       content_params.bar && command_line->HasSwitch(kDemoKeyboard);
   // The workspace strip is its own surface, not the bar's contents.
   content_params.left_tabs =
       !content_params.bar && command_line->HasSwitch(kLeftTabs);
+  // The switch demo runs from either surface.
+  content_params.demo_workspace_switch =
+      command_line->HasSwitch(kDemoWorkspaceSwitch);
   if (!content_params.bar && !content_params.left_tabs) {
     // Rule R1: no xdg_toplevel, so no window mode. Refused before anything
     // connects to the compositor. (Chapter 1's C3.4 window run is superseded.)
@@ -144,13 +150,24 @@ int ShellMain() {
     content_params.theme_dir = theme_dir;
   }
   if (content_params.left_tabs) {
-    const std::string source_name =
+    std::string source_name =
         command_line->GetSwitchValueASCII(kWorkspaceSource);
-    content_params.workspace_source = CreateWorkspaceSource(source_name);
-    if (!content_params.workspace_source) {
-      LOG(ERROR) << "--" << kWorkspaceSource << " wants static or niri, not "
-                 << source_name;
-      return 2;
+    if (source_name.empty()) {
+      auto env = base::Environment::Create();
+      source_name = env->HasVar("SCROLLSOCK") || env->HasVar("SWAYSOCK") ||
+                            env->HasVar("I3SOCK")
+                        ? "scroll"
+                        : "";
+    }
+    if (source_name == "scroll") {
+      content_params.left_tabs_from_compositor = true;
+    } else {
+      content_params.workspace_source = CreateWorkspaceSource(source_name);
+      if (!content_params.workspace_source) {
+        LOG(ERROR) << "--" << kWorkspaceSource
+                   << " wants scroll, static or niri, not " << source_name;
+        return 2;
+      }
     }
   }
 

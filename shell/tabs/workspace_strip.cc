@@ -23,8 +23,8 @@
 #include "views_shell/tabs/unpinned_tab_container_view_layout.h"
 
 namespace views_shell {
-WorkspaceStrip::WorkspaceStrip(SelectCallback on_select)
-    : on_select_(std::move(on_select)) {
+WorkspaceStrip::WorkspaceStrip(SelectCallback on_select, SelectionMode mode)
+    : on_select_(std::move(on_select)), mode_(mode) {
   // As VerticalTabStripRegionView: uncollapsed vertical padding above and
   // below the tabs. Chrome's top padding comes from its top button container,
   // which the strip does not have.
@@ -51,6 +51,7 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
 
   workspaces_ = std::move(workspaces);
   active_index_ = -1;
+  requested_index_ = -1;
   for (size_t i = 0; i < workspaces_.size(); ++i) {
     if (workspaces_[i].active && active_index_ < 0) {
       active_index_ = static_cast<int>(i);
@@ -70,6 +71,13 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
   PreferredSizeChanged();
   InvalidateLayout();
   SchedulePaint();
+}
+
+Tab* WorkspaceStrip::GetTabAt(int index) {
+  if (index < 0 || index >= GetTabCount()) {
+    return nullptr;
+  }
+  return tabs_[index];
 }
 
 gfx::Size WorkspaceStrip::CalculatePreferredSize(
@@ -109,6 +117,19 @@ void WorkspaceStrip::OnThemeChanged() {
 void WorkspaceStrip::SelectTab(Tab* tab, const ui::Event& event) {
   const int index = IndexOf(tab);
   if (index < 0 || index == active_index_) {
+    return;
+  }
+  if (mode_ == SelectionMode::kRequest) {
+    // Rule R6: ask, and wait for the echo. The strip redraws from
+    // SetWorkspaces, never from here. Tab asks on the press and on the
+    // release: one request.
+    if (index == requested_index_) {
+      return;
+    }
+    requested_index_ = index;
+    if (on_select_) {
+      on_select_.Run(workspaces_[index]);
+    }
     return;
   }
   Tab* previous = active_index_ >= 0 ? tabs_[active_index_].get() : nullptr;

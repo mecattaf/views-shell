@@ -11,23 +11,27 @@
 //   1. theme: Chrome's tab colours (tabs/tab_color_mixer.h) and, with
 //      --theme, the resolved theme on the native theme and the pin mixer
 //      (style/theme_mixer.h), before the first widget;
-//   2. the compositor: with --bar, a ScrollAdapter (wm/adapters/scroll) on
+//   2. the compositor: with --bar, or with --left-tabs fed by the compositor
+//      (--workspace-source=scroll), a ScrollAdapter (wm/adapters/scroll) on
 //      the socket $SCROLLSOCK, $SWAYSOCK or $I3SOCK names, feeding a WmModel.
-//      Without a socket the program runs on, says so once, and the bar has no
-//      workspaces;
+//      Without a socket the program runs on, says so once, and the strip has
+//      no workspaces;
 //   3. notifications: with --bar, when $DBUS_SESSION_BUS_ADDRESS is set, the
 //      freedesktop notification daemon (notifications/notification_service.h),
 //      whose popups are their own layer surfaces ("notification" SurfaceSpec);
 //   4. surfaces: the bar (BarView with the WorkspaceStrip in its left section,
 //      the focused window's title in the centre and the clock on the right)
-//      or, with --left-tabs, the ported tab strip; with --demo-keyboard also
-//      the "modal" surface holding the KeyboardProbeView.
+//      or, with --left-tabs, the ported tab strip (tabs/workspace_strip.h)
+//      filling the "left-tabs" surface, fed by the WmModel through
+//      tabs/workspace_strip_model_binding.h or by a one-shot WorkspaceSource;
+//      with --demo-keyboard also the "modal" surface holding the
+//      KeyboardProbeView.
 //
-// Rule R6: the bar redraws from WmModel observer callbacks only. ShellContent
-// observes the model for the centre title and for --demo-workspace-switch,
-// which one second after the bar's first paint asks the model to focus the
-// workspace named "3" and logs "ECHO workspace 3" when the model reports it
-// focused.
+// Rule R6: the bar and the strip redraw from WmModel observer callbacks only.
+// ShellContent observes the model for the centre title and for
+// --demo-workspace-switch, which one second after the bar's first paint (or
+// after the left-tabs surface is shown) asks the model to focus the workspace
+// named "3" and logs "ECHO workspace 3" when the model reports it focused.
 
 #ifndef VIEWS_SHELL_APP_SHELL_CONTENT_H_
 #define VIEWS_SHELL_APP_SHELL_CONTENT_H_
@@ -73,15 +77,17 @@ struct ShellContentParams {
   // Exactly one of the two surfaces.
   bool bar = false;
   bool left_tabs = false;
-  // Demos (bar only).
+  // Demos (bar only, except demo_workspace_switch, which both surfaces run).
   bool demo_popup = false;
   bool demo_workspace_switch = false;
   bool demo_keyboard = false;
   // The theme, resolved by main before the bootstrap; unset: stock colours.
   std::optional<ResolvedTheme> theme;
   base::FilePath theme_dir;
-  // --left-tabs only.
+  // --left-tabs only: exactly one of the two. A one-shot source (static,
+  // niri), or the compositor adapter's WmModel (--workspace-source=scroll).
   std::unique_ptr<WorkspaceSource> workspace_source;
+  bool left_tabs_from_compositor = false;
 };
 
 class ShellContent : public WmModel::Observer,
