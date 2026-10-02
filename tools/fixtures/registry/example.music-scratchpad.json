@@ -68,7 +68,7 @@
       "anchor": null,
       "defaultSection": "right",
       "id": "button",
-      "keyboard": "on-demand",
+      "keyboard": "none",
       "kind": "bar-widget",
       "prefix": null,
       "ui": "ui/button.json",

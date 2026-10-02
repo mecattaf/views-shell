@@ -15,7 +15,7 @@
       "confirm": false,
       "enablement": null,
       "handler": {
-        "open": "settings"
+        "open": "shortcuts"
       },
       "icon": "settings",
       "id": "views-shell.qs-power-footer/open-settings",
