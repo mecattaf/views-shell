@@ -2,13 +2,88 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w2b fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w2b lands.
+# The style kit (style/INVENTORY.md section 2, style/tokens/README.md): an
+# Omarchy theme directory read (theme_directory), resolved with a port of
+# Omarchy's cascade (omarchy_cascade, MIT), and applied through ui::ColorProvider
+# (theme_mixer: the layer-1 seed and the one layer-2 pin mixer); plus the kit's
+# LayoutProvider and TypographyProvider.
+#
+# The binding from Omarchy keys to colour ids is data, compiled in:
+# :theme_map_table turns //views_shell/data/style/theme-map.json (the
+# repository's style/theme-map.json, mirrored by tools/bench/worker/wire.sh)
+# into a table of ui::ColorId enumerators, so a name that is not a real id
+# fails the build.
+
+theme_map_json = "//views_shell/data/style/theme-map.json"
+
+action("theme_map_table") {
+  script = "gen_theme_map.py"
+  inputs = [ theme_map_json ]
+  outputs = [ "$target_gen_dir/theme_map_table.cc" ]
+  args = [
+    rebase_path(theme_map_json, root_build_dir),
+    rebase_path(outputs[0], root_build_dir),
+  ]
+}
 
 source_set("style") {
+  sources = [
+    "layout_provider.cc",
+    "layout_provider.h",
+    "omarchy_cascade.cc",
+    "omarchy_cascade.h",
+    "theme_directory.cc",
+    "theme_directory.h",
+    "theme_mixer.cc",
+    "theme_mixer.h",
+    "typography_provider.cc",
+    "typography_provider.h",
+  ]
+  sources += get_target_outputs(":theme_map_table")
+
+  public_deps = [
+    "//base",
+    "//skia",
+    "//ui/base",
+    "//ui/color",
+    "//ui/color:color_provider_key",
+    "//ui/gfx/geometry",
+
+    # ThemeController::Apply takes the ui::NativeTheme it seeds.
+    "//ui/native_theme",
+    "//ui/views",
+  ]
+  deps = [
+    ":theme_map_table",
+    "//ui/color:mixers",
+  ]
 }
 
 source_set("unittests") {
   testonly = true
+  sources = [
+    "omarchy_cascade_unittest.cc",
+    "theme_directory_unittest.cc",
+    "theme_kit_providers_unittest.cc",
+    "theme_mixer_unittest.cc",
+  ]
+  deps = [
+    ":style",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//ui/color",
+    "//ui/color:mixers",
+    "//ui/native_theme",
+    "//ui/views",
+  ]
+
+  # The byte fixtures and the example themes, read through
+  # base::DIR_SRC_TEST_DATA_ROOT as //views_shell/data/... (wire.sh mirrors
+  # style/ and examples/ there).
+  data = [
+    "//views_shell/data/examples/themes/",
+    "//views_shell/data/style/theme-map.json",
+    "//views_shell/data/style/tokens/fixtures/",
+  ]
 }

@@ -25,8 +25,9 @@
 //   8. aura::Env with that context factory;
 //   9. the input method (ui::InitializeInputMethod());
 //  10. the desktop screen;
-//  11. the ShellViewsDelegate (its LayoutProvider, every top-level Widget a
-//      DesktopNativeWidgetAura) and wm::WMState.
+//  11. the ShellViewsDelegate (the kit's ShellLayoutProvider; every top-level
+//      Widget a DesktopNativeWidgetAura on a registered SurfaceSpec, rule R1)
+//      and wm::WMState.
 
 #ifndef VIEWS_SHELL_APP_SHELL_BOOTSTRAP_H_
 #define VIEWS_SHELL_APP_SHELL_BOOTSTRAP_H_

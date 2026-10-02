@@ -10,26 +10,38 @@
 // --software-compositing (the default) or --gpu-compositing picks how the
 // in-process viz draws (app/views_shell_context_factory.h).
 //
-// With --bar the widget is created as a wlr-layer-shell surface (rule R1:
-// Views only on layer-shell surfaces): top layer, anchored to the top edge,
-// 32 px high, exclusive zone, namespace "views-shell-bar". With --bar
-// --demo-popup a views::MenuRunner menu opens from the bar one second after
-// the bar's first paint; on Wayland the menu becomes an xdg_popup
-// parented onto the layer surface via zwlr_layer_surface_v1.get_popup.
+// views-shell draws only on layer surfaces (rule R1): every top-level widget
+// is created on a registered SurfaceSpec (app/surface_spec.h), and the
+// ViewsDelegate CHECKs it. There is no window mode: without --bar or
+// --left-tabs the program says so and exits 2.
 //
-// With --left-tabs the window's contents are the workspace strip on the left
-// (Chrome's tab, ported under tabs/; one tab per workspace) and a black
-// content area on the right. --workspace-source=static|niri picks the
-// workspaces; without it, niri when NIRI_SOCKET is set, else a static list.
+// --bar puts the bar (bar/bar_view.h: a FlexLayout row with the clock on the
+// right) on the "bar" surface: top layer, anchored to the top edge, 32 px
+// high, exclusive zone, namespace "views-shell-bar". With --bar --demo-popup a
+// views::MenuRunner menu opens from the bar one second after the bar's first
+// paint; on Wayland the menu becomes an xdg_popup parented onto the layer
+// surface via zwlr_layer_surface_v1.get_popup.
+//
+// --left-tabs puts the workspace strip (Chrome's tab, ported under tabs/; one
+// tab per workspace) and a content area on the "left-tabs" surface, a panel on
+// the left edge. --workspace-source=static|niri picks the workspaces; without
+// it, niri when NIRI_SOCKET is set, else a static list.
+//
+// --theme <dir> (or --theme=<dir>) wears an Omarchy theme directory (rule R17, style/): it is
+// read and resolved before anything else and applied before the first widget.
+// Without --theme the colours are stock ui/color.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "base/at_exit.h"
+#include "base/check.h"
 #include "base/command_line.h"
 #include "base/debug/stack_trace.h"
+#include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
@@ -38,24 +50,25 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/default_clock.h"
 #include "base/time/time.h"
-#include "third_party/skia/include/core/SkColor.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/color/color_id.h"
 #include "ui/color/color_provider_manager.h"
-#include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/menus/simple_menu_model.h"
-#include "ui/platform_window/platform_window_init_properties.h"
+#include "ui/native_theme/native_theme.h"
 #include "ui/views/background.h"
-#include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/layout/box_layout.h"
-#include "ui/views/layout/fill_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_delegate.h"
 #include "views_shell/app/shell_bootstrap.h"
+#include "views_shell/app/surface_spec.h"
 #include "views_shell/app/views_shell_context_factory.h"
+#include "views_shell/bar/bar_view.h"
+#include "views_shell/style/theme_mixer.h"
 #include "views_shell/tabs/tab_color_mixer.h"
 #include "views_shell/tabs/workspace_source.h"
 #include "views_shell/tabs/workspace_strip.h"
@@ -71,33 +84,7 @@ constexpr char kLeftTabs[] = "left-tabs";
 constexpr char kWorkspaceSource[] = "workspace-source";
 constexpr char kSoftwareCompositing[] = "software-compositing";
 constexpr char kGpuCompositing[] = "gpu-compositing";
-
-// The bar (SPEC.md C4.2, open question Q2's default): top layer, anchored to
-// the top edge, 32 px high, exclusive zone of the same height, namespace
-// "views-shell-bar".
-constexpr int kBarHeight = 32;
-constexpr char kBarNamespace[] = "views-shell-bar";
-
-// Contents view that reports its first paint, so --demo-popup can
-// open the menu one second after the first frame (SPEC.md C4.3).
-class FirstPaintView : public views::View {
- public:
-  explicit FirstPaintView(base::OnceClosure on_first_paint)
-      : on_first_paint_(std::move(on_first_paint)) {}
-  FirstPaintView(const FirstPaintView&) = delete;
-  FirstPaintView& operator=(const FirstPaintView&) = delete;
-
-  // views::View:
-  void OnPaint(gfx::Canvas* canvas) override {
-    views::View::OnPaint(canvas);
-    if (on_first_paint_) {
-      std::move(on_first_paint_).Run();
-    }
-  }
-
- private:
-  base::OnceClosure on_first_paint_;
-};
+constexpr char kTheme[] = "theme";
 
 // Menu command target for the --demo-popup menu. The items do nothing: the
 // demo proves the xdg_popup path, not command handling.
@@ -111,10 +98,10 @@ class DemoMenuDelegate : public ui::SimpleMenuModel::Delegate {
   bool IsCommandIdEnabled(int command_id) const override { return true; }
 };
 
-// The one window: a black ground with the label, as in the All Black theme
-// (style/tokens/README.md). Closing it ends the program. With --demo-popup it
-// also owns the MenuRunner that opens from the bar one second after the first
-// painted frame.
+// The delegate of the one top-level widget: the bar (BarView), or with
+// --left-tabs the workspace strip. Closing it ends the program. With
+// --demo-popup it also owns the MenuRunner that opens from the bar one second
+// after the bar's first painted frame.
 class ShellWindowDelegate : public views::WidgetDelegate {
  public:
   // `workspace_source` is non-null only with --left-tabs.
@@ -129,35 +116,19 @@ class ShellWindowDelegate : public views::WidgetDelegate {
       SetContentsView(BuildLeftTabsContents());
       return;
     }
-    base::OnceClosure on_first_paint;
+    auto bar = std::make_unique<BarView>(base::DefaultClock::GetInstance());
     if (demo_popup) {
-      // The contents view reports its first paint; the menu then
-      // opens one second later (SPEC.md C4.3).
-      on_first_paint = base::BindOnce(&ShellWindowDelegate::ScheduleDemoPopup,
-                                      base::Unretained(this));
+      // The bar reports its first paint; the menu then opens one second
+      // later (SPEC.md C4.3).
+      bar->SetFirstPaintCallback(base::BindOnce(
+          &ShellWindowDelegate::ScheduleDemoPopup, base::Unretained(this)));
     }
-    SetContentsView(BuildContents(std::move(on_first_paint)));
+    SetContentsView(std::move(bar));
   }
   ~ShellWindowDelegate() override = default;
 
-  // Builds the contents: black ground, white label.
-  std::unique_ptr<views::View> BuildContents(
-      base::OnceClosure on_first_paint) {
-    auto contents = on_first_paint
-                        ? std::make_unique<FirstPaintView>(
-                              std::move(on_first_paint))
-                        : std::make_unique<views::View>();
-    contents->SetLayoutManager(std::make_unique<views::FillLayout>());
-    contents->SetBackground(views::CreateSolidBackground(SK_ColorBLACK));
-    auto* label =
-        contents->AddChildView(std::make_unique<views::Label>(u"views-shell"));
-    label->SetEnabledColor(SK_ColorWHITE);
-    label->SetBackgroundColor(SK_ColorBLACK);
-    return contents;
-  }
-
-  // --left-tabs: the workspace strip on the left, a black content area on the
-  // right. The strip fills when the source answers.
+  // --left-tabs: the workspace strip on the left, a content area in the
+  // theme's ground on the right. The strip fills when the source answers.
   std::unique_ptr<views::View> BuildLeftTabsContents() {
     auto contents = std::make_unique<views::View>();
     auto* layout = contents->SetLayoutManager(std::make_unique<views::BoxLayout>(
@@ -170,7 +141,7 @@ class ShellWindowDelegate : public views::WidgetDelegate {
                     << base::UTF16ToUTF8(workspace.title) << ")";
         })));
     auto* content = contents->AddChildView(std::make_unique<views::View>());
-    content->SetBackground(views::CreateSolidBackground(SK_ColorBLACK));
+    content->SetBackground(views::CreateSolidBackground(ui::kColorSysBase));
     layout->SetFlexForView(content, 1);
     workspace_source_->Fetch(base::BindOnce(
         &ShellWindowDelegate::OnWorkspaces, weak_ptr_factory_.GetWeakPtr()));
@@ -226,9 +197,10 @@ class ShellWindowDelegate : public views::WidgetDelegate {
       menu_runner_ = std::make_unique<views::MenuRunner>(
           menu_model_.get(), views::MenuRunner::NO_FLAGS);
     }
+    const int bar_height = FindSurfaceSpec("bar")->height;
     menu_runner_->RunMenuAt(widget,
                             /*button_controller=*/nullptr,
-                            gfx::Rect(16, 0, 120, kBarHeight),
+                            gfx::Rect(16, 0, 120, bar_height),
                             views::MenuAnchorPosition::kTopLeft,
                             ui::mojom::MenuSourceType::kMouse);
   }
@@ -262,44 +234,21 @@ class ShellWindowDelegate : public views::WidgetDelegate {
   base::WeakPtrFactory<ShellWindowDelegate> weak_ptr_factory_{this};
 };
 
-std::unique_ptr<views::Widget> CreateShellWidget(ShellWindowDelegate* delegate,
-                                                 bool bar,
-                                                 bool left_tabs) {
+// Creates the top-level widget for `spec` (the only way views-shell makes one;
+// rule R1) and shows it.
+std::unique_ptr<views::Widget> CreateSurfaceWidget(
+    const SurfaceSpec& spec,
+    views::WidgetDelegate* delegate) {
   auto widget = std::make_unique<views::Widget>();
-  // The bar is frameless: a standard frame would add its caption to the
-  // requested height.
   views::Widget::InitParams params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
-      bar ? views::Widget::InitParams::TYPE_WINDOW_FRAMELESS
-          : views::Widget::InitParams::TYPE_WINDOW);
+      views::Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+  ApplySurfaceSpec(spec, &params);
   params.delegate = delegate;
   params.name = kAppId;
   params.wayland_app_id = kAppId;
   params.wm_class_name = kAppId;
   params.wm_class_class = kAppId;
-  if (bar) {
-    // SPEC.md C4.2: the bar is a layer surface on the top layer, anchored to
-    // the top edge (stretched left+right, so the compositor picks the width),
-    // 32 px high with an exclusive zone, namespace "views-shell-bar". The
-    // plumbing is shell/patches/views-shell-ozone-layer-shell.patch:
-    // Widget::InitParams::layer_shell -> PlatformWindowInitProperties ->
-    // PlatformWindowType::kLayerShell -> WaylandLayerShellWindow.
-    ui::LayerShellProperties layer_shell;
-    layer_shell.layer = ui::LayerShellLayer::kTop;
-    layer_shell.anchor =
-        ui::kLayerShellAnchorTop | ui::kLayerShellAnchorLeft |
-        ui::kLayerShellAnchorRight;
-    layer_shell.exclusive_zone = kBarHeight;
-    layer_shell.keyboard_interactivity =
-        ui::LayerShellKeyboardInteractivity::kNone;
-    layer_shell.layer_namespace = kBarNamespace;
-    params.layer_shell = layer_shell;
-    params.bounds = gfx::Rect(0, 0, 1920, kBarHeight);
-  } else if (left_tabs) {
-    params.bounds = gfx::Rect(0, 0, 960, 540);
-  } else {
-    params.bounds = gfx::Rect(0, 0, 640, 120);
-  }
   widget->Init(std::move(params));
   widget->Show();
   return widget;
@@ -329,8 +278,41 @@ int ShellMain() {
   // The demo popup is a menu on the bar; without --bar there is no bar to
   // open it from (SPEC.md C4.3 runs both).
   const bool demo_popup = bar && command_line->HasSwitch(kDemoPopup);
-  // The workspace strip is a window's contents, not the bar's.
+  // The workspace strip is its own surface, not the bar's contents.
   const bool left_tabs = !bar && command_line->HasSwitch(kLeftTabs);
+  if (!bar && !left_tabs) {
+    // Rule R1: no xdg_toplevel, so no window mode. Refused before anything
+    // connects to the compositor. (Chapter 1's C3.4 window run is superseded.)
+    LOG(ERROR) << "views-shell draws only on layer surfaces (rule R1); pass "
+                  "--bar (or --left-tabs)";
+    return 2;
+  }
+  const SurfaceSpec* surface = FindSurfaceSpec(bar ? "bar" : "left-tabs");
+  CHECK(surface);
+
+  // The theme is read and resolved before the process comes up, so a bad
+  // theme directory costs no compositor connection.
+  std::optional<ResolvedTheme> theme;
+  base::FilePath theme_dir;
+  if (command_line->HasSwitch(kTheme)) {
+    // --theme=<dir>, or --theme <dir> (base::CommandLine leaves a value after
+    // a space as the first positional argument).
+    theme_dir = command_line->GetSwitchValuePath(kTheme);
+    if (theme_dir.empty() && !command_line->GetArgs().empty()) {
+      theme_dir = base::FilePath(command_line->GetArgs().front());
+    }
+    if (theme_dir.empty()) {
+      LOG(ERROR) << "--" << kTheme << " wants a theme directory";
+      return 2;
+    }
+    base::expected<ResolvedTheme, std::string> resolved =
+        LoadAndResolveTheme(theme_dir);
+    if (!resolved.has_value()) {
+      LOG(ERROR) << "--" << kTheme << ": " << resolved.error();
+      return 2;
+    }
+    theme = std::move(resolved).value();
+  }
   std::unique_ptr<WorkspaceSource> workspace_source;
   if (left_tabs) {
     const std::string source_name =
@@ -352,11 +334,26 @@ int ShellMain() {
   ui::ColorProviderManager::Get().AppendColorProviderInitializer(
       base::BindRepeating(&AddTabColorMixer));
 
+  // The theme: the seed on the native theme and the pin mixer appended last
+  // (style/theme_mixer.h), before the first widget.
+  ThemeController theme_controller;
+  if (theme) {
+    LOG(INFO) << "theme: " << theme_dir.value()
+              << " mode "
+              << (theme->color_mode == ui::ColorProviderKey::ColorMode::kDark
+                      ? "dark"
+                      : "light")
+              << " seed " << ToHexColor(theme->seed) << ", "
+              << theme->pins.size() << " kColorSys pins";
+    theme_controller.Apply(std::move(*theme),
+                           ui::NativeTheme::GetInstanceForNativeUi());
+  }
+
   base::RunLoop run_loop(base::RunLoop::Type::kNestableTasksAllowed);
   ShellWindowDelegate window_delegate(run_loop.QuitClosure(), demo_popup,
                                       std::move(workspace_source));
   std::unique_ptr<views::Widget> widget =
-      CreateShellWidget(&window_delegate, bar, left_tabs);
+      CreateSurfaceWidget(*surface, &window_delegate);
 
   if (run_for_seconds > 0) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(

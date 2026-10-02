@@ -2,13 +2,41 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# A registered seam: //views_shell lists this directory now so that chapter-2
-# item w2b fills it (sources, deps and tests) without editing the root BUILD.gn.
-# Empty on purpose: no sources and no stubs until w2b lands.
+# The bar: BarView (a FlexLayout row in the theme's colours) and its ClockView.
+# The surface it lives on is the "bar" row of app/surface_spec.cc.
 
 source_set("bar") {
+  sources = [
+    "bar_view.cc",
+    "bar_view.h",
+    "clock_view.cc",
+    "clock_view.h",
+  ]
+  public_deps = [
+    "//base",
+    "//ui/base",
+    "//ui/color",
+    "//ui/views",
+  ]
+  deps = [ "//ui/gfx/geometry" ]
 }
 
 source_set("unittests") {
   testonly = true
+  sources = [ "bar_view_unittest.cc" ]
+  deps = [
+    ":bar",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//ui/accessibility:test_support",
+    "//ui/base",
+    "//ui/color",
+    "//ui/views",
+    "//views_shell/style",
+  ]
+
+  # views::Label resolves fonts through the ResourceBundle; the tests load the
+  # same pak the program does (debt D2).
+  data_deps = [ "//ui/resources:ui_test_pak" ]
 }
