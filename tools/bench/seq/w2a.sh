@@ -43,7 +43,7 @@ if has build; then
   [ $rc = 0 ] || { echo "w2a-seq: ensure-out failed, stopping"; exit 1; }
   "$FHS" -c "cd $SRC && gn check out/views '//views_shell/wm/*'"
   step gn-check $?
-  "$FHS" -c "cd $SRC && autoninja -C out/views views_shell views_shell_unittests views_shell/wm:wm_probe"
+  "$FHS" -c "cd $SRC && autoninja -k 0 -C out/views views_shell views_shell_unittests views_shell/wm:wm_probe"
   rc=$?; step build $rc
   [ $rc = 0 ] || { echo "w2a-seq: build failed, stopping"; exit 1; }
   ls -l "$SRC/out/views/views_shell" "$SRC/out/views/views_shell_unittests" "$SRC/out/views/wm_probe"
