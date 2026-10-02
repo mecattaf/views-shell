@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/check.h"
+#include "base/strings/cstring_view.h"
 #include "base/environment.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -30,6 +31,7 @@
 #include "ui/native_theme/native_theme.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
@@ -75,13 +77,15 @@ DemoMenuDelegate& GetDemoMenuDelegate() {
 // when none does (the UI thread does not run `scroll --get-socketpath`).
 std::string ResolveCompositorSocket() {
   std::unique_ptr<base::Environment> env = base::Environment::Create();
-  for (const char* name : {"SCROLLSOCK", "SWAYSOCK", "I3SOCK"}) {
+  for (base::cstring_view name : {base::cstring_view("SCROLLSOCK"),
+                                   base::cstring_view("SWAYSOCK"),
+                                   base::cstring_view("I3SOCK")}) {
     std::optional<std::string> path = env->GetVar(name);
     if (path && !path->empty()) {
       if (base::PathExists(base::FilePath(*path))) {
         return *path;
       }
-      LOG(WARNING) << "wm: $" << name << " names " << *path
+      LOG(WARNING) << "wm: $" << name.c_str() << " names " << *path
                    << ", which does not exist";
     }
   }
