@@ -13,7 +13,7 @@
 namespace views_shell {
 namespace {
 
-constexpr std::array<SurfaceSpec, 2> kSurfaceSpecs = {{
+constexpr std::array<SurfaceSpec, 3> kSurfaceSpecs = {{
     // The bar (SPEC.md C4.2; open question Q2's default): top layer, the top
     // edge stretched across the output, 32 px high with an exclusive zone of
     // the same height, never taking the keyboard.
@@ -42,6 +42,21 @@ constexpr std::array<SurfaceSpec, 2> kSurfaceSpecs = {{
         .keyboard = ui::LayerShellKeyboardInteractivity::kNone,
         .layer_namespace = "views-shell-left-tabs",
     },
+    // Notification popups (shell/notifications/shell_message_popup_collection.h,
+    // PopupSurfaceSpec): overlay layer, top right, no zone, never the
+    // keyboard; each popup's margins and size come from the collection's
+    // stacking.
+    {
+        .name = "notification",
+        .layer = ui::LayerShellLayer::kOverlay,
+        .anchor = ui::kLayerShellAnchorTop | ui::kLayerShellAnchorRight,
+        .width = 0,
+        .height = 0,
+        .exclusive_zone = 0,
+        .keyboard = ui::LayerShellKeyboardInteractivity::kNone,
+        .layer_namespace = "views-shell-notification",
+        .margins_from_layout = true,
+    },
 }};
 
 bool IsTopLevelWindow(const views::Widget::InitParams& params) {
@@ -51,12 +66,15 @@ bool IsTopLevelWindow(const views::Widget::InitParams& params) {
 }
 
 bool SameRequest(const ui::LayerShellProperties& a,
-                 const ui::LayerShellProperties& b) {
+                 const ui::LayerShellProperties& b,
+                 bool compare_margins) {
+  const bool same_margins =
+      !compare_margins ||
+      (a.margin_top == b.margin_top && a.margin_right == b.margin_right &&
+       a.margin_bottom == b.margin_bottom && a.margin_left == b.margin_left);
   return a.layer == b.layer && a.anchor == b.anchor &&
          a.exclusive_zone == b.exclusive_zone &&
-         a.keyboard_interactivity == b.keyboard_interactivity &&
-         a.margin_top == b.margin_top && a.margin_right == b.margin_right &&
-         a.margin_bottom == b.margin_bottom && a.margin_left == b.margin_left &&
+         a.keyboard_interactivity == b.keyboard_interactivity && same_margins &&
          a.layer_namespace == b.layer_namespace && a.output_id == b.output_id;
 }
 
@@ -94,7 +112,7 @@ void ApplySurfaceSpec(const SurfaceSpec& spec,
 }
 
 void CheckSurfaceSpec(const views::Widget::InitParams& params) {
-  if (!IsTopLevelWindow(params)) {
+  if (!params.layer_shell.has_value() && !IsTopLevelWindow(params)) {
     return;
   }
   CHECK(params.layer_shell.has_value())
@@ -109,7 +127,8 @@ void CheckSurfaceSpec(const views::Widget::InitParams& params) {
   }
   CHECK(spec) << "rule R1: layer surface namespace '" << request.layer_namespace
               << "' is not a registered SurfaceSpec (app/surface_spec.cc)";
-  CHECK(SameRequest(request, ToLayerShellProperties(*spec)))
+  CHECK(SameRequest(request, ToLayerShellProperties(*spec),
+                    !spec->margins_from_layout))
       << "rule R1: widget '" << params.name << "' asks for namespace '"
       << request.layer_namespace << "' with a request that differs from the "
       << "registered SurfaceSpec '" << spec->name << "'";

@@ -8,9 +8,10 @@
 // keyboard mode and namespace. ShellViewsDelegate::OnBeforeWidgetInit calls
 // CheckSurfaceSpec() on every Widget, which CHECKs that each top-level
 // TYPE_WINDOW / TYPE_WINDOW_FRAMELESS widget carries the layer-shell request of
-// a registered spec, so no code path can create an xdg_toplevel. Popups, menus,
-// bubbles and tooltips are not top-level windows: they become xdg_popup
-// children of a layer surface and need no row.
+// a registered spec, so no code path can create an xdg_toplevel; any other
+// widget that asks for a layer surface (a notification popup) must match a row
+// too. Menus, bubbles and tooltips are not top-level windows: they become
+// xdg_popup children of a layer surface and need no row.
 //
 // A new surface (the launcher, the notification column, the OSD) adds a row
 // to kSurfaceSpecs in surface_spec.cc and nothing else.
@@ -40,6 +41,10 @@ struct SurfaceSpec {
   ui::LayerShellKeyboardInteractivity keyboard;
   // zwlr_layer_shell_v1.get_layer_surface's namespace; unique per row.
   std::string_view layer_namespace;
+  // True for surfaces a layout places, one per item (notification popups
+  // stacked by their collection): the margins are then the layout's, and the
+  // width and height above are not used. Every other field still must match.
+  bool margins_from_layout = false;
 };
 
 // Every registered surface.
@@ -56,9 +61,11 @@ ui::LayerShellProperties ToLayerShellProperties(const SurfaceSpec& spec);
 void ApplySurfaceSpec(const SurfaceSpec& spec,
                       views::Widget::InitParams* params);
 
-// Rule R1's second enforcement. CHECK-fails unless `params` is not a
-// top-level window, or carries exactly the layer-shell request of a registered
-// spec (matched by namespace, then compared field by field).
+// Rule R1's second enforcement. CHECK-fails when a top-level TYPE_WINDOW or
+// TYPE_WINDOW_FRAMELESS widget carries no layer-shell request, and when any
+// widget's layer-shell request is not that of a registered spec (matched by
+// namespace, then compared field by field; margins too unless the spec takes
+// them from a layout).
 void CheckSurfaceSpec(const views::Widget::InitParams& params);
 
 }  // namespace views_shell
