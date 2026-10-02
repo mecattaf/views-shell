@@ -88,9 +88,14 @@ change events.
   the workspace name, or else its index, and the focused workspace is active.
   A click moves the strip and logs the workspace; niri is not asked.
 
-On the bench, `tools/bench/worker/left-tabs-click.sh` clicks a tab through the
-headless scroll's seat (`scrollmsg seat - cursor set|press|release`) and
-reports the request and the echo.
+`tools/bench/worker/left-tabs-click.sh` is a bench client that tries to click
+a tab through the headless scroll's seat. It does not prove the click yet: the
+headless seat has no pointer device, so `scrollmsg seat - cursor press`
+reaches no client, and a wlrctl virtual pointer gives the seat a pointer only
+for one command, so the strip's `wl_pointer` never gets `enter` before the
+button (PROVE.md, the PLT rows). The click path is covered by the unit tests
+(a press and release on the ported `Tab` under a widget), and the echo path by
+`--demo-workspace-switch` on the rail, which the bench runs headless.
 
 ## How colours map
 

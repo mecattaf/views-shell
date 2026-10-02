@@ -22,6 +22,7 @@ drawn frame is `attaches: N` > 0 and `colours: N` >= 2 in the run's
 | [`views-shell-154-theme.md`](views-shell-154-theme.md) | 2, w2b | the style kit and the bar with its clock wear an Omarchy theme directory: six runs, the bar's ground is the theme's `background` (C15.1–C15.5); rule R1's exit code; stock menus pick up the pins |
 | [`views-shell-154-adapter.md`](views-shell-154-adapter.md) | 2, w2a | the scroll adapter, `WmModel` and `wm_probe` on stock scroll 1.13-dev: the recorded 97-frame transcript, the switch and its echo, the capability set, the barrier facts (C14.1–C14.3, finding F11) |
 | [`views-shell-154-assembled.md`](views-shell-154-assembled.md) | 2, w3c | the assembled program: the workspace strip follows the model's echo, a `notify-send` becomes an overlay layer surface, `wtype` types into a `Textfield` on an exclusive overlay surface, orderly exit rc 0, and the footprint of the whole program in component, GPU-fair and release builds (C21.1–C21.5, findings F13 and F14) |
+| [`verification-chapter2.md`](verification-chapter2.md) | 2, fable-verify | the adversarial re-run of chapter 2's claims from main on the bench: 73 fresh PROVE rows, three overclaims refuted, the superseded numbers dated |
 
 The chapter-1 record of the tab strip (`--left-tabs`, PRs #18 and #19) lives in
 [`../tabs.md`](../tabs.md), with its two screenshots below.
@@ -45,6 +46,8 @@ The chapter-1 record of the tab strip (`--left-tabs`, PRs #18 and #19) lives in
 | [`views-shell-154-assembled-keyboard.png`](views-shell-154-assembled-keyboard.png) | `views-shell-154-assembled.md` | the keyboard probe centred on the overlay layer with `hello` typed (C21.3) |
 | [`tabstrip-154-headless-scroll.png`](tabstrip-154-headless-scroll.png) | `../tabs.md` | `--left-tabs` from a static workspace list (PR #18) |
 | [`tabstrip-154-headless-scroll-niri.png`](tabstrip-154-headless-scroll-niri.png) | `../tabs.md` | `--left-tabs` fed by `niri msg -j workspaces` (PR #19) |
+| [`left-tabs-154-all-black.png`](left-tabs-154-all-black.png) | `../tabs.md` | the ported strip under `--theme examples/themes/all-black`, static workspaces (C25.3) |
+| [`left-tabs-154-all-black-switch.png`](left-tabs-154-all-black-switch.png) | `../tabs.md` | the 220 px rail on scroll after `--demo-workspace-switch`: workspace 3 from the echo (C25.1) |
 
 ## The footprint across the chapter
 
