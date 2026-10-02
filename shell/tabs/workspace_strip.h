@@ -36,11 +36,22 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   static constexpr int kPreferredWidth = 220;
 
   // Runs when a click, tap or key selects a workspace other than the active
-  // one. For now the strip only redraws; asking the compositor to focus the
-  // workspace is the caller's business.
+  // one.
   using SelectCallback = base::RepeatingCallback<void(const Workspace&)>;
 
-  explicit WorkspaceStrip(SelectCallback on_select);
+  // What a selection does to the strip itself.
+  enum class SelectionMode {
+    // The strip moves its active tab at once, then runs the callback. For a
+    // source that answers once (static, niri).
+    kLocal,
+    // Rule R6: a selection is a request. The strip runs the callback and
+    // changes nothing; it moves when SetWorkspaces brings the compositor's
+    // echo (tabs/workspace_strip_model_binding.h).
+    kRequest,
+  };
+
+  explicit WorkspaceStrip(SelectCallback on_select,
+                          SelectionMode mode = SelectionMode::kLocal);
   WorkspaceStrip(const WorkspaceStrip&) = delete;
   WorkspaceStrip& operator=(const WorkspaceStrip&) = delete;
   ~WorkspaceStrip() override;
@@ -50,6 +61,8 @@ class WorkspaceStrip : public views::View, public TabSlotController {
 
   // The active workspace's index, or -1 when there is none.
   int active_index() const { return active_index_; }
+  // The tab at `index`, or null when out of range.
+  Tab* GetTabAt(int index);
   const std::vector<Workspace>& workspaces() const { return workspaces_; }
 
   // views::View:
@@ -86,6 +99,7 @@ class WorkspaceStrip : public views::View, public TabSlotController {
   void UpdateContrastRatioValues();
 
   SelectCallback on_select_;
+  const SelectionMode mode_;
   // Holds the tabs; laid out by UnpinnedTabContainerViewLayout.
   raw_ptr<views::View> tab_container_ = nullptr;
   std::vector<Workspace> workspaces_;

@@ -23,8 +23,8 @@
 #include "views_shell/tabs/unpinned_tab_container_view_layout.h"
 
 namespace views_shell {
-WorkspaceStrip::WorkspaceStrip(SelectCallback on_select)
-    : on_select_(std::move(on_select)) {
+WorkspaceStrip::WorkspaceStrip(SelectCallback on_select, SelectionMode mode)
+    : on_select_(std::move(on_select)), mode_(mode) {
   // As VerticalTabStripRegionView: uncollapsed vertical padding above and
   // below the tabs. Chrome's top padding comes from its top button container,
   // which the strip does not have.
@@ -72,6 +72,13 @@ void WorkspaceStrip::SetWorkspaces(std::vector<Workspace> workspaces) {
   SchedulePaint();
 }
 
+Tab* WorkspaceStrip::GetTabAt(int index) {
+  if (index < 0 || index >= GetTabCount()) {
+    return nullptr;
+  }
+  return tabs_[index];
+}
+
 gfx::Size WorkspaceStrip::CalculatePreferredSize(
     const views::SizeBounds& available_size) const {
   // A fixed width; the height is what the box layout asks for the tabs.
@@ -109,6 +116,14 @@ void WorkspaceStrip::OnThemeChanged() {
 void WorkspaceStrip::SelectTab(Tab* tab, const ui::Event& event) {
   const int index = IndexOf(tab);
   if (index < 0 || index == active_index_) {
+    return;
+  }
+  if (mode_ == SelectionMode::kRequest) {
+    // Rule R6: ask, and wait for the echo. The strip redraws from
+    // SetWorkspaces, never from here.
+    if (on_select_) {
+      on_select_.Run(workspaces_[index]);
+    }
     return;
   }
   Tab* previous = active_index_ >= 0 ? tabs_[active_index_].get() : nullptr;

@@ -33,6 +33,7 @@
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/layout/box_layout.h"
+#include "ui/views/layout/fill_layout.h"
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_delegate.h"
@@ -44,6 +45,7 @@
 #include "views_shell/tabs/tab_color_mixer.h"
 #include "views_shell/tabs/workspace_source.h"
 #include "views_shell/tabs/workspace_strip.h"
+#include "views_shell/tabs/workspace_strip_model_binding.h"
 #include "views_shell/wm/adapters/scroll/scroll_adapter.h"
 #include "views_shell/wm/compositor_adapter.h"
 
@@ -126,26 +128,41 @@ std::unique_ptr<views::Widget> CreateSurfaceWidget(
   return widget;
 }
 
-// --left-tabs: the ported workspace strip on the left, a content area in the
-// theme's ground on the right. The strip fills when the source answers.
+// --left-tabs: the ported workspace strip, filling the surface. Fed either by
+// the compositor adapter's model (rule R6: the strip follows snapshots and a
+// selection is a FocusWorkspace request) or by a one-shot source (static,
+// niri), whose selections only move the strip.
 class LeftTabsContents : public views::View {
  public:
+  // `model` may be null (no compositor socket): the strip stays empty.
+  explicit LeftTabsContents(WmModel* model) {
+    SetLayoutManager(std::make_unique<views::FillLayout>());
+    if (model) {
+      binding_ = std::make_unique<WorkspaceStripModelBinding>(model);
+      strip_ = AddChildView(binding_->MakeStrip());
+    } else {
+      strip_ = AddChildView(std::make_unique<WorkspaceStrip>(
+          WorkspaceStrip::SelectCallback()));
+    }
+  }
+
   explicit LeftTabsContents(std::unique_ptr<WorkspaceSource> source)
       : source_(std::move(source)) {
-    auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>(
-        views::BoxLayout::Orientation::kHorizontal));
-    layout->set_cross_axis_alignment(
-        views::BoxLayout::CrossAxisAlignment::kStretch);
+    SetLayoutManager(std::make_unique<views::FillLayout>());
     strip_ = AddChildView(std::make_unique<WorkspaceStrip>(
         base::BindRepeating([](const Workspace& workspace) {
           LOG(INFO) << "left-tabs: selected workspace " << workspace.id << " ("
                     << base::UTF16ToUTF8(workspace.title) << ")";
         })));
-    auto* content = AddChildView(std::make_unique<views::View>());
-    content->SetBackground(views::CreateSolidBackground(ui::kColorSysBase));
-    layout->SetFlexForView(content, 1);
     source_->Fetch(base::BindOnce(&LeftTabsContents::OnWorkspaces,
                                   weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  ~LeftTabsContents() override {
+    // The strip's callback points at the binding: the strip goes first.
+    if (strip_) {
+      RemoveChildViewT(std::exchange(strip_, nullptr));
+    }
   }
 
  private:
@@ -162,6 +179,7 @@ class LeftTabsContents : public views::View {
   }
 
   std::unique_ptr<WorkspaceSource> source_;
+  std::unique_ptr<WorkspaceStripModelBinding> binding_;
   raw_ptr<WorkspaceStrip> strip_ = nullptr;
   base::WeakPtrFactory<LeftTabsContents> weak_ptr_factory_{this};
 };
@@ -208,9 +226,9 @@ ShellContent::ShellContent(ShellContentParams params,
                            base::RepeatingClosure on_close)
     : params_(std::move(params)), on_close_(std::move(on_close)) {
   CHECK_NE(params_.bar, params_.left_tabs);
-  CHECK(params_.bar || !(params_.demo_popup || params_.demo_workspace_switch ||
-                         params_.demo_keyboard));
-  CHECK(params_.left_tabs == static_cast<bool>(params_.workspace_source));
+  CHECK(params_.bar || !(params_.demo_popup || params_.demo_keyboard));
+  CHECK(params_.left_tabs == (static_cast<bool>(params_.workspace_source) !=
+                              params_.left_tabs_from_compositor));
 }
 
 ShellContent::~ShellContent() {
@@ -221,8 +239,10 @@ void ShellContent::Start() {
   CHECK(!started_);
   started_ = true;
   StartTheme();
-  if (params_.bar) {
+  if (params_.bar || params_.left_tabs_from_compositor) {
     StartCompositor();
+  }
+  if (params_.bar) {
     StartNotifications();
   }
   StartSurfaces();
@@ -294,7 +314,9 @@ void ShellContent::StartCompositor() {
   const std::string socket = ResolveCompositorSocket();
   if (socket.empty()) {
     LOG(WARNING) << "wm: no compositor socket ($SCROLLSOCK, $SWAYSOCK and "
-                    "$I3SOCK unset); the bar runs without workspaces";
+                    "$I3SOCK unset); the "
+                 << (params_.bar ? "bar" : "strip")
+                 << " runs without workspaces";
     return;
   }
   LOG(INFO) << "wm: scroll adapter on " << socket;
@@ -346,8 +368,10 @@ void ShellContent::StartSurfaces() {
     contents = std::move(bar);
   } else {
     spec = FindSurfaceSpec("left-tabs");
-    contents =
-        std::make_unique<LeftTabsContents>(std::move(params_.workspace_source));
+    contents = params_.left_tabs_from_compositor
+                   ? std::make_unique<LeftTabsContents>(model_.get())
+                   : std::make_unique<LeftTabsContents>(
+                         std::move(params_.workspace_source));
   }
   CHECK(spec);
   main_delegate_ =
@@ -357,6 +381,15 @@ void ShellContent::StartSurfaces() {
   main_widget_ = CreateSurfaceWidget(*spec, main_delegate_.get());
   if (model_ && model_->has_snapshot()) {
     OnSnapshotApplied();
+  }
+  if (params_.left_tabs && params_.demo_workspace_switch) {
+    // The strip has no first-paint callback; one second after the surface is
+    // shown is the bar's timing (OnBarFirstPaint).
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&ShellContent::DemoWorkspaceSwitchDue,
+                       weak_ptr_factory_.GetWeakPtr()),
+        base::Seconds(1));
   }
 }
 

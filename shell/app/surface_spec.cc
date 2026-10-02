@@ -28,17 +28,18 @@ constexpr std::array<SurfaceSpec, 4> kSurfaceSpecs = {{
         .keyboard = ui::LayerShellKeyboardInteractivity::kNone,
         .layer_namespace = "views-shell-bar",
     },
-    // The workspace strip (docs/tabs.md, --left-tabs): a panel on the left
-    // edge, stretched top to bottom, 960 px wide (the strip and its content
-    // area), above windows and reserving no space, never taking the keyboard.
+    // The workspace strip (docs/tabs.md, --left-tabs): a rail on the left
+    // edge, stretched top to bottom, as wide as the ported strip
+    // (WorkspaceStrip::kPreferredWidth), above windows, reserving its width
+    // so windows sit beside it, never taking the keyboard.
     {
         .name = "left-tabs",
         .layer = ui::LayerShellLayer::kTop,
         .anchor = ui::kLayerShellAnchorTop | ui::kLayerShellAnchorBottom |
                   ui::kLayerShellAnchorLeft,
-        .width = 960,
+        .width = 220,
         .height = 540,
-        .exclusive_zone = 0,
+        .exclusive_zone = 220,
         .keyboard = ui::LayerShellKeyboardInteractivity::kNone,
         .layer_namespace = "views-shell-left-tabs",
     },
