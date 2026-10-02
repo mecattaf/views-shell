@@ -36,6 +36,7 @@ import json
 import math
 import os
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -79,9 +80,31 @@ VIEWS = {
     "mediaSession": (None, None),
 }
 UNDRAWN = {"markdown", "tile", "tabSlider", "keyChips", "mediaSession"}
+# A part of a drawn node that chapter 2 does not draw (schemas/ui-tree-rendering.md,
+# "Not drawn in chapter 2"): the node is drawn, its error names the part.
+PART_NOT_DRAWN = "{} not drawn in chapter 2"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# The ISO 8601 instants time and relative-time accept: a date, T, a time and an
+# offset (Z or +hh:mm, +hhmm). The C++ (shell/ui_tree/binding.cc) parses the same
+# subset, so both agree on what is an instant.
+ISO_INSTANT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})$")
 # Node-valued properties: they become children, in this order, never props.
 CHILD_KEYS = ("children", "child", "template", "trailing")
 ACTION_KEYS = ("action", "iconAction")
+
+
+def load_icon_table():
+    """The icon names views-shell draws: the "## Icon names" table of
+    schemas/ui-tree-rendering.md, name -> stock gfx::VectorIcon symbol. The C++
+    table (shell/ui_tree/ui_tree_renderer.cc) is checked against the same rows by
+    views_shell_unittests, so the document is the one list."""
+    text = (ROOT / "schemas/ui-tree-rendering.md").read_text()
+    section = text.split("\n## Icon names\n", 1)[1].split("\n## ", 1)[0]
+    rows = re.findall(r"^\| `([a-z0-9-]+)` \| `([a-z_:]+::k[A-Za-z0-9]+Icon)` \|", section, re.M)
+    return dict(rows)
+
+
+ICONS = load_icon_table()
 
 
 def ensure_jsonschema():
@@ -138,6 +161,8 @@ def as_instant(v):
     if is_number(v):
         return datetime.datetime.fromtimestamp(v, datetime.timezone.utc)
     if isinstance(v, str):
+        if not ISO_INSTANT.match(v):
+            return None
         try:
             t = datetime.datetime.fromisoformat(v.replace("Z", "+00:00"))
         except ValueError:
@@ -231,10 +256,11 @@ def is_binding(v):
 
 
 class Context:
-    def __init__(self, data, plugin_id):
+    def __init__(self, data, plugin_id, plugin_dir=None):
         # data is None when no snapshot was given: bindings stay as written.
         self.data = data
         self.plugin_id = plugin_id
+        self.plugin_dir = plugin_dir
         self.item = MISSING
 
     def resolve(self, b):
@@ -274,6 +300,87 @@ class Context:
         }
 
 
+# ---------------------------------------------------------------- render errors
+def unchecked(ctx, v):
+    """Without a snapshot a bound value stays a binding; it is not checked."""
+    return ctx.data is None and is_binding(v)
+
+
+def icon_error(ctx, v):
+    if unchecked(ctx, v):
+        return None
+    if not isinstance(v, str):
+        return f"unknown icon: {as_text(v)}"
+    return None if v in ICONS else f"unknown icon: {v}"
+
+
+def image_error(ctx, src):
+    if unchecked(ctx, src):
+        return None
+    if not isinstance(src, str):
+        return f"image src is not a path: {as_text(src)}"
+    parts = src.split("/")
+    if not src or src.startswith("/") or ".." in parts:
+        return f"image outside the plugin directory: {src}"
+    if ctx.plugin_dir is None:
+        return f"image has no plugin directory: {src}"
+    path = ctx.plugin_dir / src
+    if not path.is_file():
+        return f"image not found: {src}"
+    with open(path, "rb") as f:
+        if f.read(len(PNG_SIGNATURE)) != PNG_SIGNATURE:
+            return f"image is not a PNG: {src}"
+    return None
+
+
+def node_errors(kind, props, ctx):
+    """(errors, drawn): what chapter 2 cannot draw of a node, in the order the
+    C++ renderer checks it. drawn is False when the node gets no view at all."""
+    if kind in UNDRAWN:
+        return [NOT_DRAWN], False
+    errors = []
+    if kind in ("icon", "iconButton"):
+        e = icon_error(ctx, props.get("icon"))
+        if e:
+            return [e], False
+        if kind == "iconButton" and props.get("variant") in ("prominent", "floating"):
+            errors.append(PART_NOT_DRAWN.format("variant"))
+    elif kind == "image":
+        e = image_error(ctx, props.get("src"))
+        if e:
+            return [e], False
+    elif kind == "progress":
+        if props.get("shape") == "ring":
+            return [PART_NOT_DRAWN.format("ring")], False
+    elif kind in ("button", "listItem"):
+        if "icon" in props:
+            e = icon_error(ctx, props["icon"])
+            if e:
+                errors.append(e)
+        if kind == "button" and props.get("variant") in ("alert", "accent"):
+            errors.append(PART_NOT_DRAWN.format("variant"))
+    elif kind == "select":
+        options = props.get("options")
+        if isinstance(options, list):
+            for o in options:
+                if isinstance(o, dict) and "icon" in o:
+                    e = icon_error(ctx, o["icon"])
+                    if e:
+                        errors.append(e)
+        if "label" in props:
+            errors.append(PART_NOT_DRAWN.format("label"))
+    elif kind == "slider":
+        if "icon" in props or "iconAction" in props or "toggled" in props:
+            errors.append(PART_NOT_DRAWN.format("icon"))
+    elif kind == "switch":
+        if "label" in props:
+            errors.append(PART_NOT_DRAWN.format("label"))
+    elif kind == "badge":
+        if "role" in props:
+            errors.append(PART_NOT_DRAWN.format("role"))
+    return errors, True
+
+
 # ---------------------------------------------------------------- the trace
 def trace(node, ctx, single_slot):
     """The trace of one node. single_slot: the node fills a one-child slot (the
@@ -286,8 +393,9 @@ def trace(node, ctx, single_slot):
         if k == "type" or k in CHILD_KEYS or k == "$schema":
             continue
         props[k] = ctx.action(v) if k in ACTION_KEYS else ctx.value(v)
-    out = {"node": kind, "view": view, "layout": layout, "props": props,
-           "children": [], "error": NOT_DRAWN if kind in UNDRAWN else None}
+    errors, drawn = node_errors(kind, props, ctx)
+    out = {"node": kind, "view": view if drawn else None, "layout": layout if drawn else None,
+           "props": props, "children": [], "error": "; ".join(errors) or None}
 
     if kind == "repeat":
         direction = node.get("direction", "column")
@@ -324,7 +432,8 @@ def trace(node, ctx, single_slot):
                 out["children"].append({
                     "node": "option", "view": "views::RadioButton", "layout": None,
                     "props": {**o, "checked": o.get("value") == value},
-                    "children": [], "error": None})
+                    "children": [],
+                    "error": PART_NOT_DRAWN.format("icon") if "icon" in o else None})
 
     for k in CHILD_KEYS:
         if k not in node:
@@ -336,8 +445,8 @@ def trace(node, ctx, single_slot):
     return out
 
 
-def render(tree, data, plugin_id):
-    ctx = Context(data, plugin_id)
+def render(tree, data, plugin_id, plugin_dir=None):
+    ctx = Context(data, plugin_id, plugin_dir)
     return {"plugin": plugin_id, "root": trace(tree["root"], ctx, True)}
 
 
@@ -373,7 +482,8 @@ def evaluate(ui_path, ui_v, snapshot_path, plugin_id):
     if e is not None:
         return None, f"{'/'.join(map(str, e.path)) or '(root)'}: {e.message[:300]}"
     data = json.loads(snapshot_path.read_text()) if snapshot_path else None
-    return render(tree, data, plugin_id or plugin_id_for(ui_path)), None
+    return render(tree, data, plugin_id or plugin_id_for(ui_path),
+                  ui_path.resolve().parent.parent), None
 
 
 def check(text, fixture):
