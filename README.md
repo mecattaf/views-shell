@@ -10,10 +10,12 @@ compositor that someone else maintains well. scroll is the default compositor, s
 binary is a Views program, not a browser: it links no `//content`, no Blink
 renderer and no V8.
 
-> Status: **foundation**. This repository holds the specs, schemas, the component
-> kit inventory, a Chrome extension skeleton and a content-free Views program that
-> draws a layer-shell bar, an `xdg_popup` menu and a workspace strip on a headless
-> compositor. It is not a usable shell yet. See [What is real](#what-is-real-today).
+> Status: **a content-free Views program that runs as a shell on headless stock
+> scroll** (chapter 2 closed 2026-10-02). It builds at Chromium `154.0.8037.92`
+> with no `//content`, Blink renderer or V8, with a production in-process viz
+> host, and draws a themed bar with a live workspace strip, notification popups
+> and typed input on layer-shell surfaces under a headless compositor on the
+> bench. No seat runs it yet. See [What is real](#what-is-real-today).
 > There are no releases before v1; see [Releases](#releases).
 
 views-shell is not a compositor, not a browser fork and not a ChromeOS clone. It is one
@@ -164,35 +166,77 @@ tree). The bench pins the Chromium tag in
 ## What is real today
 
 The chapter in progress is specified in [`SPEC.md`](SPEC.md): its claims, rulings and
-task table are the source of truth, and its gates are what "done" means. The bench
-([`tools/bench/`](tools/bench/)) holds Chromium at the pinned tag `154.0.8037.92`.
+task table are the source of truth, and its gates are what "done" means. Chapter 2
+closed on 2026-10-02 (its report for Tom is
+[`docs/reports/chapter-2.md`](docs/reports/chapter-2.md)); the next chapter's spec
+goes on top of it. The bench ([`tools/bench/`](tools/bench/)) holds Chromium at
+the pinned tag `154.0.8037.92`.
 
-- **Real:** the rules, the architecture, the adapter matrix, the plugin and `ui`
-  schemas with validating examples (`tools/validate.sh` prints `fences: clean`,
-  `identity: ok` and `VALIDATE-OK`), the theme binding and example themes, and the
-  extension skeleton (it loads unpacked and shows its pages).
-- **Real:** `views_shell` builds at `154.0.8037.92` with no `//content`, Blink
-  renderer or V8, and on headless scroll draws a 32 px top layer surface with an
-  exclusive zone (`--bar`) and a menu that becomes an `xdg_popup` parented to it
-  (`--bar --demo-popup`), through the live patch series in
-  [`shell/patches/`](shell/patches/). `shell/` holds only what is built or
-  applied; the earlier prototype code it was re-cut from is recorded in
-  [`shell/PROVENANCE.md`](shell/PROVENANCE.md) and recoverable from git history.
-- **Real:** `views_shell --left-tabs` draws a vertical workspace strip made of
-  Chrome's own tab and vertical-strip layouts (copied from `//chrome`, never linked, see
-  [`CHROME-PORT-LEDGER.md`](CHROME-PORT-LEDGER.md) and [`docs/tabs.md`](docs/tabs.md)),
-  fed by a static list or by `niri msg -j workspaces`.
-- **Real:** [`docs/chrome-lift-inventory.md`](docs/chrome-lift-inventory.md) lists what
-  can be lifted from Chrome and Ash Views at `154.0.8037.92` (each component sized by
-  lines and decoupling cuts, with a verdict), and
-  [`docs/shell-composition.md`](docs/shell-composition.md) says how those components
-  compose every shell surface, the `ui`-tree schema additions they imply and the
-  first three surfaces to build. Both are plans; nothing in them is lifted yet.
-- **Placeholder:** the program still uses the test context factory (debt D1 in
-  [`docs/architecture.md`](docs/architecture.md)), the compositor adapter headers
-  in `shell/wm/` are sketches, and the subsystem directories are empty seams. The CLI is a dispatch
-  skeleton. The native messaging host does not exist yet, so the extension pages
-  show a "not installed" state.
+**What builds.** `//views_shell:views_shell` is a production Views program
+(`testonly = false`, no `test_support` in its dependency graph), built in the
+component `out/views` and the non-component `out/release` with
+[`shell/BUILD.gn`](shell/BUILD.gn) and the five live patches in
+[`shell/patches/`](shell/patches/) (2,048 lines, plain `git apply`). It links no
+`//content`, no Blink renderer, no V8, no `//chrome` and no `//ash`, by
+`assert_no_deps` and by `gn path` (`No non-data paths`, five trees, both build
+directories). Six seams under `shell/` are real code with their own `BUILD.gn`:
+`style` (the Omarchy theme directory read, resolved and pinned onto `kColorSys*`),
+`wm` (the scroll and sway adapter over i3-ipc, `WmModel`, `wm_probe`), `bar`
+(the bar, its workspace strip and clock), `notifications` (a freedesktop
+Notifications server on `//dbus` feeding `ui/message_center`), `ui_tree` (the
+`ui`-tree renderer onto stock Views), `plugins` (manifest validation, the
+registry, the permissions broker, T1 plugins, T2 supervision over JSON-RPC,
+`plugin_probe`), plus `tabs` (Chrome's vertical tab strip, copied, never
+linked). `views_shell_unittests` collects every seam's tests: 139 ran green on
+the bench, against fake sockets, a recorded scroll transcript, a private session
+bus and a private headless scroll.
+
+**What draws on stock scroll** (headless, under `runtime-test`, records in
+[`docs/bench/`](docs/bench/README.md)): `--bar --theme <omarchy theme dir>` draws
+a 32 px top layer surface in the theme's colours (the ground is the theme's
+`background` to 99.8 % of its rows: `#1a1a1a`, `#000000`, `#f9f9f7`), with a
+workspace strip fed by the compositor over i3-ipc (a workspace switch was sent
+and its echo observed, `ECHO workspace 3`), the focused window's title and a
+clock; `--demo-popup` opens a menu that becomes an `xdg_popup` parented to the
+bar; a `notify-send` becomes its own overlay layer surface, top right, and is
+destroyed on expiry; `--demo-keyboard` opens an exclusive-keyboard overlay
+surface into which `wtype` typed `hello` (`TYPED hello`); `--left-tabs` draws
+the Chrome-derived workspace strip on the left edge; a run with no surface flag
+exits 2 (rule R1). The release build of the assembled program is 63 MB
+stripped and idles at 59.7 MB PSS, 0 % CPU, 17 threads and 69 FDs (component:
+108.7 MB, 362 FDs; GPU-fair with a render node: 128.4 MB). Chapter 1's open
+questions are answered: the 344 FDs were `EnableInProcessStackDumping`'s
+pre-opened module files of a component build, and the two F2 GL switches are a
+consequence of `runtime-test`'s empty `/dev`, not of the shell (with `/dev/dri`
+bound, the default GL draws over linux-dmabuf).
+
+**The tools.** `tools/validate.sh` prints `fences: clean`, `identity: ok`, the
+schema, theme, registry (12 views), render (14 traces) and `no_stubs` lines,
+`CONFORMANCE-OK` for the three T2 example plugins played over stdio by
+`tools/plugin-conformance.py`, and `VALIDATE-OK`. `tools/plugin-registry.py` and
+`tools/ui-tree-render.py` are the Python references whose goldens the C++
+reproduces byte for byte. `PROVE.md` is the append-only evidence table (141
+rows at the close of chapter 2), linted by `tools/prove-lint.py` and re-run by
+`tools/prove.sh`; the bench is driven by `tools/bench/` (`sync.sh`, `job.sh`,
+`lock.sh`, the `worker/` scripts and one `seq/<item>.sh` per bench item).
+
+- **Real, as data:** the rules, the architecture, the adapter matrix, the plugin
+  and `ui` schemas with validating examples (12 plugins, 4 themes), the plugin
+  protocol settled in [`schemas/plugin-protocol.md`](schemas/plugin-protocol.md),
+  the rendering contract in [`schemas/ui-tree-rendering.md`](schemas/ui-tree-rendering.md),
+  the plugin authoring guide [`docs/plugins.md`](docs/plugins.md), the theme
+  binding, and the extension skeleton (it loads unpacked and shows its pages).
+- **Plans, not code:** [`docs/chrome-lift-inventory.md`](docs/chrome-lift-inventory.md)
+  and [`docs/shell-composition.md`](docs/shell-composition.md) (what can be
+  lifted from Chrome and Ash and how it composes each surface).
+- **Not yet:** the own `views_shell.pak` (debt D2; every program loads
+  `ui_test_pak`), the renderer bound to the plugin host on a surface, the Ash
+  icon subset the examples name, quick settings, the launcher, the credential
+  modal proper (only its keyboard risk is proven), the native messaging host
+  (nothing extension-shaped until H1 settles `chrome.storage.sync`), the niri,
+  generic and Hyprland adapters, the CLI beyond a dispatch skeleton, and the
+  Nix packaging for a seat. The debts and their payoff conditions are in
+  [`docs/architecture.md`](docs/architecture.md) "Debts".
 - **PROPOSED:** items that wait on a decision are marked **PROPOSED** where they
   appear. [`docs/open-decisions.md`](docs/open-decisions.md) collects them.
 

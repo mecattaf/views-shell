@@ -283,7 +283,7 @@ proportional to the mapped libraries, as w1c said.
 - `~/views-bench/bin/runtime-test-gpu` reinstalled by `seq/w1c.sh` and
   `seq/w3c.sh` (same file). No `vs-*` unit running; the bench lock was
   released at the end of the session.
-- On the coordinator, worktrees `~/.wt/views-shell/{t1..t8, w1a..w3e, demo2,
-  demo-left-tabs, lift-inventory, tabstrip, verify-ch2}` exist; none was
+- On the coordinator, the git worktrees t1 to t8, w1a to w3e, demo2,
+  demo-left-tabs, lift-inventory, tabstrip and verify-ch2 exist; none was
   deleted. `w/w3e` (e54692c, never pushed, two agents in one worktree) is not on
   main: `examples/themes` on main holds the four example themes only.
