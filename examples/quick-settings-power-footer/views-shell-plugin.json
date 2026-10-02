@@ -12,7 +12,7 @@
   "requires": { "plugins": ["views-shell.power", "views-shell.session"] },
   "contributes": {
     "commands": [
-      { "id": "open-settings", "title": "Open views-shell settings", "icon": "settings", "handler": { "open": "settings" } }
+      { "id": "open-settings", "title": "Open views-shell settings", "icon": "settings", "handler": { "open": "shortcuts" } }
     ],
     "quickSettings": [
       { "id": "footer", "slot": "footer", "ui": "ui/footer.json", "state": "views-shell.power/state" }
